@@ -330,8 +330,62 @@ browsing outings one at a time.
 
 ### Story: Search by species
 
-*(not yet drafted)*
+**As a** birder, **I want** to search my photos by species name, **so
+that** I can quickly pull up and share a specific photo without browsing
+outings one at a time.
+
+**Description:** Reuses existing data — no new matching logic or external
+calls. Covers every confirmed match: caption/tag text matches, approved
+Strategy B suggestions, and approved eBird-gap fallback labels (per the
+earlier decision that a photo-only label is still fully searchable, not
+just a name shown on the photo).
+
+**Acceptance Criteria:**
+- Given I enter a species name (or partial name) in search, when results
+  return, then I see every photo confirmed matched to that species,
+  regardless of which matching path confirmed it, each showing its date
+  and outing.
+- Given no photos match the searched species, then I see a clear "no
+  matches" state, not an error.
+- Given multiple photos match across different outings, then results are
+  sorted most-recent-first, consistent with the outings list.
+- Given a search result, when I select it, then I can view the full photo
+  (with its Flickr page link, per the PRD's in-scope photo-linking
+  requirement) directly, without navigating through the outing list.
+- Given search input, then matching is case-insensitive and works on
+  partial common names — scientific name matching is not required for v1.
+
+**Priority:** Medium — short and well-scoped, but a UX nicety rather than
+core matching functionality.
+
+**Notes:**
+- Out of scope for v1: full-text search over captions/notes, typo-tolerant
+  fuzzy matching, search by location.
+- Only searches confirmed matches (Bucket 1) — unmatched/pending photos
+  aren't surfaced here, consistent with never treating an unverified
+  suggestion as fact.
 
 ### Story: Date selection
 
-*(not yet drafted — details TBD)*
+**As a** birder, **I want** to jump straight to a specific date, **so
+that** I can find a known outing without scrolling the full chronological
+list.
+
+**Description:** v1 scope is a single-date picker, not a date range —
+keeps this short. Complements *Search by species* as the other way to
+narrow results outside of browsing outings chronologically.
+
+**Acceptance Criteria:**
+- Given I pick a date, when results update, then I see only the outing(s)
+  that occurred on that date.
+- Given no outing exists for the selected date, then I see a clear empty
+  state, not an error or a stale previous result.
+- Given I clear the date selection, then the view returns to the full
+  chronological outings list, unchanged from today's default behavior.
+- Given the page loads with no date selected, then all outings show as
+  they do today — date filtering is opt-in, not required.
+
+**Priority:** Medium — same reasoning as *Search by species*.
+
+**Notes:**
+- A date-*range* filter is a natural future enhancement, not required now.
