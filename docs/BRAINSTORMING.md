@@ -37,3 +37,14 @@ For results page:
 ## Parked / maybe later
 
 -
+
+## V2
+
+- **Additional photo hosting sites** (beyond Flickr) — e.g. SmugMug.
+  Needs investigation: which sites are most widely used, and which of
+  those support an API BirdTrip could integrate with.
+- **Merlin recordings** — investigate whether someone's audio recordings
+  saved to Merlin (Cornell's bird ID app) could be brought into BirdTrip.
+- **Multi-user support** — let users add their own Flickr user ID and
+  Merlin user ID, so the app can be extended to other users beyond just
+  me.
