@@ -7,6 +7,11 @@ Shared behavioral rules that would otherwise bloat every story that touches
 them live in a "Functional Spec" block above the relevant story group, and
 individual stories reference it rather than repeating it.
 
+**Diagrams:** the matching logic below is also drawn out in
+[`docs/diagrams/`](diagrams/) — [outing grouping](diagrams/outing-grouping-flow.svg),
+[species-level matching](diagrams/species-matching-flow.svg), and
+[fallback identification](diagrams/fallback-identification-flow.svg).
+
 ---
 
 ## Feature: Outing grouping

@@ -1,0 +1,62 @@
+<svg width="680" height="412" viewBox="0 0 680 412" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Species-level matching within a matched outing</title>
+<desc>A photo already matched to an outing is checked for whether its caption or tags name one of the outing's reported species. If so it is a confirmed match. If not, Strategy B asks Claude to pick from the outing's own reported species only; a confirmed pick becomes a matched photo, and no match becomes an unmatched photo.</desc>
+<style>
+  text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .t { font-size: 14px; fill: #1f2937; }
+  .ts { font-size: 12px; fill: #6b7280; }
+  .th { font-size: 14px; font-weight: 500; fill: #1f2937; }
+  .box rect { fill: #f9fafb; stroke: #9ca3af; }
+  .c-green rect { fill: #dcfce7; stroke: #16a34a; }
+  .c-green .th, .c-green .t { fill: #166534; }
+  .c-amber rect { fill: #fef3c7; stroke: #d97706; }
+  .c-amber .th, .c-amber .t { fill: #92400e; }
+  .arr { stroke: #4b5563; stroke-width: 1.5; }
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<rect x="0" y="0" width="680" height="412" fill="#ffffff"/>
+
+<g class="box">
+<rect x="220" y="40" width="240" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="62" text-anchor="middle" dominant-baseline="central">Photo matched to outing</text>
+</g>
+
+<line x1="340" y1="84" x2="340" y2="128" class="arr" marker-end="url(#arrow)"/>
+
+<g class="box">
+<rect x="190" y="128" width="300" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="146" text-anchor="middle" dominant-baseline="central">Text/tag names reported species?</text>
+</g>
+
+<path d="M190,156 L105,156 L105,180" class="arr" fill="none" marker-end="url(#arrow)"/>
+<text class="ts" x="145" y="146" text-anchor="middle">Yes</text>
+
+<g class="c-green">
+<rect x="40" y="180" width="130" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="105" y="202" text-anchor="middle" dominant-baseline="central">Matched</text>
+</g>
+
+<line x1="340" y1="184" x2="340" y2="228" class="arr" marker-end="url(#arrow)"/>
+
+<g class="box">
+<rect x="190" y="228" width="300" height="56" rx="8" stroke-width="0.5"/>
+<text class="th" x="340" y="246" text-anchor="middle" dominant-baseline="central">Suggest species (Strategy B)</text>
+<text class="ts" x="340" y="264" text-anchor="middle" dominant-baseline="central">constrained to outing's species</text>
+</g>
+
+<path d="M340,284 L150,348" class="arr" fill="none" marker-end="url(#arrow)"/>
+<path d="M340,284 L520,348" class="arr" fill="none" marker-end="url(#arrow)"/>
+<text class="ts" x="200" y="315" text-anchor="middle">Confirmed</text>
+<text class="ts" x="480" y="315" text-anchor="middle">None</text>
+
+<g class="c-green">
+<rect x="70" y="348" width="160" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="150" y="370" text-anchor="middle" dominant-baseline="central">Matched</text>
+</g>
+
+<g class="c-amber">
+<rect x="440" y="348" width="160" height="44" rx="8" stroke-width="0.5"/>
+<text class="th" x="520" y="370" text-anchor="middle" dominant-baseline="central">Unmatched</text>
+</g>
+</svg>
