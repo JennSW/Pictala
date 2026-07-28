@@ -322,6 +322,11 @@ etc.) is intentionally not decided yet — captured here as structure only,
 per the brainstorm notes' review-workflow ideas (edit, approve/remove/park,
 save) still needing to be mapped onto this.
 
+**UI requirements to design against (see `PRD.md` Section 4):**
+- Accessibility compliant, usable by screen readers. How links and alt
+  text on photos should be handled is still to be worked out.
+- A webpage for now — usable on desktop, with a mobile layout.
+
 ## Feature: Search & browse
 
 Motivating use case (see `PRD.md` Section 5): sharing a specific photo

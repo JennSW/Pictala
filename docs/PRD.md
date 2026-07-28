@@ -84,6 +84,12 @@ git-clone-and-run setup as the sharing mechanism).
 - Single-user only (you) — your own API keys/credentials, local data.
 - Each photo links to its original Flickr display page (not just the
   raw `.jpg`), so a viewer can click through to see it on Flickr itself.
+- **Accessibility compliant, usable by screen readers.** Applies to the
+  whole UI, not just photos. Specifics not decided yet — how links and
+  alt text on photos should be handled is still to be worked out (see
+  `USER_STORIES.md`, Feature: Results review).
+- **Webpage for now** — usable on desktop, with a mobile layout. Not a
+  native app.
 
 **Out of scope for v1 (deferred to V2):**
 - Additional photo hosting sites beyond Flickr (e.g. SmugMug) —
