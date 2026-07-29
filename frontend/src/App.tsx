@@ -8,6 +8,7 @@ import {
   OutingDetail,
   SpeciesSuggestion,
 } from "./api";
+import DatePicker from "./DatePicker";
 
 // Per-photo state for the "Suggest species" flow (Strategy B). Keyed by
 // photo id. Nothing here is persisted until the user clicks Accept --
@@ -21,12 +22,27 @@ type SuggestionState =
 export default function App() {
   const [outings, setOutings] = useState<OutingSummary[]>([]);
   const [selected, setSelected] = useState<OutingDetail | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, SuggestionState>>({});
 
   useEffect(() => {
-    fetchOutings().then(setOutings).catch((e) => setError(String(e)));
+    fetchOutings()
+      .then((data) => {
+        setOutings(data);
+        // No date selected on load -- rather than an empty detail panel,
+        // default to the most recent outing (see docs/USER_STORIES.md,
+        // "Story: Date selection"). The list itself stays unfiltered;
+        // this only affects the detail panel's initial state.
+        if (data.length > 0) {
+          openOuting(data[0].id);
+        }
+      })
+      .catch((e) => setError(String(e)));
   }, []);
+
+  const availableDates = new Set(outings.map((o) => o.date));
+  const visibleOutings = selectedDate ? outings.filter((o) => o.date === selectedDate) : outings;
 
   async function openOuting(id: number) {
     try {
@@ -91,21 +107,40 @@ export default function App() {
       )}
 
       <div style={{ display: "flex", gap: "2rem" }}>
-        <ul style={{ listStyle: "none", padding: 0, minWidth: 260 }}>
-          {outings.map((o) => (
-            <li key={o.id} style={{ marginBottom: "0.75rem" }}>
-              <button
-                onClick={() => openOuting(o.id)}
-                style={{ width: "100%", textAlign: "left", padding: "0.5rem", cursor: "pointer" }}
-              >
-                <strong>{o.location_name}</strong>
-                <br />
-                {o.date} · {o.species_count} species · {o.photo_count} photos
-              </button>
-            </li>
-          ))}
-          {outings.length === 0 && !error && <li>No outings yet — sync eBird + Flickr data first.</li>}
-        </ul>
+        <div style={{ minWidth: 260 }}>
+          <DatePicker
+            availableDates={availableDates}
+            selected={selectedDate}
+            onSelect={setSelectedDate}
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate(null)}
+              style={{ marginBottom: "0.75rem", cursor: "pointer" }}
+            >
+              Clear date — show all outings
+            </button>
+          )}
+
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {visibleOutings.map((o) => (
+              <li key={o.id} style={{ marginBottom: "0.75rem" }}>
+                <button
+                  onClick={() => openOuting(o.id)}
+                  style={{ width: "100%", textAlign: "left", padding: "0.5rem", cursor: "pointer" }}
+                >
+                  <strong>{o.location_name}</strong>
+                  <br />
+                  {o.date} · {o.species_count} species · {o.photo_count} photos
+                </button>
+              </li>
+            ))}
+            {outings.length === 0 && !error && <li>No outings yet — sync eBird + Flickr data first.</li>}
+            {outings.length > 0 && visibleOutings.length === 0 && (
+              <li>No outings on this date.</li>
+            )}
+          </ul>
+        </div>
 
         {selected && (
           <div style={{ flex: 1 }}>

@@ -381,16 +381,37 @@ keeps this short. Complements *Search by species* as the other way to
 narrow results outside of browsing outings chronologically.
 
 **Acceptance Criteria:**
-- Given I pick a date, when results update, then I see only the outing(s)
-  that occurred on that date.
-- Given no outing exists for the selected date, then I see a clear empty
-  state, not an error or a stale previous result.
+- Given the date picker, then only dates with at least one outing are
+  selectable — dates with no outings are greyed out and disabled
+  (`aria-disabled`, not just visually distinct), not merely styled
+  differently while still clickable.
+- Given the set of dates with outings, then it's derived client-side from
+  the outings list already loaded on the page — no new backend endpoint
+  needed.
+- Given a disabled date, then clicking/tapping it does nothing.
+- Given I pick an enabled date, when results update, then I see only the
+  outing(s) that occurred on that date.
 - Given I clear the date selection, then the view returns to the full
   chronological outings list, unchanged from today's default behavior.
 - Given the page loads with no date selected, then all outings show as
-  they do today — date filtering is opt-in, not required.
+  they do today — date filtering is opt-in, not required, and the list
+  itself stays unfiltered.
+- Given the page loads with no date selected, then the detail panel
+  defaults to the most recent outing instead of sitting empty — the list
+  being unfiltered and the detail panel defaulting to the latest outing
+  are independent behaviors, not in conflict.
+- Given the date picker is opened, then it defaults to showing the
+  current real-world month, not the month of the most recent outing or
+  any other outing-derived default.
 
 **Priority:** Medium — same reasoning as *Search by species*.
 
 **Notes:**
+- Greyed-out + disabled was chosen over a bold/not-bold distinction
+  specifically for the accessibility requirement (`PRD.md` Section 4) —
+  font weight alone doesn't communicate anything to a screen reader,
+  disabled state does.
+- The original "empty state for a selected date with no outings" scenario
+  becomes a defensive fallback rather than the primary path, since a
+  disabled date can't be selected in the first place.
 - A date-*range* filter is a natural future enhancement, not required now.
