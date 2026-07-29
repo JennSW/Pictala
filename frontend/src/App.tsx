@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   fetchOutings,
   fetchOuting,
   suggestSpecies,
   acceptSuggestion,
+  searchBySpecies,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
+  SearchResult,
 } from "./api";
 import DatePicker from "./DatePicker";
 
@@ -25,6 +27,13 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, SuggestionState>>({});
+
+  // Search by species (see docs/USER_STORIES.md, "Story: Search by
+  // species"). searchResults === null means no search is active -- the
+  // normal date-picker/outings-list/detail view shows instead.
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     fetchOutings()
@@ -51,6 +60,24 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     }
+  }
+
+  async function handleSearch(e: FormEvent) {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      setSearchResults(await searchBySpecies(searchQuery.trim()));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function clearSearch() {
+    setSearchQuery("");
+    setSearchResults(null);
   }
 
   async function handleSuggest(checklistId: number, photoId: number) {
@@ -106,6 +133,59 @@ export default function App() {
         </p>
       )}
 
+      <form onSubmit={handleSearch} role="search" style={{ marginBottom: "1.5rem" }}>
+        <label htmlFor="species-search" style={{ display: "block", marginBottom: "0.25rem" }}>
+          Search by species
+        </label>
+        <input
+          id="species-search"
+          type="search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="e.g. Bald Eagle"
+          style={{ padding: "0.4rem", width: 220 }}
+        />
+        <button type="submit" disabled={!searchQuery.trim() || searching} style={{ marginLeft: "0.5rem", cursor: "pointer" }}>
+          {searching ? "Searching…" : "Search"}
+        </button>
+        {searchResults !== null && (
+          <button type="button" onClick={clearSearch} style={{ marginLeft: "0.5rem", cursor: "pointer" }}>
+            Clear search
+          </button>
+        )}
+      </form>
+
+      {searchResults !== null ? (
+        <div>
+          <h2>Search results for "{searchQuery}"</h2>
+          {searchResults.length === 0 ? (
+            <p>No matched photos found for that species.</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+              {searchResults.map((r) => (
+                <figure key={r.photo.id} style={{ margin: 0, width: 200 }}>
+                  {r.photo.url_medium ? (
+                    <img src={r.photo.url_medium} alt={r.photo.title ?? r.common_name} width={200} />
+                  ) : (
+                    <div style={{ width: 200, height: 140, background: "#eee" }} />
+                  )}
+                  <figcaption style={{ fontSize: "0.85rem" }}>
+                    <strong>{r.common_name}</strong>
+                    <br />
+                    {r.location_name} · {r.date}
+                    <br />
+                    {r.photo.flickr_url && (
+                      <a href={r.photo.flickr_url} target="_blank" rel="noreferrer">
+                        View on Flickr
+                      </a>
+                    )}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ display: "flex", gap: "2rem" }}>
         <div style={{ minWidth: 260 }}>
           <DatePicker
@@ -243,6 +323,7 @@ export default function App() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

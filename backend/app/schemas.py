@@ -2,6 +2,8 @@
 so the API contract can evolve independently of the DB schema."""
 from pydantic import BaseModel
 
+from app.config import settings
+
 
 class ObservationOut(BaseModel):
     id: int
@@ -20,8 +22,32 @@ class PhotoOut(BaseModel):
     url_medium: str | None
     latitude: float | None
     longitude: float | None
+    flickr_url: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+def photo_out(photo) -> "PhotoOut":
+    """Build a PhotoOut with its Flickr display-page link -- not just the
+    raw .jpg (see docs/PRD.md Section 4, the photo-linking requirement).
+    A plain `from_attributes` mapping can't populate this since it isn't
+    a real column on Photo, so callers use this instead of relying on
+    automatic nested serialization."""
+    flickr_url = (
+        f"https://www.flickr.com/photos/{settings.flickr_user_id}/{photo.flickr_id}/"
+        if settings.flickr_user_id
+        else None
+    )
+    return PhotoOut(
+        id=photo.id,
+        flickr_id=photo.flickr_id,
+        title=photo.title,
+        date_taken=photo.date_taken,
+        url_medium=photo.url_medium,
+        latitude=photo.latitude,
+        longitude=photo.longitude,
+        flickr_url=flickr_url,
+    )
 
 
 class MatchOut(BaseModel):
@@ -67,6 +93,20 @@ class SpeciesSuggestion(BaseModel):
     suggested_common_name: str | None
     confidence: float
     reasoning: str
+
+
+class SearchResult(BaseModel):
+    """One row of a species search -- a confirmed photo/species match,
+    with enough outing context to navigate back to it (see
+    docs/USER_STORIES.md, 'Story: Search by species'). Only confirmed
+    matches (Bucket 1) are searchable; unmatched/pending photos aren't
+    surfaced here."""
+
+    checklist_id: int
+    location_name: str
+    date: str
+    common_name: str
+    photo: PhotoOut
 
 
 class AcceptSuggestionRequest(BaseModel):

@@ -35,6 +35,18 @@ export interface MatchEntry {
   confidence: number;
 }
 
+export interface PhotoWithLink extends Photo {
+  flickr_url: string | null;
+}
+
+export interface SearchResult {
+  checklist_id: number;
+  location_name: string;
+  date: string;
+  common_name: string;
+  photo: PhotoWithLink;
+}
+
 export interface OutingDetail {
   id: number;
   location_name: string;
@@ -54,6 +66,14 @@ export async function fetchOutings(): Promise<OutingSummary[]> {
 export async function fetchOuting(id: number): Promise<OutingDetail> {
   const res = await fetch(`${API_BASE}/outings/${id}`);
   if (!res.ok) throw new Error(`Failed to load outing ${id}: ${res.status}`);
+  return res.json();
+}
+
+// Search by species (see docs/USER_STORIES.md, "Story: Search by
+// species"). Only confirmed matches are searchable -- see search.py.
+export async function searchBySpecies(query: string): Promise<SearchResult[]> {
+  const res = await fetch(`${API_BASE}/search?species=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error(`Search failed: ${res.status}`);
   return res.json();
 }
 

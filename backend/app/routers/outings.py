@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Checklist, Match
-from app.schemas import OutingSummary, OutingDetail
+from app.schemas import OutingSummary, OutingDetail, photo_out
 
 router = APIRouter(prefix="/outings", tags=["outings"])
 
@@ -38,7 +38,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
         observations=checklist.observations,
         matches=[
             {
-                "photo": m.photo,
+                "photo": photo_out(m.photo),
                 "observation": next(
                     (o for o in checklist.observations if o.id == m.observation_id), None
                 ),
