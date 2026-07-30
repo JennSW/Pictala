@@ -48,3 +48,12 @@ For results page:
 - **Multi-user support** — let users add their own Flickr user ID and
   Merlin user ID, so the app can be extended to other users beyond just
   me.
+
+## V3
+
+- **Post to Flickr for missing matches** — scenario: eBird reports a
+  species with no matching Flickr photo (Bucket 3 of the three-bucket
+  results structure), but I have an unposted photo of it sitting outside
+  the app. Select the bird from the missing-match list, get taken to
+  Flickr's uploader to post the photo, and once uploaded, automatically
+  register it as a match. Further out than V2, not scoped.
