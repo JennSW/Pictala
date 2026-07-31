@@ -13,13 +13,18 @@ from app.db import Base
 
 
 class Checklist(Base):
-    """One eBird checklist == one outing, roughly."""
+    """One eBird checklist. Multiple checklists sharing the same date and
+    `location_id` are treated as a single outing -- see
+    app/services/outing_grouping.py -- since a real trip often produces
+    several separate checklist submissions (e.g. one per species logged
+    separately, or one per observer)."""
 
     __tablename__ = "checklists"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     submission_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     location_name: Mapped[str] = mapped_column(String)
+    location_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     date: Mapped[str] = mapped_column(String)  # ISO date, e.g. 2026-06-14

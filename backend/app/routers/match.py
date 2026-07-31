@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Checklist, Photo, Match
 from app.schemas import SpeciesSuggestion, AcceptSuggestionRequest, MatchOut
+from app.services.outing_grouping import get_checklist_group
 from app.services.species_classifier import (
     guess_species,
     SpeciesClassifierNotConfigured,
@@ -39,18 +40,26 @@ def suggest_species(checklist_id: int, photo_id: int, db: Session = Depends(get_
             status_code=400, detail="This photo has no image URL to look at"
         )
 
-    # De-dupe candidate species by common name (a checklist can have more
-    # than one Observation row for the same species -- e.g. re-imports, or
-    # multiple counts logged separately) while keeping the mapping back to
-    # an observation_id for whichever one appears first.
+    # Candidates come from the whole outing group (all checklists sharing
+    # this one's date + Location ID, per docs/USER_STORIES.md's outing
+    # grouping story), not just this single checklist -- a photo taken
+    # during a multi-checklist trip should be checked against everything
+    # reported on the trip, not whichever checklist it happened to land
+    # under. De-dupe candidate species by common name (a checklist can
+    # have more than one Observation row for the same species -- e.g.
+    # re-imports, or multiple counts logged separately, or the same
+    # species reported on two checklists in the group) while keeping the
+    # mapping back to an observation_id for whichever one appears first.
+    group = get_checklist_group(db, checklist)
     seen = {}
-    for obs in checklist.observations:
-        seen.setdefault(obs.common_name, obs.id)
+    for c in group:
+        for obs in c.observations:
+            seen.setdefault(obs.common_name, obs.id)
     candidate_names = list(seen.keys())
 
     if not candidate_names:
         raise HTTPException(
-            status_code=400, detail="This checklist has no species to suggest from"
+            status_code=400, detail="This outing has no species to suggest from"
         )
 
     try:
@@ -104,10 +113,13 @@ def accept_suggestion(
     db.refresh(match)
 
     # Match has no direct ORM relationship to Observation (only the
-    # observation_id column) -- resolve it the same way outings.py does,
-    # by looking it up in the checklist's own observations.
+    # observation_id column) -- resolve it the same way outings.py does.
+    # The accepted observation may belong to a sibling checklist in this
+    # outing's group, not `checklist` itself, since suggest_species above
+    # offers candidates from the whole group -- look it up there too.
+    group = get_checklist_group(db, checklist)
     observation = next(
-        (o for o in checklist.observations if o.id == match.observation_id), None
+        (o for c in group for o in c.observations if o.id == match.observation_id), None
     )
 
     return {

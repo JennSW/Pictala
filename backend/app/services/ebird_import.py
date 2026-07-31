@@ -69,6 +69,7 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
                 checklist = Checklist(
                     submission_id=submission_id,
                     location_name=_get(row, "Location") or "Unknown location",
+                    location_id=_get(row, "Location ID"),
                     latitude=float(lat) if lat else None,
                     longitude=float(lon) if lon else None,
                     date=date_iso,
