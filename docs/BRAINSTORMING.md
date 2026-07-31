@@ -57,3 +57,6 @@ For results page:
   the app. Select the bird from the missing-match list, get taken to
   Flickr's uploader to post the photo, and once uploaded, automatically
   register it as a match. Further out than V2, not scoped.
+- **Map of location** — show outings/photos on a map view, using the
+  lat/lon already captured on checklists and photos. No further detail
+  given yet.
