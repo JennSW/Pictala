@@ -220,6 +220,15 @@ testing.
   (`POST /match/{checklist_id}/assign/{photo_id}`); no new matching logic.
 - Built alongside the fallback story below, since both are ways of
   handling a "no confident match" result and share the same UI location.
+- **Extended 2026-07-31:** rejecting a *positive* suggestion (the AI
+  named a specific candidate species, but it's wrong) used to just clear
+  the guess with no follow-up at all. Now it shares this exact same
+  panel — manual dropdown, "Try broader ID," a plain note field — plus a
+  "Try Again" button that re-runs the constrained guess, since a wrong
+  suggestion and no suggestion both mean "this proposed answer isn't
+  right." The plain note field reuses the fallback accept endpoint with
+  no AI guess behind it at all (an arbitrary label with no species
+  metadata is exactly what an "Other" entry already is).
 
 ### Story: Species ID fallback for eBird gaps
 

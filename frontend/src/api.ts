@@ -179,21 +179,23 @@ export async function suggestFallback(
 // as-is, or their own edited/custom note. If it doesn't match the
 // original suggestion, the AI-resolved scientific_name/species_code are
 // dropped rather than attached to text the user wrote themselves.
+// `suggestion` is omitted entirely for a plain freeform note saved with
+// no AI guess involved at all (the rejected-suggestion follow-up panel).
 export async function acceptFallback(
   checklistId: number,
   photoId: number,
   commonName: string,
-  suggestion: FallbackSuggestion
+  suggestion?: FallbackSuggestion
 ): Promise<MatchEntry> {
-  const edited = commonName !== suggestion.common_name;
+  const edited = !suggestion || commonName !== suggestion.common_name;
   const res = await fetch(`${API_BASE}/match/${checklistId}/accept-fallback/${photoId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       common_name: commonName,
-      scientific_name: edited ? null : suggestion.scientific_name,
-      species_code: edited ? null : suggestion.species_code,
-      confidence: suggestion.confidence,
+      scientific_name: edited ? null : suggestion?.scientific_name,
+      species_code: edited ? null : suggestion?.species_code,
+      confidence: suggestion?.confidence ?? 1.0,
     }),
   });
   if (!res.ok) throw new Error(await readErrorDetail(res));

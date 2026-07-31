@@ -19,11 +19,16 @@ import DatePicker from "./DatePicker";
 // Per-photo state for the "Suggest species" flow (Strategy B). Keyed by
 // photo id. Nothing here is persisted until the user clicks Accept --
 // see DESIGN.md section 4.
+// "rejected" -- the user rejected a positive suggestion (it named the
+// wrong species). Shares its follow-up panel (manual dropdown, broader
+// ID, a plain note) with the "no confident match" case, since both mean
+// "this proposed answer isn't right."
 type SuggestionState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; data: SpeciesSuggestion }
-  | { status: "accepting" };
+  | { status: "accepting" }
+  | { status: "rejected" };
 
 // Fallback identification flow -- see docs/USER_STORIES.md, "Species ID
 // fallback for eBird gaps". Separate from SuggestionState since it's a
@@ -48,6 +53,10 @@ export default function App() {
   // AI's guess (including "Other" guesses like "Dragonfly"), editable
   // before accepting so the user can correct it or write their own note.
   const [fallbackText, setFallbackText] = useState<Record<number, string>>({});
+  // Plain freeform note, per photo -- for the rejected/no-match follow-up
+  // panel, saved directly with no AI guess involved at all.
+  const [noteText, setNoteText] = useState<Record<number, string>>({});
+  const [savingNote, setSavingNote] = useState<Record<number, boolean>>({});
 
   // Search by species (see docs/USER_STORIES.md, "Story: Search by
   // species"). searchResults === null means no search is active -- the
@@ -133,12 +142,44 @@ export default function App() {
   }
 
   function handleReject(photoId: number) {
-    // Nothing was ever saved -- rejecting just clears the on-screen guess.
+    // Nothing was ever saved. Previously this just cleared the guess
+    // entirely; now it hands off to the same follow-up panel as "no
+    // confident match" (manual dropdown, broader ID, a plain note) plus
+    // a Try Again option, since a wrong suggestion and no suggestion both
+    // mean "this proposed answer isn't right."
+    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "rejected" } }));
+  }
+
+  function handleDismissRejected(photoId: number) {
     setSuggestions((prev) => {
       const next = { ...prev };
       delete next[photoId];
       return next;
     });
+    setNoteText((prev) => {
+      const next = { ...prev };
+      delete next[photoId];
+      return next;
+    });
+  }
+
+  // Plain freeform note, no AI guess involved -- reuses the fallback
+  // accept endpoint (an arbitrary common_name with no species metadata
+  // is exactly what an "Other" entry already is), just reached directly
+  // instead of via a suggestion first.
+  async function handleSaveNote(checklistId: number, photoId: number) {
+    const text = (noteText[photoId] ?? "").trim();
+    if (!text) return;
+    setSavingNote((prev) => ({ ...prev, [photoId]: true }));
+    try {
+      await acceptFallback(checklistId, photoId, text);
+      setSelected(await fetchOuting(checklistId));
+      handleDismissRejected(photoId);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSavingNote((prev) => ({ ...prev, [photoId]: false }));
+    }
   }
 
   // Manual override: the user picks one of the outing's own reported
@@ -469,12 +510,78 @@ export default function App() {
                               <button style={{ cursor: "pointer" }} onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
                                 Try broader ID
                               </button>
-                              <button style={{ cursor: "pointer" }} onClick={() => handleReject(m.photo.id)}>
+                              <button style={{ cursor: "pointer" }} onClick={() => handleDismissRejected(m.photo.id)}>
                                 Dismiss
                               </button>
                             </div>
                           </>
                         )}
+                      </div>
+                    )}
+
+                    {suggestion?.status === "rejected" && (
+                      <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
+                        <div>Rejected — what should this be instead?</div>
+
+                        <div style={{ marginTop: "0.4rem" }}>
+                          <select
+                            value={manualPick[m.photo.id] ?? ""}
+                            onChange={(e) =>
+                              setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                            }
+                            style={{ fontSize: "0.75rem", maxWidth: "100%" }}
+                          >
+                            <option value="">It's actually…</option>
+                            {selected.observations.map((obs) => (
+                              <option key={obs.id} value={obs.id}>
+                                {obs.common_name}
+                              </option>
+                            ))}
+                          </select>{" "}
+                          <button
+                            disabled={!manualPick[m.photo.id]}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleAssign(selected.id, m.photo.id)}
+                          >
+                            Assign
+                          </button>
+                        </div>
+
+                        <div style={{ marginTop: "0.4rem" }}>
+                          <input
+                            type="text"
+                            value={noteText[m.photo.id] ?? ""}
+                            onChange={(e) =>
+                              setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                            }
+                            placeholder="Or write a note"
+                            style={{
+                              width: "100%",
+                              fontSize: "0.75rem",
+                              padding: "0.25rem",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                          <button
+                            disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                            style={{ cursor: "pointer", marginTop: "0.25rem" }}
+                            onClick={() => handleSaveNote(selected.id, m.photo.id)}
+                          >
+                            {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.4rem" }}>
+                          <button style={{ cursor: "pointer" }} onClick={() => handleSuggest(selected.id, m.photo.id)}>
+                            Try Again
+                          </button>
+                          <button style={{ cursor: "pointer" }} onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                            Try broader ID
+                          </button>
+                          <button style={{ cursor: "pointer" }} onClick={() => handleDismissRejected(m.photo.id)}>
+                            Dismiss
+                          </button>
+                        </div>
                       </div>
                     )}
 
