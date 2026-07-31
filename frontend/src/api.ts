@@ -33,6 +33,9 @@ export interface MatchEntry {
   observation: Observation | null;
   method: string;
   confidence: number;
+  fallback_common_name: string | null;
+  fallback_scientific_name: string | null;
+  ebird_checklist_url: string | null;
 }
 
 export interface PhotoWithLink extends Photo {
@@ -121,6 +124,71 @@ export async function acceptSuggestion(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ observation_id: observationId, confidence }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// Manual override -- the user picks one of the outing's own reported
+// species themselves, no AI suggestion behind it. For correcting a
+// false-negative "no confident match" result.
+export async function assignSpecies(
+  checklistId: number,
+  photoId: number,
+  observationId: number
+): Promise<MatchEntry> {
+  const res = await fetch(`${API_BASE}/match/${checklistId}/assign/${photoId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ observation_id: observationId }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+export interface FallbackSuggestion {
+  photo_id: number;
+  checklist_id: number;
+  is_bird: boolean;
+  common_name: string | null;
+  scientific_name: string | null;
+  species_code: string | null;
+  confidence: number;
+  reasoning: string;
+  ebird_checklist_url: string;
+  unresolved: boolean;
+}
+
+// Broader, unconstrained guess for a photo that doesn't match any of the
+// outing's reported species (see docs/USER_STORIES.md, "Species ID
+// fallback for eBird gaps"). Nothing saved yet.
+export async function suggestFallback(
+  checklistId: number,
+  photoId: number
+): Promise<FallbackSuggestion> {
+  const res = await fetch(`${API_BASE}/match/${checklistId}/suggest-fallback/${photoId}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// Keep a fallback identification. Photo-level only -- never touches the
+// checklist's own species list, never writes back to eBird.
+export async function acceptFallback(
+  checklistId: number,
+  photoId: number,
+  suggestion: FallbackSuggestion
+): Promise<MatchEntry> {
+  const res = await fetch(`${API_BASE}/match/${checklistId}/accept-fallback/${photoId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      common_name: suggestion.common_name,
+      scientific_name: suggestion.scientific_name,
+      species_code: suggestion.species_code,
+      confidence: suggestion.confidence,
+    }),
   });
   if (!res.ok) throw new Error(await readErrorDetail(res));
   return res.json();

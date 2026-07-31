@@ -4,10 +4,14 @@ import {
   fetchOuting,
   suggestSpecies,
   acceptSuggestion,
+  assignSpecies,
+  suggestFallback,
+  acceptFallback,
   searchBySpecies,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
+  FallbackSuggestion,
   SearchResult,
 } from "./api";
 import DatePicker from "./DatePicker";
@@ -21,12 +25,25 @@ type SuggestionState =
   | { status: "ready"; data: SpeciesSuggestion }
   | { status: "accepting" };
 
+// Fallback identification flow -- see docs/USER_STORIES.md, "Species ID
+// fallback for eBird gaps". Separate from SuggestionState since it's a
+// distinct action (broader, unconstrained guess) with its own result shape.
+type FallbackState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; data: FallbackSuggestion }
+  | { status: "accepting" };
+
 export default function App() {
   const [outings, setOutings] = useState<OutingSummary[]>([]);
   const [selected, setSelected] = useState<OutingDetail | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Record<number, SuggestionState>>({});
+  const [fallbacks, setFallbacks] = useState<Record<number, FallbackState>>({});
+  // Manual-assign dropdown selection, per photo (string since <select>
+  // values are strings; "" means nothing picked yet).
+  const [manualPick, setManualPick] = useState<Record<number, string>>({});
 
   // Search by species (see docs/USER_STORIES.md, "Story: Search by
   // species"). searchResults === null means no search is active -- the
@@ -114,6 +131,71 @@ export default function App() {
   function handleReject(photoId: number) {
     // Nothing was ever saved -- rejecting just clears the on-screen guess.
     setSuggestions((prev) => {
+      const next = { ...prev };
+      delete next[photoId];
+      return next;
+    });
+  }
+
+  // Manual override: the user picks one of the outing's own reported
+  // species themselves, no AI suggestion behind it -- for correcting a
+  // false-negative "no confident match" result.
+  async function handleAssign(checklistId: number, photoId: number) {
+    const observationId = Number(manualPick[photoId]);
+    if (!observationId) return;
+    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
+    try {
+      await assignSpecies(checklistId, photoId, observationId);
+      setSelected(await fetchOuting(checklistId));
+      setSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setManualPick((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+    } catch (e) {
+      setSuggestions((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
+    }
+  }
+
+  // Fallback identification: broader, unconstrained guess for a photo
+  // that doesn't match any of the outing's reported species.
+  async function handleSuggestFallback(checklistId: number, photoId: number) {
+    setFallbacks((prev) => ({ ...prev, [photoId]: { status: "loading" } }));
+    try {
+      const data = await suggestFallback(checklistId, photoId);
+      setFallbacks((prev) => ({ ...prev, [photoId]: { status: "ready", data } }));
+    } catch (e) {
+      setFallbacks((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
+    }
+  }
+
+  async function handleAcceptFallback(checklistId: number, photoId: number, suggestion: FallbackSuggestion) {
+    setFallbacks((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
+    try {
+      await acceptFallback(checklistId, photoId, suggestion);
+      setSelected(await fetchOuting(checklistId));
+      setFallbacks((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+    } catch (e) {
+      setFallbacks((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
+    }
+  }
+
+  function handleDismissFallback(photoId: number) {
+    setFallbacks((prev) => {
       const next = { ...prev };
       delete next[photoId];
       return next;
@@ -241,6 +323,8 @@ export default function App() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
               {selected.matches.map((m) => {
                 const suggestion = suggestions[m.photo.id];
+                const fallback = fallbacks[m.photo.id];
+                const resolved = m.observation || m.fallback_common_name;
                 return (
                   <figure key={m.photo.id} style={{ margin: 0, width: 180 }}>
                     {m.photo.url_medium ? (
@@ -249,13 +333,30 @@ export default function App() {
                       <div style={{ width: 180, height: 120, background: "#eee" }} />
                     )}
                     <figcaption style={{ fontSize: "0.8rem" }}>
-                      {m.observation ? m.observation.common_name : "(unmatched species)"}
+                      {m.observation ? (
+                        m.observation.common_name
+                      ) : m.fallback_common_name ? (
+                        <>
+                          {m.fallback_common_name}{" "}
+                          <em style={{ color: "#a60" }}>(not on this checklist)</em>
+                          {m.ebird_checklist_url && (
+                            <>
+                              {" — "}
+                              <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
+                                add to eBird
+                              </a>
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        "(unmatched species)"
+                      )}
                       <br />
                       <em>{m.method}</em>
                       {m.method !== "rule_based" && ` (${Math.round(m.confidence * 100)}%)`}
                     </figcaption>
 
-                    {!m.observation && !suggestion && (
+                    {!resolved && !suggestion && (
                       <button
                         onClick={() => handleSuggest(selected.id, m.photo.id)}
                         style={{ width: "100%", fontSize: "0.75rem", padding: "0.25rem", cursor: "pointer" }}
@@ -308,7 +409,92 @@ export default function App() {
                           <>
                             <div>No confident match among this outing's species.</div>
                             <div style={{ color: "#666", margin: "0.25rem 0" }}>{suggestion.data.reasoning}</div>
-                            <button style={{ cursor: "pointer" }} onClick={() => handleReject(m.photo.id)}>
+
+                            <div style={{ marginTop: "0.4rem" }}>
+                              <select
+                                value={manualPick[m.photo.id] ?? ""}
+                                onChange={(e) =>
+                                  setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                                }
+                                style={{ fontSize: "0.75rem", maxWidth: "100%" }}
+                              >
+                                <option value="">It's actually…</option>
+                                {selected.observations.map((obs) => (
+                                  <option key={obs.id} value={obs.id}>
+                                    {obs.common_name}
+                                  </option>
+                                ))}
+                              </select>{" "}
+                              <button
+                                disabled={!manualPick[m.photo.id]}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleAssign(selected.id, m.photo.id)}
+                              >
+                                Assign
+                              </button>
+                            </div>
+
+                            <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.4rem" }}>
+                              <button style={{ cursor: "pointer" }} onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                                Try broader ID
+                              </button>
+                              <button style={{ cursor: "pointer" }} onClick={() => handleReject(m.photo.id)}>
+                                Dismiss
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {fallback?.status === "loading" && (
+                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Thinking…</p>
+                    )}
+
+                    {fallback?.status === "accepting" && (
+                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Saving…</p>
+                    )}
+
+                    {fallback?.status === "error" && (
+                      <p style={{ fontSize: "0.75rem", color: "crimson" }}>{fallback.message}</p>
+                    )}
+
+                    {fallback?.status === "ready" && (
+                      <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
+                        {fallback.data.common_name ? (
+                          <>
+                            <div>
+                              Broader guess: <strong>{fallback.data.common_name}</strong>{" "}
+                              ({Math.round(fallback.data.confidence * 100)}%)
+                            </div>
+                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
+                            <div style={{ color: "#a60", marginBottom: "0.25rem" }}>
+                              Not on this checklist — approving labels the photo only, and
+                              won't be written back to eBird.
+                            </div>
+                            <div style={{ display: "flex", gap: "0.25rem" }}>
+                              <button
+                                style={{ cursor: "pointer" }}
+                                onClick={() => handleAcceptFallback(selected.id, m.photo.id, fallback.data)}
+                              >
+                                Approve
+                              </button>
+                              <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
+                                Dismiss
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              {fallback.data.unresolved
+                                ? "Named something that isn't a recognized eBird species."
+                                : fallback.data.is_bird
+                                ? "Couldn't confidently identify the species."
+                                : "Doesn't look like a bird."}
+                            </div>
+                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
+                            <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
                               Dismiss
                             </button>
                           </>

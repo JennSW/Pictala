@@ -3,8 +3,16 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import Checklist
-from app.schemas import OutingSummary, OutingDetail, photo_out
+from app.schemas import OutingSummary, OutingDetail, photo_out, ebird_checklist_url
 from app.services.outing_grouping import group_checklists, get_checklist_group
+
+
+def _is_resolved(match) -> bool:
+    """A match is "resolved" once it has a real species attached, either
+    a reported observation or an approved fallback identification --
+    either way, it should win over an unresolved duplicate of the same
+    photo from a sibling checklist in the group."""
+    return match.observation_id is not None or match.fallback_common_name is not None
 
 router = APIRouter(prefix="/outings", tags=["outings"])
 
@@ -52,7 +60,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
     matches_by_photo = {}
     for m in all_matches:
         current = matches_by_photo.get(m.photo_id)
-        if current is None or (current.observation_id is None and m.observation_id is not None):
+        if current is None or (not _is_resolved(current) and _is_resolved(m)):
             matches_by_photo[m.photo_id] = m
 
     return OutingDetail(
@@ -70,6 +78,9 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
                 ),
                 "method": m.method,
                 "confidence": m.confidence,
+                "fallback_common_name": m.fallback_common_name,
+                "fallback_scientific_name": m.fallback_scientific_name,
+                "ebird_checklist_url": ebird_checklist_url(m.checklist),
             }
             for m in matches_by_photo.values()
         ],

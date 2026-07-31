@@ -191,6 +191,36 @@ checklist — Claude picks from that checklist's own ~5–15 reported species
 only. Backend + frontend for this are complete; only blocked on the
 Anthropic API key. Nothing here changes that path.
 
+### Story: Manual species assignment
+
+**As a** birder, **I want** to manually pick a species when Strategy B
+reports no confident match, **so that** I can correct a false negative
+instead of being stuck with no way to record the right answer.
+
+**Description:** Built 2026-07-31, discovered live: testing Marymoor
+Park's single-candidate European Starling checklist, Strategy B got 4 of
+5 photos right and incorrectly reported "no match" on the 5th, which was
+also a Starling. Even in the easiest possible case (one candidate
+species), the AI isn't perfectly accurate — the UI needs a way to correct
+it, not just accept/dismiss what the AI proposes.
+
+**Acceptance Criteria:**
+- Given a "no confident match" result, when I pick one of the outing's
+  own reported species from a list and confirm, then the photo is matched
+  to that species — no AI suggestion required first.
+- Given a manually-assigned match, then it's recorded distinctly (method
+  `manual`) from an AI-confirmed one (`ai_suggested`), so provenance stays
+  honest.
+
+**Priority:** High — small, contained, fixes a real accuracy gap found in
+testing.
+
+**Notes:**
+- Backend reuses the existing accept endpoint's pattern
+  (`POST /match/{checklist_id}/assign/{photo_id}`); no new matching logic.
+- Built alongside the fallback story below, since both are ways of
+  handling a "no confident match" result and share the same UI location.
+
 ### Story: Species ID fallback for eBird gaps
 
 **As a** birder, **I want** BirdTrip to attempt species identification on
@@ -246,15 +276,29 @@ record.
 **Priority:** Medium — depends on the Anthropic API key (now working) and
 is secondary to the already-built checklist-constrained path.
 
+**Built 2026-07-31**, covering trigger case (2) — checklist matched,
+constrained guess returned none — verified live with a real Heron photo
+on a Starling-only Marymoor checklist. Trigger case (1), no matching
+checklist at all, is still unbuilt: there's nowhere in the UI for an
+orphaned photo to appear yet (see *Feature: Outing grouping*'s
+checklist-less photo clusters, also still unbuilt).
+
 **Notes:**
 - Additive to, not a replacement for, the existing checklist-constrained
   flow.
 - Suggestions here feed into the same review UI as everything else
   (approve/remove/park, edit) — see *Results review* (not yet drafted),
   not a separate screen.
-- Open, not blocking: how far should "less-constrained" actually reach —
-  fully open-vocabulary, or lightly narrowed by something cheap like
-  region/season from eBird? Worth deciding when this gets built.
+- ~~Open: how far should "less-constrained" reach?~~ Resolved by
+  implementation: fully open-vocabulary (no region/season narrowing),
+  with the guess resolved against eBird's real taxonomy afterward
+  (`app/services/ebird_taxonomy.py`) — a name that doesn't match a real
+  eBird species is treated as unidentified rather than accepted as-is.
+- Found live: the model's `is_bird` flag is sometimes inconsistent with
+  its own successful identification (reported `is_bird: false` while
+  correctly naming Great Blue Heron with 85% confidence). Frontend only
+  trusts `is_bird` when no species name came back at all; a resolved
+  identification is treated as a bird regardless of that flag.
 - ~~Open: same-day-multiple-checklists ambiguity~~ — resolved by the
   *Group checklists by date + Location ID* story above (Feature: Outing
   grouping), not by review-workflow or matcher tie-breaking.

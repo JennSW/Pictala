@@ -77,7 +77,22 @@ class Match(Base):
 
     `method` and `confidence` record HOW the match was made, so the UI (and
     an interviewer looking at the data) can tell rule-based matches from
-    AI-suggested ones at a glance.
+    AI-suggested ones at a glance. Values: rule_based | rule_based_same_day
+    | ai_suggested | manual | ai_fallback.
+
+    `observation_id` links to a real eBird-reported species on this
+    outing. The `fallback_*` fields are separate and used instead when
+    the species was identified via the fallback flow (see
+    docs/USER_STORIES.md, "Species ID fallback for eBird gaps") --
+    something the photo shows that was never actually reported on any
+    checklist in this outing (e.g. a Heron photographed on a
+    Starling-only checklist). Deliberately not a second FK to
+    Observation, since there usually isn't one: this label lives on the
+    photo only and is never written back to eBird today. These fields
+    (particularly `fallback_species_code`, eBird's own species
+    identifier) are deliberately the right shape to support an eventual
+    real eBird write-back later, if that's ever built -- not just a
+    display label.
     """
 
     __tablename__ = "matches"
@@ -88,8 +103,11 @@ class Match(Base):
     observation_id: Mapped[int | None] = mapped_column(
         ForeignKey("observations.id"), nullable=True
     )
-    method: Mapped[str] = mapped_column(String, default="rule_based")  # rule_based | ai_suggested
+    method: Mapped[str] = mapped_column(String, default="rule_based")
     confidence: Mapped[float] = mapped_column(Float, default=1.0)
+    fallback_common_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    fallback_scientific_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    fallback_species_code: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     checklist: Mapped["Checklist"] = relationship(back_populates="matches")

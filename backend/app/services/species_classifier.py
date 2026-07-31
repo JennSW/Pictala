@@ -187,3 +187,116 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
         "confidence": float(result.get("confidence", 0.0)),
         "reasoning": result.get("reasoning", ""),
     }
+
+
+FALLBACK_TOOL = {
+    "name": "report_species_guess",
+    "description": "Report your best guess for the bird species shown in the photo, if any.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "is_bird": {
+                "type": "boolean",
+                "description": "Whether the photo clearly shows a bird (as opposed to no bird visible, or an animal that isn't a bird).",
+            },
+            "common_name": {
+                "type": "string",
+                "description": (
+                    "Your best guess at the bird's common name (e.g. 'Great Blue "
+                    "Heron'), using standard English common names. Empty string if "
+                    "not a bird, or not confident enough to guess."
+                ),
+            },
+            "confidence": {
+                "type": "number",
+                "description": "Confidence in this guess, from 0.0 to 1.0.",
+            },
+            "reasoning": {
+                "type": "string",
+                "description": "One brief sentence on the visual field marks used.",
+            },
+        },
+        "required": ["is_bird", "common_name", "confidence", "reasoning"],
+    },
+}
+
+
+def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | None) -> dict:
+    """Strategy B's fallback path (see docs/USER_STORIES.md, "Species ID
+    fallback for eBird gaps"): a photo that doesn't match any reported
+    species on its outing -- either because it wasn't logged in eBird at
+    all, or because the constrained guess above correctly found no match
+    among what *was* reported. This is a deliberate, narrow exception to
+    "never do open-set bird ID" (DESIGN.md section 4): it only runs when
+    the deterministic and constrained-AI paths have both already failed
+    to place the photo, not as a default.
+
+    Returns {"is_bird": bool, "common_name": str | None, "confidence":
+    float, "reasoning": str}. Caller is responsible for resolving
+    `common_name` against eBird's taxonomy (app/services/ebird_taxonomy)
+    -- this function only reports what the model thinks it sees.
+    """
+    if not settings.anthropic_api_key:
+        raise SpeciesClassifierNotConfigured(
+            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
+            "see .env.example for how to add it."
+        )
+
+    image_b64, media_type = _fetch_image_as_base64(photo_url)
+
+    hints = " / ".join(h for h in (title, tags) if h)
+    hint_line = f"\n\nThe photo's title/tags (may or may not be useful hints): {hints}" if hints else ""
+    prompt = (
+        "Identify the bird species shown in this photo, if any. This photo "
+        "did not match any species already reported for this outing, so "
+        "there's no candidate list to constrain your guess to -- use your "
+        "own best judgement." + hint_line + "\n\nThen call the "
+        "report_species_guess tool with your answer."
+    )
+
+    payload = {
+        "model": settings.anthropic_model,
+        "max_tokens": 512,
+        "tools": [FALLBACK_TOOL],
+        "tool_choice": {"type": "tool", "name": "report_species_guess"},
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+                    },
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ],
+    }
+    headers = {
+        "x-api-key": settings.anthropic_api_key,
+        "anthropic-version": ANTHROPIC_API_VERSION,
+        "content-type": "application/json",
+    }
+
+    try:
+        resp = requests.post(
+            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as exc:
+        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
+
+    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
+    if not tool_use_blocks:
+        raise SpeciesClassifierError(f"Expected a tool_use block in the response, got: {data}")
+
+    result = tool_use_blocks[0].get("input", {})
+    common_name = result.get("common_name") or None
+
+    return {
+        "is_bird": bool(result.get("is_bird", False)),
+        "common_name": common_name,
+        "confidence": float(result.get("confidence", 0.0)),
+        "reasoning": result.get("reasoning", ""),
+    }
