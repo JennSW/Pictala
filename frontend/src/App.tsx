@@ -15,6 +15,7 @@ import {
   SearchResult,
 } from "./api";
 import DatePicker from "./DatePicker";
+import "./theme.css";
 
 // Per-photo state for the "Suggest species" flow (Strategy B). Keyed by
 // photo id. Nothing here is persisted until the user clicks Accept --
@@ -264,20 +265,21 @@ export default function App() {
   }
 
   return (
-    <div style={{ fontFamily: "sans-serif", maxWidth: 900, margin: "2rem auto" }}>
-      <h1>BirdTrip</h1>
-      <p style={{ color: "#555" }}>
-        Your eBird outings, matched with your Flickr photos.
-      </p>
+    <div>
+      <header className="app-header">
+        <h1>BirdTrip</h1>
+        <p>Your eBird outings, matched with your Flickr photos.</p>
+      </header>
 
+      <div className="app-shell" style={{ padding: "0 var(--space-5)" }}>
       {error && (
-        <p style={{ color: "crimson" }}>
+        <p className="badge badge-danger" style={{ display: "block", padding: "var(--space-2) var(--space-3)", marginBottom: "var(--space-4)" }}>
           {error} — is the backend running at localhost:8000? (`uvicorn app.main:app --reload`)
         </p>
       )}
 
-      <form onSubmit={handleSearch} role="search" style={{ marginBottom: "1.5rem" }}>
-        <label htmlFor="species-search" style={{ display: "block", marginBottom: "0.25rem" }}>
+      <form onSubmit={handleSearch} role="search" style={{ marginBottom: "var(--space-5)" }}>
+        <label htmlFor="species-search" style={{ display: "block", marginBottom: "var(--space-1)", fontSize: "var(--text-sm)" }}>
           Search by species
         </label>
         <input
@@ -286,13 +288,13 @@ export default function App() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="e.g. Bald Eagle"
-          style={{ padding: "0.4rem", width: 220 }}
+          style={{ padding: "var(--space-2)", width: 220, border: "1px solid var(--border-strong)", borderRadius: "var(--radius-sm)", fontSize: "var(--text-sm)" }}
         />
-        <button type="submit" disabled={!searchQuery.trim() || searching} style={{ marginLeft: "0.5rem", cursor: "pointer" }}>
+        <button type="submit" className="btn btn-primary" disabled={!searchQuery.trim() || searching} style={{ marginLeft: "var(--space-2)" }}>
           {searching ? "Searching…" : "Search"}
         </button>
         {searchResults !== null && (
-          <button type="button" onClick={clearSearch} style={{ marginLeft: "0.5rem", cursor: "pointer" }}>
+          <button type="button" className="btn" onClick={clearSearch} style={{ marginLeft: "var(--space-2)" }}>
             Clear search
           </button>
         )}
@@ -304,18 +306,18 @@ export default function App() {
           {searchResults.length === 0 ? (
             <p>No matched photos found for that species.</p>
           ) : (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
               {searchResults.map((r) => (
-                <figure key={r.photo.id} style={{ margin: 0, width: 200 }}>
+                <figure key={r.photo.id} className="card photo-card" style={{ width: 200, margin: 0, overflow: "hidden" }}>
                   {r.photo.url_medium ? (
-                    <img src={r.photo.url_medium} alt={r.photo.title ?? r.common_name} width={200} />
+                    <img src={r.photo.url_medium} alt={r.photo.title ?? r.common_name} width={200} style={{ width: 200, height: 140, objectFit: "cover", display: "block" }} />
                   ) : (
-                    <div style={{ width: 200, height: 140, background: "#eee" }} />
+                    <div className="photo-placeholder" style={{ width: 200, height: 140 }} />
                   )}
-                  <figcaption style={{ fontSize: "0.85rem" }}>
+                  <figcaption style={{ fontSize: "var(--text-sm)", padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
                     <strong>{r.common_name}</strong>
                     <br />
-                    {r.location_name} · {r.date}
+                    <span style={{ color: "var(--text-muted)" }}>{r.location_name} · {r.date}</span>
                     <br />
                     {r.photo.flickr_url && (
                       <a href={r.photo.flickr_url} target="_blank" rel="noreferrer">
@@ -329,7 +331,7 @@ export default function App() {
           )}
         </div>
       ) : (
-      <div style={{ display: "flex", gap: "2rem" }}>
+      <div style={{ display: "flex", gap: "var(--space-6)" }}>
         <div style={{ minWidth: 260 }}>
           <DatePicker
             availableDates={availableDates}
@@ -338,8 +340,9 @@ export default function App() {
           />
           {selectedDate && (
             <button
+              className="btn"
               onClick={() => setSelectedDate(null)}
-              style={{ marginBottom: "0.75rem", cursor: "pointer" }}
+              style={{ marginBottom: "var(--space-3)" }}
             >
               Clear date — show all outings
             </button>
@@ -347,14 +350,16 @@ export default function App() {
 
           <ul style={{ listStyle: "none", padding: 0 }}>
             {visibleOutings.map((o) => (
-              <li key={o.id} style={{ marginBottom: "0.75rem" }}>
+              <li key={o.id} style={{ marginBottom: "var(--space-3)" }}>
                 <button
+                  className="list-item-btn"
                   onClick={() => openOuting(o.id)}
-                  style={{ width: "100%", textAlign: "left", padding: "0.5rem", cursor: "pointer" }}
                 >
                   <strong>{o.location_name}</strong>
                   <br />
-                  {o.date} · {o.species_count} species · {o.photo_count} photos
+                  <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                    {o.date} · {o.species_count} species · {o.photo_count} photos
+                  </span>
                 </button>
               </li>
             ))}
@@ -381,86 +386,94 @@ export default function App() {
             </ul>
 
             <h3>Matched photos</h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
               {selected.matches.map((m) => {
                 const suggestion = suggestions[m.photo.id];
                 const fallback = fallbacks[m.photo.id];
                 const resolved = m.observation || m.fallback_common_name;
                 return (
-                  <figure key={m.photo.id} style={{ margin: 0, width: 180 }}>
+                  <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                     {m.photo.url_medium ? (
                       <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
                     ) : (
-                      <div style={{ width: 180, height: 120, background: "#eee" }} />
+                      <div className="photo-placeholder" />
                     )}
-                    <figcaption style={{ fontSize: "0.8rem" }}>
-                      {m.observation ? (
-                        m.observation.common_name
-                      ) : m.fallback_common_name ? (
-                        m.fallback_scientific_name ? (
+                    <figcaption style={{ padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
+                      <div style={{ marginBottom: "var(--space-1)" }}>
+                        {m.observation ? (
                           <>
-                            {m.fallback_common_name}{" "}
-                            <em style={{ color: "#a60" }}>(not on this checklist)</em>
-                            {m.ebird_checklist_url && (
-                              <>
-                                {" — "}
-                                <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
-                                  add to eBird
-                                </a>
-                              </>
-                            )}
+                            <span className="badge badge-success">Confirmed</span>
+                            <div style={{ marginTop: "var(--space-1)" }}>{m.observation.common_name}</div>
                           </>
+                        ) : m.fallback_common_name ? (
+                          m.fallback_scientific_name ? (
+                            <>
+                              <span className="badge badge-warning">Off checklist</span>
+                              <div style={{ marginTop: "var(--space-1)" }}>
+                                {m.fallback_common_name}
+                                {m.ebird_checklist_url && (
+                                  <>
+                                    {" — "}
+                                    <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
+                                      add to eBird
+                                    </a>
+                                  </>
+                                )}
+                              </div>
+                            </>
+                          ) : (
+                            // Not a real eBird species (e.g. "Dragonfly") --
+                            // eBird checklists only track birds, so there's
+                            // nothing sensible to "add to eBird" here. Just
+                            // confirmed in BirdTrip's own data.
+                            <>
+                              <span className="badge badge-neutral">Other</span>
+                              <div style={{ marginTop: "var(--space-1)" }}>{m.fallback_common_name}</div>
+                            </>
+                          )
                         ) : (
-                          // Not a real eBird species (e.g. "Dragonfly") --
-                          // eBird checklists only track birds, so there's
-                          // nothing sensible to "add to eBird" here. Just
-                          // confirmed in BirdTrip's own data.
-                          <>
-                            {m.fallback_common_name}{" "}
-                            <em style={{ color: "#a60" }}>(Other — saved in BirdTrip only)</em>
-                          </>
-                        )
-                      ) : (
-                        "(unmatched species)"
-                      )}
-                      <br />
-                      <em>{m.method}</em>
-                      {m.method !== "rule_based" && ` (${Math.round(m.confidence * 100)}%)`}
+                          <span className="badge badge-neutral">Unmatched</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+                        {m.method}
+                        {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
+                      </div>
                     </figcaption>
 
                     {!resolved && !suggestion && (
                       <button
+                        className="btn btn-block"
                         onClick={() => handleSuggest(selected.id, m.photo.id)}
-                        style={{ width: "100%", fontSize: "0.75rem", padding: "0.25rem", cursor: "pointer" }}
                       >
                         Suggest species ✨
                       </button>
                     )}
 
                     {suggestion?.status === "loading" && (
-                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Thinking…</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
                     )}
 
                     {suggestion?.status === "accepting" && (
-                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Saving…</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
                     )}
 
                     {suggestion?.status === "error" && (
-                      <p style={{ fontSize: "0.75rem", color: "crimson" }}>{suggestion.message}</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{suggestion.message}</p>
                     )}
 
                     {suggestion?.status === "ready" && (
-                      <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
+                      <div className="panel">
                         {suggestion.data.suggested_observation_id != null ? (
                           <>
                             <div>
                               AI suggests: <strong>{suggestion.data.suggested_common_name}</strong>{" "}
                               ({Math.round(suggestion.data.confidence * 100)}%)
                             </div>
-                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{suggestion.data.reasoning}</div>
-                            <div style={{ display: "flex", gap: "0.25rem" }}>
+                            <div className="panel-reasoning">{suggestion.data.reasoning}</div>
+                            <div className="panel-actions">
                               <button
-                                style={{ cursor: "pointer" }}
+                                className="btn btn-primary"
                                 onClick={() =>
                                   handleAccept(
                                     selected.id,
@@ -472,7 +485,7 @@ export default function App() {
                               >
                                 Accept
                               </button>
-                              <button style={{ cursor: "pointer" }} onClick={() => handleReject(m.photo.id)}>
+                              <button className="btn btn-danger" onClick={() => handleReject(m.photo.id)}>
                                 Reject
                               </button>
                             </div>
@@ -480,15 +493,15 @@ export default function App() {
                         ) : (
                           <>
                             <div>No confident match among this outing's species.</div>
-                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{suggestion.data.reasoning}</div>
+                            <div className="panel-reasoning">{suggestion.data.reasoning}</div>
 
-                            <div style={{ marginTop: "0.4rem" }}>
+                            <div style={{ marginTop: "var(--space-2)" }}>
                               <select
                                 value={manualPick[m.photo.id] ?? ""}
                                 onChange={(e) =>
                                   setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                                 }
-                                style={{ fontSize: "0.75rem", maxWidth: "100%" }}
+                                style={{ maxWidth: "100%" }}
                               >
                                 <option value="">It's actually…</option>
                                 {selected.observations.map((obs) => (
@@ -498,19 +511,19 @@ export default function App() {
                                 ))}
                               </select>{" "}
                               <button
+                                className="btn btn-primary"
                                 disabled={!manualPick[m.photo.id]}
-                                style={{ cursor: "pointer" }}
                                 onClick={() => handleAssign(selected.id, m.photo.id)}
                               >
                                 Assign
                               </button>
                             </div>
 
-                            <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.4rem" }}>
-                              <button style={{ cursor: "pointer" }} onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                            <div className="panel-actions">
+                              <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
                                 Try broader ID
                               </button>
-                              <button style={{ cursor: "pointer" }} onClick={() => handleDismissRejected(m.photo.id)}>
+                              <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                                 Dismiss
                               </button>
                             </div>
@@ -520,16 +533,16 @@ export default function App() {
                     )}
 
                     {suggestion?.status === "rejected" && (
-                      <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
+                      <div className="panel">
                         <div>Rejected — what should this be instead?</div>
 
-                        <div style={{ marginTop: "0.4rem" }}>
+                        <div style={{ marginTop: "var(--space-2)" }}>
                           <select
                             value={manualPick[m.photo.id] ?? ""}
                             onChange={(e) =>
                               setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                             }
-                            style={{ fontSize: "0.75rem", maxWidth: "100%" }}
+                            style={{ maxWidth: "100%" }}
                           >
                             <option value="">It's actually…</option>
                             {selected.observations.map((obs) => (
@@ -539,15 +552,15 @@ export default function App() {
                             ))}
                           </select>{" "}
                           <button
+                            className="btn btn-primary"
                             disabled={!manualPick[m.photo.id]}
-                            style={{ cursor: "pointer" }}
                             onClick={() => handleAssign(selected.id, m.photo.id)}
                           >
                             Assign
                           </button>
                         </div>
 
-                        <div style={{ marginTop: "0.4rem" }}>
+                        <div style={{ marginTop: "var(--space-2)" }}>
                           <input
                             type="text"
                             value={noteText[m.photo.id] ?? ""}
@@ -555,30 +568,24 @@ export default function App() {
                               setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                             }
                             placeholder="Or write a note"
-                            style={{
-                              width: "100%",
-                              fontSize: "0.75rem",
-                              padding: "0.25rem",
-                              boxSizing: "border-box",
-                            }}
                           />
                           <button
+                            className="btn btn-primary"
                             disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
-                            style={{ cursor: "pointer", marginTop: "0.25rem" }}
                             onClick={() => handleSaveNote(selected.id, m.photo.id)}
                           >
                             {savingNote[m.photo.id] ? "Saving…" : "Save note"}
                           </button>
                         </div>
 
-                        <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.4rem" }}>
-                          <button style={{ cursor: "pointer" }} onClick={() => handleSuggest(selected.id, m.photo.id)}>
+                        <div className="panel-actions">
+                          <button className="btn" onClick={() => handleSuggest(selected.id, m.photo.id)}>
                             Try Again
                           </button>
-                          <button style={{ cursor: "pointer" }} onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                          <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
                             Try broader ID
                           </button>
-                          <button style={{ cursor: "pointer" }} onClick={() => handleDismissRejected(m.photo.id)}>
+                          <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                             Dismiss
                           </button>
                         </div>
@@ -586,19 +593,19 @@ export default function App() {
                     )}
 
                     {fallback?.status === "loading" && (
-                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Thinking…</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
                     )}
 
                     {fallback?.status === "accepting" && (
-                      <p style={{ fontSize: "0.75rem", color: "#555" }}>Saving…</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
                     )}
 
                     {fallback?.status === "error" && (
-                      <p style={{ fontSize: "0.75rem", color: "crimson" }}>{fallback.message}</p>
+                      <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{fallback.message}</p>
                     )}
 
                     {fallback?.status === "ready" && (
-                      <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
+                      <div className="panel">
                         <div>
                           {fallback.data.species_code ? (
                             <>
@@ -615,9 +622,9 @@ export default function App() {
                             "Doesn't look like a bird, and couldn't guess what it is."
                           )}
                         </div>
-                        <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
+                        <div className="panel-reasoning">{fallback.data.reasoning}</div>
                         {fallback.data.species_code && (
-                          <div style={{ color: "#a60", marginBottom: "0.25rem" }}>
+                          <div className="panel-note">
                             Not on this checklist — saving labels the photo only, and won't be
                             written back to eBird.
                           </div>
@@ -629,23 +636,16 @@ export default function App() {
                             setFallbackText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                           }
                           placeholder="Accept the guess above, or write your own note"
-                          style={{
-                            width: "100%",
-                            fontSize: "0.75rem",
-                            padding: "0.25rem",
-                            boxSizing: "border-box",
-                            marginBottom: "0.25rem",
-                          }}
                         />
-                        <div style={{ display: "flex", gap: "0.25rem" }}>
+                        <div className="panel-actions" style={{ marginTop: 0 }}>
                           <button
+                            className="btn btn-primary"
                             disabled={!(fallbackText[m.photo.id] ?? "").trim()}
-                            style={{ cursor: "pointer" }}
                             onClick={() => handleAcceptFallback(selected.id, m.photo.id, fallback.data)}
                           >
                             Save
                           </button>
-                          <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
+                          <button className="btn" onClick={() => handleDismissFallback(m.photo.id)}>
                             Dismiss
                           </button>
                         </div>
@@ -660,6 +660,7 @@ export default function App() {
         )}
       </div>
       )}
+      </div>
     </div>
   );
 }

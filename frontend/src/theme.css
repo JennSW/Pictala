@@ -1,0 +1,236 @@
+/* BirdTrip design tokens -- a first pass at a real design system, in
+   place of the ad hoc inline styles the app grew feature-by-feature.
+   Scoped to visual hierarchy/consistency only: this does NOT address
+   the mobile layout (a separate, still-open gap) or a deeper
+   accessibility pass -- both are their own workstreams. */
+
+:root {
+  /* Neutral surface scale */
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --border: #e2e2e5;
+  --border-strong: #cfcfd4;
+
+  /* Text */
+  --text: #1a1a1e;
+  --text-muted: #63636b;
+  --text-faint: #8b8b93;
+
+  /* Brand accent -- interactive elements (links, primary actions).
+     Deliberately distinct from the semantic colors below so "this is
+     clickable" and "this is a confirmed match" never collide. */
+  --primary: #2f5fa8;
+  --primary-hover: #244a85;
+
+  /* Semantic state colors -- what a match actually IS, not just what's
+     clickable. Each pairs a soft background with a stronger foreground
+     for badges, and the foreground alone for inline text/borders. */
+  --success: #1a7f37;
+  --success-bg: #e6f4ea;
+  --warning: #a15c00;
+  --warning-bg: #fdf1de;
+  --danger: #c4291c;
+  --danger-bg: #fbe9e7;
+  --neutral: #55555c;
+  --neutral-bg: #ececef;
+
+  /* Spacing scale (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Type scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.85rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  margin: 0;
+}
+
+.app-shell {
+  max-width: 900px;
+  margin: 0 auto var(--space-6);
+}
+
+/* Color band for now -- a real photo (one of Jen's own outing shots)
+   can drop in behind this same gradient later; TBD per Jen. */
+.app-header {
+  background: linear-gradient(135deg, #1f4d7a 0%, #2f5fa8 55%, #4a8f7a 100%);
+  color: white;
+  padding: var(--space-6) var(--space-5);
+  margin-bottom: var(--space-5);
+}
+.app-header h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  letter-spacing: 0.02em;
+}
+.app-header p {
+  margin: var(--space-1) 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--text-sm);
+}
+
+a {
+  color: var(--primary);
+}
+a:hover {
+  color: var(--primary-hover);
+}
+
+/* Buttons -- three intents. Plain unstyled <button> elements previously
+   gave Accept/Reject/Assign/Dismiss all equal visual weight regardless
+   of what they actually do. */
+.btn {
+  font-family: inherit;
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.2;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: var(--danger-bg);
+}
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+}
+.btn-block {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+/* Status badges -- what a match/photo actually is, at a glance. */
+.badge {
+  display: inline-block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  line-height: 1.5;
+}
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.badge-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.badge-neutral {
+  background: var(--neutral-bg);
+  color: var(--neutral);
+}
+
+/* Cards -- consistent container for list items, photo tiles, and the
+   review-flow action panels, replacing repeated ad hoc
+   `border:1px solid #ddd` blocks. */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.list-item-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text);
+}
+.list-item-btn:hover {
+  border-color: var(--border-strong);
+}
+
+.photo-card {
+  width: 180px;
+}
+.photo-card img,
+.photo-card .photo-placeholder {
+  width: 180px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  display: block;
+}
+.photo-card .photo-placeholder {
+  background: var(--neutral-bg);
+}
+
+.panel {
+  font-size: var(--text-xs);
+  padding: var(--space-3);
+  margin-top: var(--space-2);
+}
+.panel-reasoning {
+  color: var(--text-muted);
+  margin: var(--space-2) 0;
+}
+.panel-note {
+  color: var(--warning);
+  margin-bottom: var(--space-2);
+}
+.panel-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  flex-wrap: wrap;
+}
+.panel input[type="text"],
+.panel select {
+  font-size: var(--text-xs);
+  font-family: inherit;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+.panel input[type="text"] {
+  width: 100%;
+  margin-bottom: var(--space-2);
+}
