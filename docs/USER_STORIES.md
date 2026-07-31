@@ -292,13 +292,23 @@ checklist-less photo clusters, also still unbuilt).
 - ~~Open: how far should "less-constrained" reach?~~ Resolved by
   implementation: fully open-vocabulary (no region/season narrowing),
   with the guess resolved against eBird's real taxonomy afterward
-  (`app/services/ebird_taxonomy.py`) — a name that doesn't match a real
-  eBird species is treated as unidentified rather than accepted as-is.
+  (`app/services/ebird_taxonomy.py`).
 - Found live: the model's `is_bird` flag is sometimes inconsistent with
   its own successful identification (reported `is_bird: false` while
   correctly naming Great Blue Heron with 85% confidence). Frontend only
   trusts `is_bird` when no species name came back at all; a resolved
   identification is treated as a bird regardless of that flag.
+- **"Other" category, added 2026-07-31** — found live testing a photo of
+  a dragonfly: the original design treated a name that doesn't resolve
+  against eBird's bird taxonomy as unidentified and discarded it. Changed
+  that: the model now always gives its best guess at what's shown, bird
+  or not (e.g. "Eight-spotted Skimmer" for a dragonfly), and a
+  non-bird guess is offered as a legitimate "Other" category rather than
+  an error — same `fallback_common_name` field, just with
+  `fallback_species_code` staying null, so no schema change was needed to
+  distinguish the two. The guess is shown in an editable text field
+  (pre-filled, not just a fixed Accept button), so the user can save it
+  as-is or overwrite it with their own note before saving.
 - ~~Open: same-day-multiple-checklists ambiguity~~ — resolved by the
   *Group checklists by date + Location ID* story above (Feature: Outing
   grouping), not by review-workflow or matcher tie-breaking.
@@ -331,6 +341,13 @@ Requirements this raises, unresolved:
 - Reduces clicks and improves consistency, but does **not** reduce cost —
   sending N images in one call still costs roughly what N individual
   calls would.
+
+**Concrete UI mechanism decided (2026-07-31), implementation still
+deferred:** a checkbox on each unmatched photo, plus a "Match All" button
+that sends every checked photo to Claude in one call. This is the
+mechanism for the bulk-approve pairing above, not just a burst-grouping
+detail — tracked as issue #5 (issue #22, a near-duplicate filed the same
+day, was merged into this one).
 
 Applies to both the constrained flow (Strategy B) and the eBird-gap
 fallback above — same mechanism, different candidate list. Left open for

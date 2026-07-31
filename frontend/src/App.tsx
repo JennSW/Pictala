@@ -44,6 +44,10 @@ export default function App() {
   // Manual-assign dropdown selection, per photo (string since <select>
   // values are strings; "" means nothing picked yet).
   const [manualPick, setManualPick] = useState<Record<number, string>>({});
+  // Editable text for a fallback guess, per photo -- pre-filled with the
+  // AI's guess (including "Other" guesses like "Dragonfly"), editable
+  // before accepting so the user can correct it or write their own note.
+  const [fallbackText, setFallbackText] = useState<Record<number, string>>({});
 
   // Search by species (see docs/USER_STORIES.md, "Story: Search by
   // species"). searchResults === null means no search is active -- the
@@ -169,15 +173,21 @@ export default function App() {
     try {
       const data = await suggestFallback(checklistId, photoId);
       setFallbacks((prev) => ({ ...prev, [photoId]: { status: "ready", data } }));
+      // Pre-fill the editable text with the AI's guess (including "Other"
+      // guesses like "Dragonfly"), so accepting as-is is just one click,
+      // but it's editable before saving.
+      setFallbackText((prev) => ({ ...prev, [photoId]: data.common_name ?? "" }));
     } catch (e) {
       setFallbacks((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
     }
   }
 
   async function handleAcceptFallback(checklistId: number, photoId: number, suggestion: FallbackSuggestion) {
+    const text = (fallbackText[photoId] ?? "").trim();
+    if (!text) return;
     setFallbacks((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
     try {
-      await acceptFallback(checklistId, photoId, suggestion);
+      await acceptFallback(checklistId, photoId, text, suggestion);
       setSelected(await fetchOuting(checklistId));
       setFallbacks((prev) => {
         const next = { ...prev };
@@ -189,6 +199,11 @@ export default function App() {
         delete next[photoId];
         return next;
       });
+      setFallbackText((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
     } catch (e) {
       setFallbacks((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
     }
@@ -196,6 +211,11 @@ export default function App() {
 
   function handleDismissFallback(photoId: number) {
     setFallbacks((prev) => {
+      const next = { ...prev };
+      delete next[photoId];
+      return next;
+    });
+    setFallbackText((prev) => {
       const next = { ...prev };
       delete next[photoId];
       return next;
@@ -336,18 +356,29 @@ export default function App() {
                       {m.observation ? (
                         m.observation.common_name
                       ) : m.fallback_common_name ? (
-                        <>
-                          {m.fallback_common_name}{" "}
-                          <em style={{ color: "#a60" }}>(not on this checklist)</em>
-                          {m.ebird_checklist_url && (
-                            <>
-                              {" — "}
-                              <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
-                                add to eBird
-                              </a>
-                            </>
-                          )}
-                        </>
+                        m.fallback_scientific_name ? (
+                          <>
+                            {m.fallback_common_name}{" "}
+                            <em style={{ color: "#a60" }}>(not on this checklist)</em>
+                            {m.ebird_checklist_url && (
+                              <>
+                                {" — "}
+                                <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
+                                  add to eBird
+                                </a>
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          // Not a real eBird species (e.g. "Dragonfly") --
+                          // eBird checklists only track birds, so there's
+                          // nothing sensible to "add to eBird" here. Just
+                          // confirmed in BirdTrip's own data.
+                          <>
+                            {m.fallback_common_name}{" "}
+                            <em style={{ color: "#a60" }}>(Other — saved in BirdTrip only)</em>
+                          </>
+                        )
                       ) : (
                         "(unmatched species)"
                       )}
@@ -461,44 +492,56 @@ export default function App() {
 
                     {fallback?.status === "ready" && (
                       <div style={{ fontSize: "0.75rem", border: "1px solid #ddd", padding: "0.4rem", marginTop: "0.25rem" }}>
-                        {fallback.data.common_name ? (
-                          <>
-                            <div>
+                        <div>
+                          {fallback.data.species_code ? (
+                            <>
                               Broader guess: <strong>{fallback.data.common_name}</strong>{" "}
                               ({Math.round(fallback.data.confidence * 100)}%)
-                            </div>
-                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
-                            <div style={{ color: "#a60", marginBottom: "0.25rem" }}>
-                              Not on this checklist — approving labels the photo only, and
-                              won't be written back to eBird.
-                            </div>
-                            <div style={{ display: "flex", gap: "0.25rem" }}>
-                              <button
-                                style={{ cursor: "pointer" }}
-                                onClick={() => handleAcceptFallback(selected.id, m.photo.id, fallback.data)}
-                              >
-                                Approve
-                              </button>
-                              <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
-                                Dismiss
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              {fallback.data.unresolved
-                                ? "Named something that isn't a recognized eBird species."
-                                : fallback.data.is_bird
-                                ? "Couldn't confidently identify the species."
-                                : "Doesn't look like a bird."}
-                            </div>
-                            <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
-                            <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
-                              Dismiss
-                            </button>
-                          </>
+                            </>
+                          ) : fallback.data.is_other ? (
+                            <>
+                              Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
+                            </>
+                          ) : fallback.data.is_bird ? (
+                            "Couldn't confidently identify the species."
+                          ) : (
+                            "Doesn't look like a bird, and couldn't guess what it is."
+                          )}
+                        </div>
+                        <div style={{ color: "#666", margin: "0.25rem 0" }}>{fallback.data.reasoning}</div>
+                        {fallback.data.species_code && (
+                          <div style={{ color: "#a60", marginBottom: "0.25rem" }}>
+                            Not on this checklist — saving labels the photo only, and won't be
+                            written back to eBird.
+                          </div>
                         )}
+                        <input
+                          type="text"
+                          value={fallbackText[m.photo.id] ?? ""}
+                          onChange={(e) =>
+                            setFallbackText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                          }
+                          placeholder="Accept the guess above, or write your own note"
+                          style={{
+                            width: "100%",
+                            fontSize: "0.75rem",
+                            padding: "0.25rem",
+                            boxSizing: "border-box",
+                            marginBottom: "0.25rem",
+                          }}
+                        />
+                        <div style={{ display: "flex", gap: "0.25rem" }}>
+                          <button
+                            disabled={!(fallbackText[m.photo.id] ?? "").trim()}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleAcceptFallback(selected.id, m.photo.id, fallback.data)}
+                          >
+                            Save
+                          </button>
+                          <button style={{ cursor: "pointer" }} onClick={() => handleDismissFallback(m.photo.id)}>
+                            Dismiss
+                          </button>
+                        </div>
                       </div>
                     )}
                   </figure>

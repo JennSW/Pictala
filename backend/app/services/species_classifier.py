@@ -191,7 +191,7 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
 
 FALLBACK_TOOL = {
     "name": "report_species_guess",
-    "description": "Report your best guess for the bird species shown in the photo, if any.",
+    "description": "Report your best guess for what's shown in the photo.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -202,9 +202,11 @@ FALLBACK_TOOL = {
             "common_name": {
                 "type": "string",
                 "description": (
-                    "Your best guess at the bird's common name (e.g. 'Great Blue "
-                    "Heron'), using standard English common names. Empty string if "
-                    "not a bird, or not confident enough to guess."
+                    "Your best guess at what's shown, regardless of whether it's a "
+                    "bird -- a standard English bird common name if it is one (e.g. "
+                    "'Great Blue Heron'), or a plain description of the subject if "
+                    "it's not (e.g. 'Dragonfly', 'Squirrel'). Empty string only if "
+                    "nothing identifiable is visible at all."
                 ),
             },
             "confidence": {
@@ -247,10 +249,12 @@ def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | N
     hints = " / ".join(h for h in (title, tags) if h)
     hint_line = f"\n\nThe photo's title/tags (may or may not be useful hints): {hints}" if hints else ""
     prompt = (
-        "Identify the bird species shown in this photo, if any. This photo "
-        "did not match any species already reported for this outing, so "
-        "there's no candidate list to constrain your guess to -- use your "
-        "own best judgement." + hint_line + "\n\nThen call the "
+        "Identify what's shown in this photo. This photo did not match any "
+        "species already reported for this outing, so there's no candidate "
+        "list to constrain your guess to -- use your own best judgement. If "
+        "it's a bird, give its species. If it's clearly not a bird (e.g. an "
+        "insect, mammal, or other subject), still give your best guess at "
+        "what it is rather than reporting nothing." + hint_line + "\n\nThen call the "
         "report_species_guess tool with your answer."
     )
 

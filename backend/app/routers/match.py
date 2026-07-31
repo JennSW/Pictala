@@ -218,8 +218,8 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     species_code = scientific_name = None
-    unresolved = False
-    common_name = result["common_name"]
+    is_other = False
+    common_name = result["common_name"] or None
     if common_name:
         resolved = find_species(common_name)
         if resolved:
@@ -227,23 +227,26 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
             scientific_name = resolved["scientific_name"]
             species_code = resolved["species_code"]
         else:
-            # The model named something eBird's taxonomy doesn't
-            # recognize -- treat as unidentified rather than silently
-            # accepting a name that isn't a real species, same
-            # discipline as the constrained flow's candidate-list check.
-            unresolved = True
+            # Not in eBird's bird taxonomy -- either genuinely not a bird
+            # (a dragonfly, a squirrel) or a bird named in a way the
+            # taxonomy doesn't recognize. Either way this is a legitimate
+            # "Other" guess to offer, not an error to discard -- the model
+            # still gets to propose *something*, per the non-bird case
+            # discovered live (docs/USER_STORIES.md, "Species ID fallback
+            # for eBird gaps").
+            is_other = True
 
     return FallbackSuggestion(
         photo_id=photo_id,
         checklist_id=checklist_id,
         is_bird=result["is_bird"],
-        common_name=common_name if not unresolved else None,
+        common_name=common_name,
         scientific_name=scientific_name,
         species_code=species_code,
         confidence=result["confidence"],
         reasoning=result["reasoning"],
         ebird_checklist_url=ebird_checklist_url(checklist),
-        unresolved=unresolved,
+        is_other=is_other,
     )
 
 

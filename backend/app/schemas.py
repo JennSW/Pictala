@@ -156,10 +156,12 @@ class FallbackSuggestion(BaseModel):
     confidence: float
     reasoning: str
     ebird_checklist_url: str
-    unresolved: bool = False
-    """True when the model proposed a name eBird's taxonomy doesn't
-    recognize -- treated as unidentified rather than silently accepted,
-    same discipline as the constrained flow's candidate-list check."""
+    is_other: bool = False
+    """True when `common_name` is a real guess (e.g. "Dragonfly") that
+    just doesn't resolve against eBird's bird taxonomy -- species_code
+    stays null either way, but this is a legitimate "Other" category the
+    user can accept or override with their own note, not an error. Only
+    true bird-species resolution ever gets a species_code."""
 
 
 class AcceptFallbackRequest(BaseModel):

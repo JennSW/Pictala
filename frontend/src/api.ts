@@ -156,7 +156,7 @@ export interface FallbackSuggestion {
   confidence: number;
   reasoning: string;
   ebird_checklist_url: string;
-  unresolved: boolean;
+  is_other: boolean;
 }
 
 // Broader, unconstrained guess for a photo that doesn't match any of the
@@ -174,19 +174,25 @@ export async function suggestFallback(
 }
 
 // Keep a fallback identification. Photo-level only -- never touches the
-// checklist's own species list, never writes back to eBird.
+// checklist's own species list, never writes back to eBird. `commonName`
+// is whatever the user actually submits -- the AI's original guess
+// as-is, or their own edited/custom note. If it doesn't match the
+// original suggestion, the AI-resolved scientific_name/species_code are
+// dropped rather than attached to text the user wrote themselves.
 export async function acceptFallback(
   checklistId: number,
   photoId: number,
+  commonName: string,
   suggestion: FallbackSuggestion
 ): Promise<MatchEntry> {
+  const edited = commonName !== suggestion.common_name;
   const res = await fetch(`${API_BASE}/match/${checklistId}/accept-fallback/${photoId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      common_name: suggestion.common_name,
-      scientific_name: suggestion.scientific_name,
-      species_code: suggestion.species_code,
+      common_name: commonName,
+      scientific_name: edited ? null : suggestion.scientific_name,
+      species_code: edited ? null : suggestion.species_code,
       confidence: suggestion.confidence,
     }),
   });
