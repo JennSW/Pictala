@@ -54,6 +54,42 @@ def test_photo_inside_window_matches(db_session):
     assert result["species_level_matches"] == 1
 
 
+def test_species_text_match_handles_space_stripped_flickr_tags(db_session):
+    """Real Flickr tags conventionally strip spaces from multi-word terms
+    (e.g. "tuftedpuffin", not "tufted puffin") -- a literal substring
+    check against the common name alone would miss this."""
+    checklist = Checklist(
+        submission_id="S1",
+        location_name="Smith Island",
+        latitude=48.3199,
+        longitude=-122.8417,
+        date="2026-06-14",
+        start_time="07:30",
+        duration_minutes=60,
+    )
+    db_session.add(checklist)
+    db_session.flush()
+    db_session.add(
+        Observation(checklist_id=checklist.id, common_name="Tufted Puffin", scientific_name="Fratercula cirrhata")
+    )
+    db_session.add(
+        Photo(
+            flickr_id="p1",
+            title="Salish Sea trip",
+            tags="kenmorecamera salish sea tuftedpuffin smithisland",
+            date_taken="2026-06-14T07:50:00",
+            latitude=48.3199,
+            longitude=-122.8417,
+        )
+    )
+    db_session.commit()
+
+    result = run_rule_based_matching(db_session)
+
+    assert result["checklist_photo_matches"] == 1
+    assert result["species_level_matches"] == 1
+
+
 def test_photo_outside_window_does_not_match(db_session):
     checklist = Checklist(
         submission_id="S1",

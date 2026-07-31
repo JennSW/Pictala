@@ -77,8 +77,15 @@ def _haversine_km(lat1, lon1, lat2, lon2) -> float:
 
 
 def _species_text_match(photo: Photo, common_name: str) -> bool:
+    """Real Flickr tags are conventionally space-stripped for multi-word
+    terms (e.g. "tuftedpuffin", not "tufted puffin") -- a literal
+    substring check against the common name alone silently misses every
+    multi-word species name (i.e. most of them), even when the tag is
+    clearly present. Check the space-stripped form too, not just the
+    exact one."""
     haystack = f"{photo.title or ''} {photo.tags or ''}".lower()
-    return common_name.lower() in haystack
+    name = common_name.lower()
+    return name in haystack or name.replace(" ", "") in haystack
 
 
 def run_rule_based_matching(db: Session) -> dict:

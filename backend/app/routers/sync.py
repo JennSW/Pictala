@@ -42,18 +42,30 @@ def _parse_flickr_coord(raw) -> float | None:
 
 @router.post("/flickr")
 def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(get_db)):
-    """Pull Flickr photos in a date range (YYYY-MM-DD) and upsert them."""
+    """Pull Flickr photos in a date range (YYYY-MM-DD) and upsert them --
+    refreshes title/tags/coordinates/url on photos already synced, not
+    just inserting new ones. Editing tags on Flickr after the fact (e.g.
+    to help species matching) needs to actually reach the app; a
+    photo that already exists used to be skipped entirely, so no amount
+    of re-syncing ever picked up such edits."""
     raw_photos = get_photos_in_range(min_taken_date, max_taken_date)
     created = 0
+    updated = 0
     for p in raw_photos:
-        existing = db.query(Photo).filter(Photo.flickr_id == p["id"]).one_or_none()
-        if existing:
-            continue
-
         lat = _parse_flickr_coord(p.get("latitude"))
         lon = _parse_flickr_coord(p.get("longitude"))
         if lat == 0.0 and lon == 0.0:
             lat, lon = None, None
+
+        existing = db.query(Photo).filter(Photo.flickr_id == p["id"]).one_or_none()
+        if existing:
+            existing.title = p.get("title")
+            existing.tags = p.get("tags")
+            existing.latitude = lat
+            existing.longitude = lon
+            existing.url_medium = p.get("url_m")
+            updated += 1
+            continue
 
         db.add(
             Photo(
@@ -68,7 +80,7 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
         )
         created += 1
     db.commit()
-    return {"photos_created": created}
+    return {"photos_created": created, "photos_updated": updated}
 
 
 @router.post("/match")
