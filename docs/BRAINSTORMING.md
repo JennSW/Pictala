@@ -59,4 +59,8 @@ For results page:
   register it as a match. Further out than V2, not scoped.
 - **Map of location** — show outings/photos on a map view, using the
   lat/lon already captured on checklists and photos. No further detail
-  given yet.
+  given yet. Checked (2026-07-31): checklist coordinates are fully ready
+  (95/95), but photo coordinates are not (0/500) — an outing-location map
+  is low effort (~1 hr for a single pin, 2-4 hrs for a full map view); a
+  photo-location map isn't viable until that data gap is separately
+  investigated. Full effort estimate on issue #21. Exploration on hold.

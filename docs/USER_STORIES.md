@@ -68,6 +68,15 @@ Tufted Puffin candidate across 4 checklists).
   revisiting for a large-area case like Smith Island, where photos taken
   from a boat could fall outside a fixed cutoff even when they're clearly
   part of the same trip. Explicitly parked, not resolved.
+- **Deeper finding (2026-07-31), also parked, not investigated further:**
+  checked the real data — 95/95 checklists have coordinates, but 0/500
+  photos do. The GPS-distance tiebreaker only runs `if checklist.latitude
+  and checklist.longitude and photo.latitude and photo.longitude` (all
+  four), so with photo coordinates always empty, that tiebreaker has
+  never actually executed against any real data — it's been silently
+  inert this whole time, not just imperfectly tuned. Whether that's
+  Flickr stripping geotags on upload, photos never being geotagged, or a
+  sync gap wasn't investigated — explicitly on hold per the user's call.
 - Future consideration, not decided: should the automatic grouping be
   manually overridable (split/merge) in the review UI for cases the rule
   gets wrong? Raised in discussion, not yet turned into a story.
