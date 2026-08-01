@@ -109,6 +109,14 @@ class Match(Base):
     fallback_scientific_name: Mapped[str | None] = mapped_column(String, nullable=True)
     fallback_species_code: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    """Set the moment a person actually looked at this specific match and
+    agreed with what they see -- i.e. accepted an AI suggestion, manually
+    assigned it, or accepted/wrote a fallback identification. Null means
+    nobody has: rule-based matches are created automatically and start
+    unreviewed, since the matcher's own judgment isn't a person's. Powers
+    the New/Needs review distinction (docs/USER_STORIES.md) and the
+    per-photo fix action -- see issue #32."""
 
     checklist: Mapped["Checklist"] = relationship(back_populates="matches")
     photo: Mapped["Photo"] = relationship(back_populates="matches")

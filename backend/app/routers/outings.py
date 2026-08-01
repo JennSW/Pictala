@@ -81,6 +81,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
                 "fallback_common_name": m.fallback_common_name,
                 "fallback_scientific_name": m.fallback_scientific_name,
                 "ebird_checklist_url": ebird_checklist_url(m.checklist),
+                "reviewed_at": m.reviewed_at.isoformat() if m.reviewed_at else None,
             }
             for m in matches_by_photo.values()
         ],

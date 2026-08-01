@@ -36,6 +36,7 @@ export interface MatchEntry {
   fallback_common_name: string | null;
   fallback_scientific_name: string | null;
   ebird_checklist_url: string | null;
+  reviewed_at: string | null;
 }
 
 export interface PhotoWithLink extends Photo {

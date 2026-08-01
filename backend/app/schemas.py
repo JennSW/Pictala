@@ -58,6 +58,7 @@ class MatchOut(BaseModel):
     fallback_common_name: str | None = None
     fallback_scientific_name: str | None = None
     ebird_checklist_url: str | None = None
+    reviewed_at: str | None = None
 
     model_config = {"from_attributes": True}
 

@@ -18,6 +18,8 @@ user confirm/reject... never silently trusting it":
 There's no "/reject" endpoint on purpose: rejecting a suggestion just means
 not calling accept -- nothing was ever written, so there's nothing to undo.
 """
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -131,8 +133,12 @@ def accept_suggestion(
 
     match = _get_or_create_match(db, checklist_id, photo_id)
     match.observation_id = body.observation_id
+    match.fallback_common_name = None
+    match.fallback_scientific_name = None
+    match.fallback_species_code = None
     match.confidence = body.confidence
     match.method = "ai_suggested"
+    match.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(match)
 
@@ -152,6 +158,7 @@ def accept_suggestion(
         "method": match.method,
         "confidence": match.confidence,
         "ebird_checklist_url": ebird_checklist_url(checklist),
+        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }
 
 
@@ -181,8 +188,15 @@ def assign_species(
 
     match = _get_or_create_match(db, checklist_id, photo_id)
     match.observation_id = body.observation_id
+    # Clear any prior fallback label -- e.g. fixing a match that was
+    # previously an "Other"/off-checklist guess to a real reported
+    # species shouldn't leave the stale fallback fields behind.
+    match.fallback_common_name = None
+    match.fallback_scientific_name = None
+    match.fallback_species_code = None
     match.confidence = 1.0
     match.method = "manual"
+    match.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(match)
 
@@ -192,6 +206,7 @@ def assign_species(
         "method": match.method,
         "confidence": match.confidence,
         "ebird_checklist_url": ebird_checklist_url(checklist),
+        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }
 
 
@@ -272,6 +287,7 @@ def accept_fallback(
     match.fallback_species_code = body.species_code
     match.confidence = body.confidence
     match.method = "ai_fallback"
+    match.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(match)
 
@@ -283,4 +299,5 @@ def accept_fallback(
         "fallback_common_name": match.fallback_common_name,
         "fallback_scientific_name": match.fallback_scientific_name,
         "ebird_checklist_url": ebird_checklist_url(checklist),
+        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }

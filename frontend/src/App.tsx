@@ -24,12 +24,17 @@ import "./theme.css";
 // wrong species). Shares its follow-up panel (manual dropdown, broader
 // ID, a plain note) with the "no confident match" case, since both mean
 // "this proposed answer isn't right."
+// "editing" -- the user opened the fix action on an already-resolved
+// match (see issue #32). Shares the same follow-up panel as "rejected"
+// since both are "pick something else for this photo," just reached
+// directly instead of via an AI suggestion first.
 type SuggestionState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; data: SpeciesSuggestion }
   | { status: "accepting" }
-  | { status: "rejected" };
+  | { status: "rejected" }
+  | { status: "editing" };
 
 // Fallback identification flow -- see docs/USER_STORIES.md, "Species ID
 // fallback for eBird gaps". Separate from SuggestionState since it's a
@@ -162,6 +167,13 @@ export default function App() {
       delete next[photoId];
       return next;
     });
+  }
+
+  // Open the fix panel on an already-resolved match (issue #32) -- no
+  // AI suggestion or rejection involved, the user just wants to correct
+  // something. Reuses the "rejected" panel's markup/handlers.
+  function handleOpenFix(photoId: number) {
+    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "editing" } }));
   }
 
   // Plain freeform note, no AI guess involved -- reuses the fallback
@@ -391,6 +403,12 @@ export default function App() {
                 const suggestion = suggestions[m.photo.id];
                 const fallback = fallbacks[m.photo.id];
                 const resolved = m.observation || m.fallback_common_name;
+                // Fallback methods (manual assignment, AI-suggestion
+                // accept, fallback ID) all require a person to have
+                // looked at this specific photo and agreed -- only a
+                // rule-based match has never actually been reviewed by
+                // anyone (see issue #32).
+                const needsReview = Boolean(m.observation) && !m.reviewed_at;
                 return (
                   <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                     {m.photo.url_medium ? (
@@ -402,7 +420,11 @@ export default function App() {
                       <div style={{ marginBottom: "var(--space-1)" }}>
                         {m.observation ? (
                           <>
-                            <span className="badge badge-success">Confirmed</span>
+                            {needsReview ? (
+                              <span className="badge badge-warning">Needs review</span>
+                            ) : (
+                              <span className="badge badge-success">Confirmed</span>
+                            )}
                             <div style={{ marginTop: "var(--space-1)" }}>{m.observation.common_name}</div>
                           </>
                         ) : m.fallback_common_name ? (
@@ -447,6 +469,34 @@ export default function App() {
                         onClick={() => handleSuggest(selected.id, m.photo.id)}
                       >
                         Suggest species ✨
+                      </button>
+                    )}
+
+                    {resolved && needsReview && !suggestion && (
+                      <button
+                        className="btn btn-block"
+                        onClick={() => handleOpenFix(m.photo.id)}
+                      >
+                        Review match
+                      </button>
+                    )}
+
+                    {resolved && !needsReview && !suggestion && (
+                      <button
+                        className="btn"
+                        onClick={() => handleOpenFix(m.photo.id)}
+                        aria-label="Fix this match"
+                        style={{
+                          border: "none",
+                          background: "none",
+                          color: "var(--text-faint)",
+                          fontSize: "var(--text-xs)",
+                          padding: "0 var(--space-3) var(--space-2)",
+                          width: "100%",
+                          textAlign: "right",
+                        }}
+                      >
+                        Edit
                       </button>
                     )}
 
@@ -532,9 +582,13 @@ export default function App() {
                       </div>
                     )}
 
-                    {suggestion?.status === "rejected" && (
+                    {(suggestion?.status === "rejected" || suggestion?.status === "editing") && (
                       <div className="panel">
-                        <div>Rejected — what should this be instead?</div>
+                        <div>
+                          {suggestion.status === "rejected"
+                            ? "Rejected — what should this be instead?"
+                            : "What should this be instead?"}
+                        </div>
 
                         <div style={{ marginTop: "var(--space-2)" }}>
                           <select
