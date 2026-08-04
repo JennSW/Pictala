@@ -93,6 +93,16 @@ def run_rule_based_matching(db: Session) -> dict:
     clears and rebuilds rule_based matches each run (cheap at this scale)."""
     db.query(Match).filter(Match.method.in_(["rule_based", "rule_based_same_day"])).delete()
 
+    # Whatever's left at this point was made by a person (manual, AI-suggested
+    # accept, AI fallback) -- a fresh rule-based guess must never duplicate
+    # one of those, or _get_or_create_match's .one_or_none() lookup breaks
+    # (see issue tracker: this crashed accepting a fallback ID on a photo
+    # that had already been fixed once, because a later matcher run added a
+    # second row for the same checklist+photo pair).
+    already_matched = {
+        (m.checklist_id, m.photo_id) for m in db.query(Match).all()
+    }
+
     checklists = db.query(Checklist).all()
     photos = db.query(Photo).all()
 
@@ -161,6 +171,9 @@ def run_rule_based_matching(db: Session) -> dict:
                 candidates.append(photo)
 
         for photo in candidates:
+            if (checklist.id, photo.id) in already_matched:
+                continue
+
             observation_id = None
             for obs in checklist.observations:
                 if _species_text_match(photo, obs.common_name):
