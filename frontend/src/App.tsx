@@ -533,12 +533,13 @@ export default function App() {
                           <span className="badge badge-neutral">Unmatched</span>
                         )}
                       </div>
-                      {/* Method/confidence is diagnostic detail -- once a
-                          match is plainly confirmed, it's assumed correct
-                          and this line is just noise. Still shown for
-                          needs-review/off-checklist/other/unmatched, where
-                          it's the whole point. */}
-                      {!(m.observation && !needsReview) && (
+                      {/* Method/confidence is diagnostic detail. Hidden once
+                          plainly confirmed (assumed correct, just noise) and
+                          for unmatched (nothing to have confidence about
+                          yet -- rule_based_same_day/50% means nothing to a
+                          user). Still shown for needs-review/off-checklist/
+                          other, where it's the whole point. */}
+                      {resolved && !(m.observation && !needsReview) && (
                         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
                           {m.method}
                           {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
@@ -547,28 +548,58 @@ export default function App() {
                     </figcaption>
 
                     {!resolved && !suggestion && (
-                      <>
-                        <button
-                          className="btn btn-block"
-                          onClick={() => handleSuggest(selected.id, m.photo.id)}
+                      <div style={{ padding: "0 var(--space-3) var(--space-2)" }}>
+                        <select
+                          value={manualPick[m.photo.id] ?? "other"}
+                          onChange={(e) =>
+                            setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                          }
+                          style={{ width: "100%", marginBottom: "var(--space-2)" }}
                         >
-                          Pick from List
-                        </button>
-                        <button
-                          className="btn"
-                          onClick={() => handleOpenFix(m.photo.id)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            color: "var(--text-faint)",
-                            fontSize: "var(--text-xs)",
-                            padding: "var(--space-1) var(--space-3) var(--space-2)",
-                            width: "100%",
-                          }}
-                        >
-                          It's actually…
-                        </button>
-                      </>
+                          {/* "Other" pinned first -- most unmatched photos
+                              here are non-birds or off-checklist, so
+                              defaulting to the no-AI-cost path beats
+                              defaulting to a real species nobody picked. */}
+                          <option value="other">Other</option>
+                          {selected.observations.map((obs) => (
+                            <option key={obs.id} value={obs.id}>
+                              {obs.common_name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {(manualPick[m.photo.id] ?? "other") === "other" ? (
+                          <>
+                            <input
+                              type="text"
+                              value={noteText[m.photo.id] ?? ""}
+                              onChange={(e) =>
+                                setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                              }
+                              placeholder="Write a note (optional)"
+                            />
+                            <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
+                              <button
+                                className="btn btn-primary"
+                                disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                                onClick={() => handleSaveNote(selected.id, m.photo.id)}
+                              >
+                                {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+                              </button>
+                              <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                                Ask Claude
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            className="btn btn-primary btn-block"
+                            onClick={() => handleAssign(selected.id, m.photo.id)}
+                          >
+                            Assign
+                          </button>
+                        )}
+                      </div>
                     )}
 
                     {resolved && needsReview && !suggestion && (
