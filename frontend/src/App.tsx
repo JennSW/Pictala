@@ -572,38 +572,45 @@ export default function App() {
                           ))}
                         </select>
 
-                        {manualPick[m.photo.id] === "other" && (
+                        {manualPick[m.photo.id] && (
                           <>
+                            {/* Stays visible for a real species pick too,
+                                not just Other -- general notes (e.g.
+                                "juvenile", "distant/blurry shot") are
+                                useful either way. Not yet wired to persist
+                                anything when a real species is selected --
+                                see conversation with Jen, 2026-08-04. */}
                             <input
                               type="text"
                               value={noteText[m.photo.id] ?? ""}
                               onChange={(e) =>
                                 setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                               }
-                              placeholder="Write a note (optional)"
+                              placeholder="Write a note"
                             />
-                            <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
+                            {manualPick[m.photo.id] === "other" ? (
+                              <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
+                                <button
+                                  className="btn btn-primary"
+                                  disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                                  onClick={() => handleSaveNote(selected.id, m.photo.id)}
+                                >
+                                  {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+                                </button>
+                                <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                                  Ask Claude
+                                </button>
+                              </div>
+                            ) : (
                               <button
-                                className="btn btn-primary"
-                                disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
-                                onClick={() => handleSaveNote(selected.id, m.photo.id)}
+                                className="btn btn-primary btn-block"
+                                style={{ marginTop: "var(--space-2)" }}
+                                onClick={() => handleAssign(selected.id, m.photo.id)}
                               >
-                                {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+                                Assign
                               </button>
-                              <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                                Ask Claude
-                              </button>
-                            </div>
+                            )}
                           </>
-                        )}
-
-                        {manualPick[m.photo.id] && manualPick[m.photo.id] !== "other" && (
-                          <button
-                            className="btn btn-primary btn-block"
-                            onClick={() => handleAssign(selected.id, m.photo.id)}
-                          >
-                            Assign
-                          </button>
                         )}
                       </div>
                     )}
