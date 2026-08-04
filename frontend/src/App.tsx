@@ -171,9 +171,29 @@ export default function App() {
 
   // Open the fix panel on an already-resolved match (issue #32) -- no
   // AI suggestion or rejection involved, the user just wants to correct
-  // something. Reuses the "rejected" panel's markup/handlers.
+  // something. Reuses the "rejected" panel's markup/handlers. Also used
+  // to open a direct manual-pick panel on an unmatched photo, without
+  // going through an AI suggestion first -- same panel either way.
   function handleOpenFix(photoId: number) {
     setSuggestions((prev) => ({ ...prev, [photoId]: { status: "editing" } }));
+  }
+
+  // A "Needs review" match (rule-based, nobody's looked at it) is
+  // already correct as-is -- confirm it directly instead of forcing a
+  // trip through the fix panel to re-pick the same species.
+  async function handleConfirmMatch(checklistId: number, photoId: number, observationId: number) {
+    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
+    try {
+      await assignSpecies(checklistId, photoId, observationId);
+      setSelected(await fetchOuting(checklistId));
+      setSuggestions((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+    } catch (e) {
+      setSuggestions((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
+    }
   }
 
   // Plain freeform note, no AI guess involved -- reuses the fallback
@@ -464,21 +484,55 @@ export default function App() {
                     </figcaption>
 
                     {!resolved && !suggestion && (
-                      <button
-                        className="btn btn-block"
-                        onClick={() => handleSuggest(selected.id, m.photo.id)}
-                      >
-                        Suggest species ✨
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-block"
+                          onClick={() => handleSuggest(selected.id, m.photo.id)}
+                        >
+                          Suggest species ✨
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => handleOpenFix(m.photo.id)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            color: "var(--text-faint)",
+                            fontSize: "var(--text-xs)",
+                            padding: "var(--space-1) var(--space-3) var(--space-2)",
+                            width: "100%",
+                          }}
+                        >
+                          It's actually…
+                        </button>
+                      </>
                     )}
 
                     {resolved && needsReview && !suggestion && (
-                      <button
-                        className="btn btn-block"
-                        onClick={() => handleOpenFix(m.photo.id)}
-                      >
-                        Review match
-                      </button>
+                      <>
+                        <button
+                          className="btn btn-primary btn-block"
+                          onClick={() =>
+                            handleConfirmMatch(selected.id, m.photo.id, (m.observation as NonNullable<typeof m.observation>).id)
+                          }
+                        >
+                          Confirm — this is right
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => handleOpenFix(m.photo.id)}
+                          style={{
+                            border: "none",
+                            background: "none",
+                            color: "var(--text-faint)",
+                            fontSize: "var(--text-xs)",
+                            padding: "var(--space-1) var(--space-3) var(--space-2)",
+                            width: "100%",
+                          }}
+                        >
+                          It's actually something else
+                        </button>
+                      </>
                     )}
 
                     {resolved && !needsReview && !suggestion && (
