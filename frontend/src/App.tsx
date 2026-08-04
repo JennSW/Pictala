@@ -161,9 +161,9 @@ export default function App() {
   function handleReject(photoId: number) {
     // Nothing was ever saved. Previously this just cleared the guess
     // entirely; now it hands off to the same follow-up panel as "no
-    // confident match" (manual dropdown, broader ID, a plain note) plus
-    // a Try Again option, since a wrong suggestion and no suggestion both
-    // mean "this proposed answer isn't right."
+    // confident match" (manual dropdown, broader ID, a plain note),
+    // since a wrong suggestion and no suggestion both mean "this
+    // proposed answer isn't right."
     setSuggestions((prev) => ({ ...prev, [photoId]: { status: "rejected" } }));
   }
 
@@ -202,6 +202,33 @@ export default function App() {
         delete next[photoId];
         return next;
       });
+    } catch (e) {
+      setSuggestions((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
+    }
+  }
+
+  // Single text box standing in for the dropdown (issue: "the dropdown
+  // options are bulky" -- a 35+ species list is unwieldy to scroll).
+  // Matches what's typed against the outing's own species case-
+  // insensitively so it still lands as a proper linked assignment when
+  // it's actually one of the reported species; anything that doesn't
+  // match (a note, an off-checklist species, a typo) falls back to a
+  // plain note, same as before.
+  async function handleSaveOrMatch(checklistId: number, photoId: number) {
+    const text = (noteText[photoId] ?? "").trim();
+    if (!text) return;
+    const match = selected?.observations.find(
+      (obs) => obs.common_name.toLowerCase() === text.toLowerCase()
+    );
+    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
+    try {
+      if (match) {
+        await assignSpecies(checklistId, photoId, match.id);
+      } else {
+        await acceptFallback(checklistId, photoId, text);
+      }
+      setSelected(await fetchOuting(checklistId));
+      handleDismissRejected(photoId);
     } catch (e) {
       setSuggestions((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
     }
@@ -525,7 +552,7 @@ export default function App() {
                           className="btn btn-block"
                           onClick={() => handleSuggest(selected.id, m.photo.id)}
                         >
-                          Suggest species ✨
+                          Pick from List
                         </button>
                         <button
                           className="btn"
@@ -661,7 +688,7 @@ export default function App() {
 
                             <div className="panel-actions">
                               <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                                Try broader ID
+                                Ask Claude
                               </button>
                               <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                                 Dismiss
@@ -672,13 +699,9 @@ export default function App() {
                       </div>
                     )}
 
-                    {(suggestion?.status === "rejected" || suggestion?.status === "editing") && (
+                    {suggestion?.status === "rejected" && (
                       <div className="panel">
-                        <div>
-                          {suggestion.status === "rejected"
-                            ? "Rejected — what should this be instead?"
-                            : "What should this be instead?"}
-                        </div>
+                        <div>Rejected — what should this be instead?</div>
 
                         <div style={{ marginTop: "var(--space-2)" }}>
                           <select
@@ -723,11 +746,36 @@ export default function App() {
                         </div>
 
                         <div className="panel-actions">
-                          <button className="btn" onClick={() => handleSuggest(selected.id, m.photo.id)}>
-                            Try Again
+                          <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                            Ask Claude
+                          </button>
+                          <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {suggestion?.status === "editing" && (
+                      <div className="panel">
+                        <input
+                          type="text"
+                          value={noteText[m.photo.id] ?? ""}
+                          onChange={(e) =>
+                            setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                          }
+                          placeholder="What is it? (matches the checklist if it's on there)"
+                        />
+                        <div className="panel-actions" style={{ marginTop: 0 }}>
+                          <button
+                            className="btn btn-primary"
+                            disabled={!(noteText[m.photo.id] ?? "").trim()}
+                            onClick={() => handleSaveOrMatch(selected.id, m.photo.id)}
+                          >
+                            Save
                           </button>
                           <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                            Try broader ID
+                            Ask Claude
                           </button>
                           <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                             Dismiss
