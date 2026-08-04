@@ -50,6 +50,17 @@ export default function App() {
   const [selected, setSelected] = useState<OutingDetail | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The moment this page load happened, captured once from the *previous*
+  // value stored -- so "confirmed this session" means reviewed_at falls
+  // after whenever the app was last opened, not after right now. Storage
+  // gets overwritten with the current time immediately after reading, so
+  // next session's boundary is this one's start. null on the very first
+  // ever load (nothing to compare against yet, so nothing shows as fresh).
+  const [sessionBoundary] = useState<string | null>(() => {
+    const stored = localStorage.getItem("birdtrip_last_load");
+    localStorage.setItem("birdtrip_last_load", new Date().toISOString());
+    return stored;
+  });
   const [suggestions, setSuggestions] = useState<Record<number, SuggestionState>>({});
   const [fallbacks, setFallbacks] = useState<Record<number, FallbackState>>({});
   // Manual-assign dropdown selection, per photo (string since <select>
@@ -429,6 +440,14 @@ export default function App() {
                 // rule-based match has never actually been reviewed by
                 // anyone (see issue #32).
                 const needsReview = Boolean(m.observation) && !m.reviewed_at;
+                // Only worth pointing out right after it happened -- once
+                // it's old news (from a previous session), the checkmark
+                // is just noise; the plain name is enough.
+                const justConfirmed =
+                  Boolean(m.observation) &&
+                  !needsReview &&
+                  Boolean(m.reviewed_at) &&
+                  (!sessionBoundary || (m.reviewed_at as string) > sessionBoundary);
                 return (
                   <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                     {m.photo.url_medium ? (
@@ -439,14 +458,24 @@ export default function App() {
                     <figcaption style={{ padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
                       <div style={{ marginBottom: "var(--space-1)" }}>
                         {m.observation ? (
-                          <>
-                            {needsReview ? (
+                          needsReview ? (
+                            <>
                               <span className="badge badge-warning">Needs review</span>
-                            ) : (
-                              <span className="badge badge-success">Confirmed</span>
-                            )}
-                            <div style={{ marginTop: "var(--space-1)" }}>{m.observation.common_name}</div>
-                          </>
+                              <div style={{ marginTop: "var(--space-1)" }}>{m.observation.common_name}</div>
+                            </>
+                          ) : (
+                            <div>
+                              {m.observation.common_name}
+                              {justConfirmed && (
+                                <span
+                                  aria-label="Confirmed"
+                                  style={{ color: "var(--success)", marginLeft: "var(--space-1)" }}
+                                >
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                          )
                         ) : m.fallback_common_name ? (
                           m.fallback_scientific_name ? (
                             <>
@@ -477,10 +506,17 @@ export default function App() {
                           <span className="badge badge-neutral">Unmatched</span>
                         )}
                       </div>
-                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-                        {m.method}
-                        {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
-                      </div>
+                      {/* Method/confidence is diagnostic detail -- once a
+                          match is plainly confirmed, it's assumed correct
+                          and this line is just noise. Still shown for
+                          needs-review/off-checklist/other/unmatched, where
+                          it's the whole point. */}
+                      {!(m.observation && !needsReview) && (
+                        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
+                          {m.method}
+                          {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
+                        </div>
+                      )}
                     </figcaption>
 
                     {!resolved && !suggestion && (
