@@ -550,16 +550,20 @@ export default function App() {
                     {!resolved && !suggestion && (
                       <div style={{ padding: "0 var(--space-3) var(--space-2)" }}>
                         <select
-                          value={manualPick[m.photo.id] ?? "other"}
+                          value={manualPick[m.photo.id] ?? ""}
                           onChange={(e) =>
                             setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
                           }
-                          style={{ width: "100%", marginBottom: "var(--space-2)" }}
+                          style={{ width: "100%", marginBottom: manualPick[m.photo.id] ? "var(--space-2)" : 0 }}
                         >
-                          {/* "Other" pinned first -- most unmatched photos
-                              here are non-birds or off-checklist, so
-                              defaulting to the no-AI-cost path beats
-                              defaulting to a real species nobody picked. */}
+                          {/* Neutral hint until the user actually picks
+                              something -- nothing below the dropdown until
+                              then. "Other" pinned first in the real
+                              options, since most unmatched photos here are
+                              non-birds or off-checklist. */}
+                          <option value="" disabled hidden>
+                            It's actually…
+                          </option>
                           <option value="other">Other</option>
                           {selected.observations.map((obs) => (
                             <option key={obs.id} value={obs.id}>
@@ -568,7 +572,7 @@ export default function App() {
                           ))}
                         </select>
 
-                        {(manualPick[m.photo.id] ?? "other") === "other" ? (
+                        {manualPick[m.photo.id] === "other" && (
                           <>
                             <input
                               type="text"
@@ -591,7 +595,9 @@ export default function App() {
                               </button>
                             </div>
                           </>
-                        ) : (
+                        )}
+
+                        {manualPick[m.photo.id] && manualPick[m.photo.id] !== "other" && (
                           <button
                             className="btn btn-primary btn-block"
                             onClick={() => handleAssign(selected.id, m.photo.id)}
