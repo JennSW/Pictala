@@ -5,6 +5,7 @@ from app.db import get_db
 from app.models import Checklist
 from app.schemas import OutingSummary, OutingDetail, photo_out, ebird_checklist_url
 from app.services.outing_grouping import group_checklists, get_checklist_group
+from app.services.timezone_check import check_mismatch
 
 
 def _is_resolved(match) -> bool:
@@ -72,6 +73,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
         observations=all_observations,
         matches=[
             {
+                "checklist_id": m.checklist_id,
                 "photo": photo_out(m.photo),
                 "observation": next(
                     (o for o in all_observations if o.id == m.observation_id), None
@@ -82,6 +84,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
                 "fallback_scientific_name": m.fallback_scientific_name,
                 "ebird_checklist_url": ebird_checklist_url(m.checklist),
                 "reviewed_at": m.reviewed_at.isoformat() if m.reviewed_at else None,
+                "timezone_mismatch": check_mismatch(m.photo, m.checklist),
             }
             for m in matches_by_photo.values()
         ],

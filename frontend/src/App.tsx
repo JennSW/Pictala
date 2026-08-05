@@ -10,6 +10,7 @@ import {
   searchBySpecies,
   fetchSyncStatus,
   runSync,
+  adjustTimezone,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
@@ -93,6 +94,10 @@ export default function App() {
   const [syncing, setSyncing] = useState(false);
   const [confirmLastSync, setConfirmLastSync] = useState(false);
 
+  // Timezone-mismatch "Adjust" action (issue #6) -- per-photo loading
+  // state since it's a per-card button.
+  const [adjustingTimezone, setAdjustingTimezone] = useState<Record<number, boolean>>({});
+
   useEffect(() => {
     fetchOutings()
       .then((data) => {
@@ -135,6 +140,20 @@ export default function App() {
       return;
     }
     performSync();
+  }
+
+  async function handleAdjustTimezone(checklistId: number, photoId: number) {
+    setAdjustingTimezone((prev) => ({ ...prev, [photoId]: true }));
+    try {
+      await adjustTimezone(checklistId, photoId);
+      // The correction can move the photo to a different checklist/outing
+      // entirely -- refetch this outing rather than assume it's still here.
+      setSelected(await fetchOuting(checklistId));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAdjustingTimezone((prev) => ({ ...prev, [photoId]: false }));
+    }
   }
 
   const availableDates = new Set(outings.map((o) => o.date));
@@ -636,6 +655,31 @@ export default function App() {
                         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
                           {m.method}
                           {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
+                        </div>
+                      )}
+                      {m.timezone_mismatch && (
+                        <div
+                          style={{
+                            marginTop: "var(--space-2)",
+                            padding: "var(--space-2)",
+                            fontSize: "var(--text-xs)",
+                            background: "var(--warning-bg, #fff3cd)",
+                            border: "1px solid var(--warning, #e0a800)",
+                            borderRadius: "var(--radius-sm)",
+                          }}
+                        >
+                          Camera recorded {m.timezone_mismatch.photo_utc_offset}, but this
+                          location was on {m.timezone_mismatch.expected_utc_offset} at the time
+                          — possible clock/timezone mismatch.
+                          <div style={{ marginTop: "var(--space-1)" }}>
+                            <button
+                              className="btn"
+                              onClick={() => handleAdjustTimezone(m.checklist_id, m.photo.id)}
+                              disabled={adjustingTimezone[m.photo.id]}
+                            >
+                              {adjustingTimezone[m.photo.id] ? "Adjusting…" : "Adjust"}
+                            </button>
+                          </div>
                         </div>
                       )}
                     </figcaption>

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.services.ebird_import import import_ebird_csv
 from app.services.flickr_client import get_photos_in_range
+from app.services.flickr_exif import get_utc_offset
 from app.services.matcher import run_rule_based_matching
 from app.models import Photo, SyncLog
 
@@ -78,6 +79,8 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
             existing.latitude = lat
             existing.longitude = lon
             existing.url_medium = p.get("url_m")
+            if existing.utc_offset is None:
+                existing.utc_offset = _try_get_utc_offset(p["id"])
             updated += 1
             continue
 
@@ -90,11 +93,23 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
                 latitude=lat,
                 longitude=lon,
                 url_medium=p.get("url_m"),
+                utc_offset=_try_get_utc_offset(p["id"]),
             )
         )
         created += 1
     db.commit()
     return {"photos_created": created, "photos_updated": updated}
+
+
+def _try_get_utc_offset(flickr_id: str) -> str | None:
+    """A separate API call per photo (see flickr_exif.py) -- only worth
+    doing for photos that don't have it cached yet (see call sites), and
+    shouldn't take down the whole sync if Flickr hiccups on one photo or
+    the tag just isn't there."""
+    try:
+        return get_utc_offset(flickr_id)
+    except Exception:
+        return None
 
 
 @router.post("/match")

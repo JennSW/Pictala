@@ -28,7 +28,14 @@ export interface Photo {
   longitude: number | null;
 }
 
+export interface TimezoneMismatch {
+  photo_utc_offset: string;
+  expected_utc_offset: string;
+  hours_diff: number;
+}
+
 export interface MatchEntry {
+  checklist_id: number;
   photo: Photo;
   observation: Observation | null;
   method: string;
@@ -37,6 +44,7 @@ export interface MatchEntry {
   fallback_scientific_name: string | null;
   ebird_checklist_url: string | null;
   reviewed_at: string | null;
+  timezone_mismatch: TimezoneMismatch | null;
 }
 
 export interface PhotoWithLink extends Photo {
@@ -216,4 +224,11 @@ export async function runSync(): Promise<{ remaining: number }> {
   const res = await fetch(`${API_BASE}/sync/run`, { method: "POST" });
   if (!res.ok) throw new Error(await readErrorDetail(res));
   return res.json();
+}
+
+export async function adjustTimezone(checklistId: number, photoId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/match/${checklistId}/adjust-timezone/${photoId}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
 }

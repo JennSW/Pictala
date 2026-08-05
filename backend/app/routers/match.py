@@ -18,7 +18,7 @@ user confirm/reject... never silently trusting it":
 There's no "/reject" endpoint on purpose: rejecting a suggestion just means
 not calling accept -- nothing was ever written, so there's nothing to undo.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -43,6 +43,8 @@ from app.services.species_classifier import (
     SpeciesClassifierNotConfigured,
     SpeciesClassifierError,
 )
+from app.services.timezone_check import check_mismatch
+from app.services.matcher import run_rule_based_matching
 
 router = APIRouter(prefix="/match", tags=["match"])
 
@@ -153,6 +155,7 @@ def accept_suggestion(
     )
 
     return {
+        "checklist_id": checklist_id,
         "photo": photo_out(match.photo),
         "observation": observation,
         "method": match.method,
@@ -201,6 +204,7 @@ def assign_species(
     db.refresh(match)
 
     return {
+        "checklist_id": checklist_id,
         "photo": photo_out(match.photo),
         "observation": observation,
         "method": match.method,
@@ -334,6 +338,7 @@ def accept_fallback(
         )
 
     return {
+        "checklist_id": checklist_id,
         "photo": photo_out(match.photo),
         "observation": observation,
         "method": match.method,
@@ -343,3 +348,32 @@ def accept_fallback(
         "ebird_checklist_url": ebird_checklist_url(checklist),
         "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }
+
+
+@router.post("/{checklist_id}/adjust-timezone/{photo_id}")
+def adjust_timezone(checklist_id: int, photo_id: int, db: Session = Depends(get_db)):
+    """The user's response to a flagged timezone_mismatch (see
+    app/services/timezone_check.py, issue #6): apply the camera-clock
+    correction to this photo's `date_taken` and re-run matching. Deliberately
+    doesn't return a MatchOut for this checklist_id specifically -- the
+    correction can legitimately move the photo to a *different* checklist
+    (that's the point), so the caller should refetch the outing rather
+    than assume this photo stays put."""
+    checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Checklist not found")
+    photo = db.query(Photo).filter(Photo.id == photo_id).one_or_none()
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    mismatch = check_mismatch(photo, checklist)
+    if mismatch is None:
+        raise HTTPException(status_code=400, detail="No timezone mismatch to adjust")
+
+    corrected = datetime.fromisoformat(photo.date_taken) + timedelta(hours=mismatch["hours_diff"])
+    photo.date_taken = corrected.strftime("%Y-%m-%d %H:%M:%S")
+    photo.utc_offset = mismatch["expected_utc_offset"]
+    db.commit()
+
+    match_result = run_rule_based_matching(db)
+    return {"date_taken": photo.date_taken, "match": match_result}

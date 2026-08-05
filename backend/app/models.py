@@ -66,6 +66,14 @@ class Photo(Base):
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     url_medium: Mapped[str | None] = mapped_column(String, nullable=True)
+    utc_offset: Mapped[str | None] = mapped_column(String, nullable=True)
+    """The camera's recorded UTC offset at capture time (e.g. "-08:00"),
+    from EXIF `OffsetTimeOriginal` (falling back to `OffsetTime`) --
+    see app/services/flickr_exif.py. Null means either not fetched yet
+    or the photo's EXIF simply doesn't have it (not every camera writes
+    this tag). Powers the timezone-mismatch check (issue #6): compare
+    against the checklist location's *actual* offset on that date to
+    catch a camera clock that was never updated while traveling."""
 
     matches: Mapped[list["Match"]] = relationship(
         back_populates="photo", cascade="all, delete-orphan"

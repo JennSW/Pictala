@@ -50,7 +50,19 @@ def photo_out(photo) -> "PhotoOut":
     )
 
 
+class TimezoneMismatch(BaseModel):
+    """Present only when the photo's camera-recorded UTC offset (EXIF
+    `OffsetTimeOriginal`) disagrees with the offset that should actually
+    be in effect at the checklist's location/date -- see
+    app/services/timezone_check.py (issue #6). `hours_diff` is the
+    correction the "adjust" action would apply to `date_taken`."""
+    photo_utc_offset: str
+    expected_utc_offset: str
+    hours_diff: float
+
+
 class MatchOut(BaseModel):
+    checklist_id: int
     photo: PhotoOut
     observation: ObservationOut | None
     method: str
@@ -59,6 +71,7 @@ class MatchOut(BaseModel):
     fallback_scientific_name: str | None = None
     ebird_checklist_url: str | None = None
     reviewed_at: str | None = None
+    timezone_mismatch: TimezoneMismatch | None = None
 
     model_config = {"from_attributes": True}
 
