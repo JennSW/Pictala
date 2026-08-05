@@ -504,7 +504,14 @@ export default function App() {
                           needsReview ? (
                             <>
                               <span className="badge badge-warning">Needs review</span>
-                              <div style={{ marginTop: "var(--space-1)" }}>{m.observation.common_name}</div>
+                              <div style={{ marginTop: "var(--space-1)" }}>
+                                {m.observation.common_name}
+                                {m.observation.scientific_name && (
+                                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                    {m.observation.scientific_name}
+                                  </div>
+                                )}
+                              </div>
                             </>
                           ) : (
                             <div>
@@ -516,6 +523,11 @@ export default function App() {
                                 >
                                   ✓
                                 </span>
+                              )}
+                              {m.observation.scientific_name && (
+                                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                  {m.observation.scientific_name}
+                                </div>
                               )}
                             </div>
                           )
