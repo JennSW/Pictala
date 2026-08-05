@@ -465,6 +465,13 @@ export default function App() {
                   !needsReview &&
                   Boolean(m.reviewed_at) &&
                   (!sessionBoundary || (m.reviewed_at as string) > sessionBoundary);
+                // A Label typed by hand (a Note), not an AI guess --
+                // confidence only ever lands on exactly 1 when there was
+                // no suggestion behind it to inherit a real value from.
+                const isNote =
+                  Boolean(m.fallback_common_name) &&
+                  !m.fallback_scientific_name &&
+                  m.confidence === 1;
                 return (
                   <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden", position: "relative" }}>
                     {/* Temporary reference numbers, for talking through
@@ -528,9 +535,17 @@ export default function App() {
                                 )}
                               </div>
                             </>
+                          ) : isNote ? (
+                            // A Note -- typed by hand, no AI guess behind
+                            // it (confidence is only ever exactly 1 when
+                            // there was no suggestion to inherit a real
+                            // confidence value from). The Label speaks for
+                            // itself; "Other" would just be noise here.
+                            <div>{m.fallback_common_name}</div>
                           ) : (
-                            // Not a real eBird species (e.g. "Dragonfly") --
-                            // eBird checklists only track birds, so there's
+                            // An AI guess that didn't resolve to a real
+                            // eBird species (e.g. "Dragonfly") -- eBird
+                            // checklists only track birds, so there's
                             // nothing sensible to "add to eBird" here. Just
                             // confirmed in BirdTrip's own data.
                             <>
@@ -543,12 +558,13 @@ export default function App() {
                         )}
                       </div>
                       {/* Method/confidence is diagnostic detail. Hidden once
-                          plainly confirmed (assumed correct, just noise) and
-                          for unmatched (nothing to have confidence about
-                          yet -- rule_based_same_day/50% means nothing to a
-                          user). Still shown for needs-review/off-checklist/
-                          other, where it's the whole point. */}
-                      {resolved && !(m.observation && !needsReview) && (
+                          plainly confirmed or a hand-typed Note (both
+                          assumed correct, just noise) and for unmatched
+                          (nothing to have confidence about yet --
+                          rule_based_same_day/50% means nothing to a user).
+                          Still shown for needs-review/off-checklist/other,
+                          where it's the whole point. */}
+                      {resolved && !(m.observation && !needsReview) && !isNote && (
                         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
                           {m.method}
                           {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
