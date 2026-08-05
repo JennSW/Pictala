@@ -166,9 +166,14 @@ class FallbackSuggestion(BaseModel):
 
 
 class AcceptFallbackRequest(BaseModel):
-    """Body for POST /match/{checklist_id}/accept-fallback/{photo_id}."""
+    """Body for POST /match/{checklist_id}/accept-fallback/{photo_id}.
+
+    Just a name -- the endpoint resolves it itself (checklist's own
+    species, then eBird's full taxonomy, then plain note) rather than
+    trusting a scientific_name/species_code supplied by the caller.
+    `confidence` is optional context from an AI guess being accepted
+    as-is; a human typing a name has no "confidence" to report, so it
+    defaults to certain."""
 
     common_name: str
-    scientific_name: str | None
-    species_code: str | None
-    confidence: float
+    confidence: float = 1.0

@@ -174,29 +174,25 @@ export async function suggestFallback(
   return res.json();
 }
 
-// Keep a fallback identification. Photo-level only -- never touches the
-// checklist's own species list, never writes back to eBird. `commonName`
-// is whatever the user actually submits -- the AI's original guess
-// as-is, or their own edited/custom note. If it doesn't match the
-// original suggestion, the AI-resolved scientific_name/species_code are
-// dropped rather than attached to text the user wrote themselves.
-// `suggestion` is omitted entirely for a plain freeform note saved with
-// no AI guess involved at all (the rejected-suggestion follow-up panel).
+// Submit a name for this photo -- typed by hand, or accepted from an
+// unconstrained AI guess. The backend resolves it (checklist's own
+// species -> eBird's full taxonomy -> plain note) rather than trusting
+// a scientific_name/species_code from here, so this only ever sends the
+// text itself plus an optional confidence carried over from an AI guess
+// being accepted as-is (a human typing a name has no confidence to
+// report, so it's omitted and defaults to certain on the backend).
 export async function acceptFallback(
   checklistId: number,
   photoId: number,
   commonName: string,
-  suggestion?: FallbackSuggestion
+  confidence?: number
 ): Promise<MatchEntry> {
-  const edited = !suggestion || commonName !== suggestion.common_name;
   const res = await fetch(`${API_BASE}/match/${checklistId}/accept-fallback/${photoId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       common_name: commonName,
-      scientific_name: edited ? null : suggestion?.scientific_name,
-      species_code: edited ? null : suggestion?.species_code,
-      confidence: suggestion?.confidence ?? 1.0,
+      ...(confidence !== undefined ? { confidence } : {}),
     }),
   });
   if (!res.ok) throw new Error(await readErrorDetail(res));

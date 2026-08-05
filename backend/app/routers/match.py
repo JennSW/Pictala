@@ -272,28 +272,70 @@ def accept_fallback(
     body: AcceptFallbackRequest,
     db: Session = Depends(get_db),
 ):
-    """Keep a fallback identification. Photo-level only: this never
-    creates or alters an Observation, never touches the checklist's own
-    species list, and never writes back to eBird -- see
-    docs/USER_STORIES.md, "Species ID fallback for eBird gaps"."""
+    """A name was entered for this photo -- typed by hand, or accepted
+    from an unconstrained AI guess. Either way, resolve it the same
+    three ways rather than trusting where it came from (see
+    conversation with Jen, 2026-08-04 -- this used to only check
+    nothing, which meant a real off-checklist species and a genuine
+    non-bird note were handled identically):
+
+      1. Matches one of this outing's own reported species (any
+         checklist in the group) -> a real, linked assignment, same as
+         picking it from the dropdown directly.
+      2. Not on this outing, but resolves against eBird's full
+         taxonomy -> Off checklist: a real species, just not this one's,
+         labels the photo only, never written back to eBird.
+      3. Resolves as neither -> a plain Note. No signal it's a specific
+         identifiable species, so a freeform label is the honest answer.
+    """
     checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
     if checklist is None:
         raise HTTPException(status_code=404, detail="Checklist not found")
 
+    name = body.common_name.strip()
+    group = get_checklist_group(db, checklist)
+
+    on_checklist = next(
+        (o for c in group for o in c.observations if o.common_name.lower() == name.lower()),
+        None,
+    )
+
     match = _get_or_create_match(db, checklist_id, photo_id)
-    match.observation_id = None
-    match.fallback_common_name = body.common_name
-    match.fallback_scientific_name = body.scientific_name
-    match.fallback_species_code = body.species_code
-    match.confidence = body.confidence
-    match.method = "ai_fallback"
+
+    if on_checklist is not None:
+        match.observation_id = on_checklist.id
+        match.fallback_common_name = None
+        match.fallback_scientific_name = None
+        match.fallback_species_code = None
+        match.confidence = 1.0
+        match.method = "manual"
+    else:
+        match.observation_id = None
+        resolved = find_species(name)
+        if resolved:
+            match.fallback_common_name = resolved["common_name"]
+            match.fallback_scientific_name = resolved["scientific_name"]
+            match.fallback_species_code = resolved["species_code"]
+        else:
+            match.fallback_common_name = name
+            match.fallback_scientific_name = None
+            match.fallback_species_code = None
+        match.confidence = body.confidence
+        match.method = "ai_fallback"
+
     match.reviewed_at = datetime.utcnow()
     db.commit()
     db.refresh(match)
 
+    observation = None
+    if match.observation_id:
+        observation = next(
+            (o for c in group for o in c.observations if o.id == match.observation_id), None
+        )
+
     return {
         "photo": photo_out(match.photo),
-        "observation": None,
+        "observation": observation,
         "method": match.method,
         "confidence": match.confidence,
         "fallback_common_name": match.fallback_common_name,

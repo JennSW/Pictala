@@ -207,37 +207,12 @@ export default function App() {
     }
   }
 
-  // Single text box standing in for the dropdown (issue: "the dropdown
-  // options are bulky" -- a 35+ species list is unwieldy to scroll).
-  // Matches what's typed against the outing's own species case-
-  // insensitively so it still lands as a proper linked assignment when
-  // it's actually one of the reported species; anything that doesn't
-  // match (a note, an off-checklist species, a typo) falls back to a
-  // plain note, same as before.
-  async function handleSaveOrMatch(checklistId: number, photoId: number) {
-    const text = (noteText[photoId] ?? "").trim();
-    if (!text) return;
-    const match = selected?.observations.find(
-      (obs) => obs.common_name.toLowerCase() === text.toLowerCase()
-    );
-    setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
-    try {
-      if (match) {
-        await assignSpecies(checklistId, photoId, match.id);
-      } else {
-        await acceptFallback(checklistId, photoId, text);
-      }
-      setSelected(await fetchOuting(checklistId));
-      handleDismissRejected(photoId);
-    } catch (e) {
-      setSuggestions((prev) => ({ ...prev, [photoId]: { status: "error", message: String(e) } }));
-    }
-  }
-
-  // Plain freeform note, no AI guess involved -- reuses the fallback
-  // accept endpoint (an arbitrary common_name with no species metadata
-  // is exactly what an "Other" entry already is), just reached directly
-  // instead of via a suggestion first.
+  // A name was entered for this photo -- typed by hand, reached either
+  // from the Unmatched dropdown's "Other" text box or the rejected-
+  // suggestion follow-up panel. The backend now resolves it (checklist's
+  // own species -> eBird's full taxonomy -> plain note) rather than the
+  // frontend trying to guess which of those three it is, so this is
+  // just a name and nothing more -- one handler for both entry points.
   async function handleSaveNote(checklistId: number, photoId: number) {
     const text = (noteText[photoId] ?? "").trim();
     if (!text) return;
@@ -247,6 +222,10 @@ export default function App() {
       setSelected(await fetchOuting(checklistId));
       handleDismissRejected(photoId);
     } catch (e) {
+      // A global banner rather than a per-photo error state -- setting
+      // suggestion state to "error" here would replace the whole entry
+      // panel (dropdown or rejected-panel) with just an error message,
+      // losing the UI needed to retry. This way the panel stays put.
       setError(String(e));
     } finally {
       setSavingNote((prev) => ({ ...prev, [photoId]: false }));
@@ -299,7 +278,7 @@ export default function App() {
     if (!text) return;
     setFallbacks((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
     try {
-      await acceptFallback(checklistId, photoId, text, suggestion);
+      await acceptFallback(checklistId, photoId, text, suggestion.confidence);
       setSelected(await fetchOuting(checklistId));
       setFallbacks((prev) => {
         const next = { ...prev };
@@ -850,10 +829,10 @@ export default function App() {
                         <div className="panel-actions" style={{ marginTop: 0 }}>
                           <button
                             className="btn btn-primary"
-                            disabled={!(noteText[m.photo.id] ?? "").trim()}
-                            onClick={() => handleSaveOrMatch(selected.id, m.photo.id)}
+                            disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                            onClick={() => handleSaveNote(selected.id, m.photo.id)}
                           >
-                            Save
+                            {savingNote[m.photo.id] ? "Saving…" : "Save"}
                           </button>
                           <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
                             Ask Claude
@@ -879,29 +858,46 @@ export default function App() {
 
                     {fallback?.status === "ready" && (
                       <div className="panel">
-                        <div>
-                          {fallback.data.species_code ? (
+                        {(() => {
+                          // Claude's guess isn't checked against this
+                          // outing's own species -- an unconstrained guess
+                          // can land on something that's actually on the
+                          // checklist. Check here so the messaging matches
+                          // what accept-fallback will actually do with it.
+                          const onChecklist =
+                            fallback.data.species_code != null &&
+                            selected.observations.some(
+                              (obs) => obs.common_name.toLowerCase() === fallback.data.common_name?.toLowerCase()
+                            );
+                          return (
                             <>
-                              Broader guess: <strong>{fallback.data.common_name}</strong>{" "}
-                              ({Math.round(fallback.data.confidence * 100)}%)
+                              <div>
+                                {fallback.data.species_code ? (
+                                  <>
+                                    Broader guess: <strong>{fallback.data.common_name}</strong>{" "}
+                                    ({Math.round(fallback.data.confidence * 100)}%)
+                                  </>
+                                ) : fallback.data.is_other ? (
+                                  <>
+                                    Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
+                                  </>
+                                ) : fallback.data.is_bird ? (
+                                  "Couldn't confidently identify the species."
+                                ) : (
+                                  "Doesn't look like a bird, and couldn't guess what it is."
+                                )}
+                              </div>
+                              <div className="panel-reasoning">{fallback.data.reasoning}</div>
+                              {fallback.data.species_code && (
+                                <div className="panel-note">
+                                  {onChecklist
+                                    ? "Actually on this checklist -- saving will link it properly."
+                                    : "Not on this checklist — saving labels the photo only, and won't be written back to eBird."}
+                                </div>
+                              )}
                             </>
-                          ) : fallback.data.is_other ? (
-                            <>
-                              Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
-                            </>
-                          ) : fallback.data.is_bird ? (
-                            "Couldn't confidently identify the species."
-                          ) : (
-                            "Doesn't look like a bird, and couldn't guess what it is."
-                          )}
-                        </div>
-                        <div className="panel-reasoning">{fallback.data.reasoning}</div>
-                        {fallback.data.species_code && (
-                          <div className="panel-note">
-                            Not on this checklist — saving labels the photo only, and won't be
-                            written back to eBird.
-                          </div>
-                        )}
+                          );
+                        })()}
                         <input
                           type="text"
                           value={fallbackText[m.photo.id] ?? ""}
