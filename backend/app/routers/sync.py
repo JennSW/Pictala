@@ -5,17 +5,31 @@ via curl / the auto-generated /docs page during a demo) -- not things that
 run on a schedule, since this is a single-user local tool, not a service.
 """
 import tempfile
+from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.services.ebird_import import import_ebird_csv
 from app.services.flickr_client import get_photos_in_range
 from app.services.matcher import run_rule_based_matching
-from app.models import Photo
+from app.models import Photo, SyncLog
 
 router = APIRouter(prefix="/sync", tags=["sync"])
+
+# Manual "Sync now" cap from docs/USER_STORIES.md's Sync spec -- 4/day,
+# independent of the (not-yet-built) automatic-sync budget.
+DAILY_SYNC_LIMIT = 4
+
+
+def _syncs_used_today(db: Session) -> int:
+    today_start = datetime.combine(date.today(), datetime.min.time())
+    return (
+        db.query(SyncLog)
+        .filter(SyncLog.triggered_at >= today_start)
+        .count()
+    )
 
 
 @router.post("/ebird")
@@ -87,3 +101,61 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
 def sync_match(db: Session = Depends(get_db)):
     """Re-run rule-based matching over everything currently in the DB."""
     return run_rule_based_matching(db)
+
+
+@router.get("/status")
+def sync_status(db: Session = Depends(get_db)):
+    """Powers the Sync button's remaining-count display and last-sync-time
+    label."""
+    used = _syncs_used_today(db)
+    last = db.query(SyncLog).order_by(SyncLog.triggered_at.desc()).first()
+    return {
+        "used": used,
+        "limit": DAILY_SYNC_LIMIT,
+        "remaining": max(0, DAILY_SYNC_LIMIT - used),
+        "last_synced_at": last.triggered_at.isoformat() if last else None,
+    }
+
+
+@router.post("/run")
+def sync_run(
+    min_taken_date: str | None = None,
+    max_taken_date: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """The "Sync now" button (docs/USER_STORIES.md, "Story: Manual
+    sync") -- pulls fresh Flickr photos and re-runs matching, capped at
+    DAILY_SYNC_LIMIT/day (resets at local midnight, per the spec's
+    "calendar day in the user's own time zone" rule -- see SyncLog's
+    `triggered_at`). Every attempt counts toward the cap regardless of
+    outcome, so the SyncLog row is written before the actual work runs.
+
+    No last-successful-sync tracking exists yet to compute a tight
+    "just the new stuff" window, so this defaults to a 30-day lookback
+    through today when no explicit range is given -- the underlying
+    Flickr sync already upserts safely, so re-covering recently-synced
+    days is harmless, just not free."""
+    used = _syncs_used_today(db)
+    if used >= DAILY_SYNC_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily sync limit ({DAILY_SYNC_LIMIT}) already reached today.",
+        )
+
+    db.add(SyncLog())
+    db.commit()
+
+    today = date.today()
+    if max_taken_date is None:
+        max_taken_date = today.isoformat()
+    if min_taken_date is None:
+        min_taken_date = (today - timedelta(days=30)).isoformat()
+
+    flickr_result = sync_flickr(min_taken_date, max_taken_date, db)
+    match_result = sync_match(db)
+
+    return {
+        "flickr": flickr_result,
+        "match": match_result,
+        "remaining": max(0, DAILY_SYNC_LIMIT - used - 1),
+    }

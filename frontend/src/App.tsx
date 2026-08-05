@@ -8,11 +8,14 @@ import {
   suggestFallback,
   acceptFallback,
   searchBySpecies,
+  fetchSyncStatus,
+  runSync,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
   FallbackSuggestion,
   SearchResult,
+  SyncStatus,
 } from "./api";
 import DatePicker from "./DatePicker";
 import "./theme.css";
@@ -82,6 +85,14 @@ export default function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
 
+  // Manual "Sync now" button (docs/USER_STORIES.md, "Story: Manual
+  // sync") -- capped server-side at 4/day. confirmLastSync gates the
+  // last available sync of the day behind an explicit "sync anyway"
+  // step, so a click doesn't silently burn the last one.
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [confirmLastSync, setConfirmLastSync] = useState(false);
+
   useEffect(() => {
     fetchOutings()
       .then((data) => {
@@ -95,7 +106,36 @@ export default function App() {
         }
       })
       .catch((e) => setError(String(e)));
+    fetchSyncStatus()
+      .then(setSyncStatus)
+      .catch((e) => setError(String(e)));
   }, []);
+
+  async function performSync() {
+    setSyncing(true);
+    setConfirmLastSync(false);
+    try {
+      await runSync();
+      const [status, freshOutings] = await Promise.all([fetchSyncStatus(), fetchOutings()]);
+      setSyncStatus(status);
+      setOutings(freshOutings);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  function handleSyncClick() {
+    // Warn before the last available sync of the day rather than just
+    // burning it, so the user can choose to wait for more Flickr
+    // uploads first.
+    if (syncStatus && syncStatus.remaining === 1 && !confirmLastSync) {
+      setConfirmLastSync(true);
+      return;
+    }
+    performSync();
+  }
 
   const availableDates = new Set(outings.map((o) => o.date));
   const visibleOutings = selectedDate ? outings.filter((o) => o.date === selectedDate) : outings;
@@ -396,6 +436,43 @@ export default function App() {
               Clear date — show all outings
             </button>
           )}
+
+          <div className="card" style={{ marginBottom: "var(--space-4)", padding: "var(--space-3)" }}>
+            {syncStatus && (
+              <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: "var(--space-2)" }}>
+                {syncStatus.remaining > 0
+                  ? `${syncStatus.remaining} of ${syncStatus.limit} syncs left today`
+                  : "No syncs left today — resets at midnight"}
+                {syncStatus.last_synced_at && (
+                  <>
+                    <br />
+                    Last synced {new Date(syncStatus.last_synced_at).toLocaleTimeString()}
+                  </>
+                )}
+              </div>
+            )}
+            {confirmLastSync ? (
+              <div>
+                <p style={{ fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
+                  This is your last sync available today. Wait for more Flickr uploads first?
+                </p>
+                <button className="btn btn-primary" onClick={performSync} disabled={syncing}>
+                  {syncing ? "Syncing…" : "Sync anyway"}
+                </button>{" "}
+                <button className="btn" onClick={() => setConfirmLastSync(false)}>
+                  Wait
+                </button>
+              </div>
+            ) : (
+              <button
+                className="btn"
+                onClick={handleSyncClick}
+                disabled={syncing || syncStatus?.remaining === 0}
+              >
+                {syncing ? "Syncing…" : "Sync now"}
+              </button>
+            )}
+          </div>
 
           <ul style={{ listStyle: "none", padding: 0 }}>
             {visibleOutings.map((o) => (

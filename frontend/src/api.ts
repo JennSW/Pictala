@@ -198,3 +198,22 @@ export async function acceptFallback(
   if (!res.ok) throw new Error(await readErrorDetail(res));
   return res.json();
 }
+
+export interface SyncStatus {
+  used: number;
+  limit: number;
+  remaining: number;
+  last_synced_at: string | null;
+}
+
+export async function fetchSyncStatus(): Promise<SyncStatus> {
+  const res = await fetch(`${API_BASE}/sync/status`);
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+export async function runSync(): Promise<{ remaining: number }> {
+  const res = await fetch(`${API_BASE}/sync/run`, { method: "POST" });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}

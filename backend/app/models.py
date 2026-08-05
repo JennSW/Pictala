@@ -120,3 +120,17 @@ class Match(Base):
 
     checklist: Mapped["Checklist"] = relationship(back_populates="matches")
     photo: Mapped["Photo"] = relationship(back_populates="matches")
+
+
+class SyncLog(Base):
+    """One row per manual "Sync" button press (see /sync/run) -- used
+    purely to enforce the daily manual-sync limit from docs/USER_STORIES.md's
+    Sync spec (never actually built until now). `triggered_at` is local
+    time, not UTC, since "day" means the user's own calendar day and this
+    is a single-user app running on their own machine -- there's no
+    separate server timezone to reconcile."""
+
+    __tablename__ = "sync_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    triggered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
