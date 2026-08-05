@@ -445,19 +445,9 @@ export default function App() {
             <h2>
               {selected.location_name} — {selected.date}
             </h2>
-            <h3>Species seen</h3>
-            <ul>
-              {selected.observations.map((obs) => (
-                <li key={obs.id}>
-                  {obs.common_name}
-                  {obs.count ? ` (${obs.count})` : ""}
-                </li>
-              ))}
-            </ul>
-
             <h3>Matched photos</h3>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
-              {selected.matches.map((m) => {
+              {selected.matches.map((m, index) => {
                 const suggestion = suggestions[m.photo.id];
                 const fallback = fallbacks[m.photo.id];
                 const resolved = m.observation || m.fallback_common_name;
@@ -476,7 +466,26 @@ export default function App() {
                   Boolean(m.reviewed_at) &&
                   (!sessionBoundary || (m.reviewed_at as string) > sessionBoundary);
                 return (
-                  <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
+                  <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden", position: "relative" }}>
+                    {/* Temporary reference numbers, for talking through
+                        specific photos together -- not a permanent design
+                        decision. */}
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "var(--space-1)",
+                        left: "var(--space-1)",
+                        background: "rgba(0, 0, 0, 0.65)",
+                        color: "white",
+                        fontSize: "var(--text-xs)",
+                        fontWeight: 600,
+                        padding: "1px 6px",
+                        borderRadius: "var(--radius-sm)",
+                        zIndex: 1,
+                      }}
+                    >
+                      {index + 1}
+                    </span>
                     {m.photo.url_medium ? (
                       <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
                     ) : (
@@ -892,6 +901,16 @@ export default function App() {
               })}
               {selected.matches.length === 0 && <p>No photos matched this outing yet.</p>}
             </div>
+
+            <h3>Species seen</h3>
+            <ul>
+              {selected.observations.map((obs) => (
+                <li key={obs.id}>
+                  {obs.common_name}
+                  {obs.count ? ` (${obs.count})` : ""}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
