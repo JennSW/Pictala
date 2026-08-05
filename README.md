@@ -11,10 +11,14 @@ for open ideas.
 
 ## Session recaps
 
-- [2026-07-26](README-2026-07-26.md)
-- [2026-07-27, 11:52 AM](README-2026-07-27-1152.md)
-- [2026-07-28, 1:18 PM](README-2026-07-28-1318.md)
-- [2026-07-29, 12:26 PM](README-2026-07-29-1226.md)
-- [2026-07-29, 11:22 PM](README-2026-07-29-2322.md)
-- [2026-07-31, 2:35 PM](README-2026-07-31-1435.md)
+Only the most recent recap lives here at the root, alongside this file
+-- older ones move to [`docs/`](docs/) as they're replaced, to keep the
+root directory to just this README and whatever's current.
+
+- [2026-07-26](docs/README-2026-07-26.md)
+- [2026-07-27, 11:52 AM](docs/README-2026-07-27-1152.md)
+- [2026-07-28, 1:18 PM](docs/README-2026-07-28-1318.md)
+- [2026-07-29, 12:26 PM](docs/README-2026-07-29-1226.md)
+- [2026-07-29, 11:22 PM](docs/README-2026-07-29-2322.md)
+- [2026-07-31, 2:35 PM](docs/README-2026-07-31-1435.md)
 - [2026-08-04, 12:01 PM](README-2026-08-04-1201.md)
