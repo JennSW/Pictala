@@ -725,7 +725,13 @@ export default function App() {
                     return (
                       <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                         {m.photo.url_medium ? (
-                          <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                          m.photo.flickr_url ? (
+                            <a href={m.photo.flickr_url} target="_blank" rel="noreferrer">
+                              <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                            </a>
+                          ) : (
+                            <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                          )
                         ) : (
                           <div className="photo-placeholder" />
                         )}
@@ -908,7 +914,13 @@ export default function App() {
                       {index + 1}
                     </span>
                     {m.photo.url_medium ? (
-                      <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                      m.photo.flickr_url ? (
+                        <a href={m.photo.flickr_url} target="_blank" rel="noreferrer">
+                          <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                        </a>
+                      ) : (
+                        <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                      )
                     ) : (
                       <div className="photo-placeholder" />
                     )}

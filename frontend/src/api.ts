@@ -26,6 +26,9 @@ export interface Photo {
   url_medium: string | null;
   latitude: number | null;
   longitude: number | null;
+  // Computed by photo_out() on every photo the backend serializes, not
+  // just search results -- see issue #44.
+  flickr_url: string | null;
 }
 
 export interface TimezoneMismatch {
@@ -47,16 +50,12 @@ export interface MatchEntry {
   timezone_mismatch: TimezoneMismatch | null;
 }
 
-export interface PhotoWithLink extends Photo {
-  flickr_url: string | null;
-}
-
 export interface SearchResult {
   checklist_id: number;
   location_name: string;
   date: string;
   common_name: string;
-  photo: PhotoWithLink;
+  photo: Photo;
 }
 
 export interface OutingDetail {
