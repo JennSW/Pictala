@@ -1094,15 +1094,15 @@ export default function App() {
                             />
                             {manualPick[m.photo.id] === "other" ? (
                               <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
+                                <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
+                                  Ask Claude
+                                </button>
                                 <button
                                   className="btn btn-primary"
                                   disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
                                   onClick={() => handleSaveNote(selected.id, m.photo.id)}
                                 >
                                   {savingNote[m.photo.id] ? "Saving…" : "Save note"}
-                                </button>
-                                <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                                  Ask Claude
                                 </button>
                               </div>
                             ) : (
