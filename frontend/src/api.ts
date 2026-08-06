@@ -37,6 +37,11 @@ export interface TimezoneMismatch {
   hours_diff: number;
 }
 
+export interface PossibleDuplicate {
+  other_photo_ids: number[];
+  other_flickr_urls: (string | null)[];
+}
+
 export interface MatchEntry {
   checklist_id: number | null;
   photo: Photo;
@@ -48,6 +53,7 @@ export interface MatchEntry {
   ebird_checklist_url: string | null;
   reviewed_at: string | null;
   timezone_mismatch: TimezoneMismatch | null;
+  possible_duplicate: PossibleDuplicate | null;
 }
 
 export interface SearchResult {

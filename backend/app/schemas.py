@@ -61,6 +61,16 @@ class TimezoneMismatch(BaseModel):
     hours_diff: float
 
 
+class PossibleDuplicate(BaseModel):
+    """Flagged by app/services/duplicate_detection.py (issue #39) --
+    other photos sharing a normalized title + calendar day, a likely
+    signature of a re-exported/re-uploaded duplicate. Detection only,
+    no auto-action -- shown so the user can verify/delete on Flickr
+    themselves."""
+    other_photo_ids: list[int]
+    other_flickr_urls: list[str | None]
+
+
 class MatchOut(BaseModel):
     checklist_id: int | None
     photo: PhotoOut
@@ -72,6 +82,7 @@ class MatchOut(BaseModel):
     ebird_checklist_url: str | None = None
     reviewed_at: str | None = None
     timezone_mismatch: TimezoneMismatch | None = None
+    possible_duplicate: PossibleDuplicate | None = None
 
     model_config = {"from_attributes": True}
 

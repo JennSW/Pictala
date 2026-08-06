@@ -23,6 +23,7 @@ from app.models import Match, Photo
 from app.schemas import ClusterSummary, ClusterDetail, MatchOut, FallbackSuggestion, photo_out
 from app.services.photo_clusters import compute_clusters, get_cluster
 from app.services.ebird_taxonomy import find_species
+from app.services.duplicate_detection import find_duplicate_groups
 from app.services.species_classifier import (
     guess_species_unconstrained,
     guess_species_unconstrained_batch,
@@ -44,12 +45,24 @@ def _resolve_guess(common_name: str | None) -> tuple[str | None, str | None, str
     return common_name, None, None, True
 
 
-def _match_out_for_photo(db: Session, photo: Photo) -> dict:
+def _possible_duplicate(db: Session, groups: dict[int, list[int]], photo: Photo) -> dict | None:
+    other_ids = groups.get(photo.id)
+    if not other_ids:
+        return None
+    others = db.query(Photo).filter(Photo.id.in_(other_ids)).all()
+    return {
+        "other_photo_ids": other_ids,
+        "other_flickr_urls": [photo_out(o).flickr_url for o in others],
+    }
+
+
+def _match_out_for_photo(db: Session, photo: Photo, duplicate_groups: dict[int, list[int]] | None = None) -> dict:
     match = (
         db.query(Match)
         .filter(Match.photo_id == photo.id, Match.checklist_id.is_(None))
         .one_or_none()
     )
+    groups = duplicate_groups if duplicate_groups is not None else find_duplicate_groups(db)
     return {
         "checklist_id": None,
         "photo": photo_out(photo),
@@ -61,6 +74,7 @@ def _match_out_for_photo(db: Session, photo: Photo) -> dict:
         "ebird_checklist_url": None,
         "reviewed_at": match.reviewed_at.isoformat() if match and match.reviewed_at else None,
         "timezone_mismatch": None,
+        "possible_duplicate": _possible_duplicate(db, groups, photo),
     }
 
 
@@ -79,10 +93,11 @@ def get_cluster_detail(cluster_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Cluster not found")
     photos_by_id = {p.id: p for p in db.query(Photo).filter(Photo.id.in_(cluster["photo_ids"])).all()}
     ordered = [photos_by_id[pid] for pid in cluster["photo_ids"] if pid in photos_by_id]
+    duplicate_groups = find_duplicate_groups(db)
     return {
         "id": cluster["id"],
         "date": cluster["date"],
-        "matches": [_match_out_for_photo(db, p) for p in ordered],
+        "matches": [_match_out_for_photo(db, p, duplicate_groups) for p in ordered],
     }
 
 

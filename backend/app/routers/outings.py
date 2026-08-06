@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Checklist
+from app.models import Checklist, Photo
 from app.schemas import OutingSummary, OutingDetail, photo_out, ebird_checklist_url
 from app.services.outing_grouping import group_checklists, get_checklist_group
 from app.services.timezone_check import check_mismatch
+from app.services.duplicate_detection import find_duplicate_groups
 
 
 def _is_resolved(match) -> bool:
@@ -14,6 +15,18 @@ def _is_resolved(match) -> bool:
     either way, it should win over an unresolved duplicate of the same
     photo from a sibling checklist in the group."""
     return match.observation_id is not None or match.fallback_common_name is not None
+
+
+def _possible_duplicate(db: Session, groups: dict[int, list[int]], photo: Photo) -> dict | None:
+    other_ids = groups.get(photo.id)
+    if not other_ids:
+        return None
+    others = db.query(Photo).filter(Photo.id.in_(other_ids)).all()
+    return {
+        "other_photo_ids": other_ids,
+        "other_flickr_urls": [photo_out(o).flickr_url for o in others],
+    }
+
 
 router = APIRouter(prefix="/outings", tags=["outings"])
 
@@ -64,6 +77,8 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
         if current is None or (not _is_resolved(current) and _is_resolved(m)):
             matches_by_photo[m.photo_id] = m
 
+    duplicate_groups = find_duplicate_groups(db)
+
     return OutingDetail(
         id=checklist.id,
         location_name=checklist.location_name,
@@ -85,6 +100,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
                 "ebird_checklist_url": ebird_checklist_url(m.checklist),
                 "reviewed_at": m.reviewed_at.isoformat() if m.reviewed_at else None,
                 "timezone_mismatch": check_mismatch(m.photo, m.checklist),
+                "possible_duplicate": _possible_duplicate(db, duplicate_groups, m.photo),
             }
             for m in matches_by_photo.values()
         ],

@@ -855,6 +855,30 @@ export default function App() {
                                 ))}
                             </select>
                           )}
+                          {m.possible_duplicate && (
+                            <div
+                              style={{
+                                marginTop: "var(--space-2)",
+                                padding: "var(--space-2)",
+                                fontSize: "var(--text-xs)",
+                                background: "var(--warning-bg, #fff3cd)",
+                                border: "1px solid var(--warning, #e0a800)",
+                                borderRadius: "var(--radius-sm)",
+                              }}
+                            >
+                              Possible duplicate upload —{" "}
+                              {m.possible_duplicate.other_flickr_urls
+                                .filter((url): url is string => Boolean(url))
+                                .map((url, i, arr) => (
+                                  <span key={url}>
+                                    <a href={url} target="_blank" rel="noreferrer">
+                                      view other copy ↗
+                                    </a>
+                                    {i < arr.length - 1 && ", "}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
                         </figcaption>
                       </figure>
                     );
@@ -1092,6 +1116,30 @@ export default function App() {
                               {adjustingTimezone[m.photo.id] ? "Adjusting…" : "Adjust"}
                             </button>
                           </div>
+                        </div>
+                      )}
+                      {m.possible_duplicate && (
+                        <div
+                          style={{
+                            marginTop: "var(--space-2)",
+                            padding: "var(--space-2)",
+                            fontSize: "var(--text-xs)",
+                            background: "var(--warning-bg, #fff3cd)",
+                            border: "1px solid var(--warning, #e0a800)",
+                            borderRadius: "var(--radius-sm)",
+                          }}
+                        >
+                          Possible duplicate upload —{" "}
+                          {m.possible_duplicate.other_flickr_urls
+                            .filter((url): url is string => Boolean(url))
+                            .map((url, i, arr) => (
+                              <span key={url}>
+                                <a href={url} target="_blank" rel="noreferrer">
+                                  view other copy ↗
+                                </a>
+                                {i < arr.length - 1 && ", "}
+                              </span>
+                            ))}
                         </div>
                       )}
                     </figcaption>
