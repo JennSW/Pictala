@@ -112,6 +112,12 @@ export default function App() {
   const [showUnassigned, setShowUnassigned] = useState(false);
   const [clusters, setClusters] = useState<ClusterSummary[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<ClusterDetail | null>(null);
+  // Set when entering the cluster list from a specific calendar date
+  // (viewClustersForDate) so the list shows just that date's clusters
+  // instead of every checklist-less photo in the whole app. Null means
+  // showing everything, e.g. from the general "Photos not on eBird"
+  // button.
+  const [clusterDateFilter, setClusterDateFilter] = useState<string | null>(null);
   const [clusterIdentifyText, setClusterIdentifyText] = useState<Record<number, string>>({});
   const [clusterSuggesting, setClusterSuggesting] = useState<Record<number, boolean>>({});
   const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
@@ -184,6 +190,7 @@ export default function App() {
   async function loadUnassigned() {
     setShowUnassigned(true);
     setSelectedCluster(null);
+    setClusterDateFilter(null);
     try {
       setClusters(await fetchUnassignedClusters());
     } catch (e) {
@@ -193,6 +200,7 @@ export default function App() {
 
   function viewClustersForDate() {
     setShowUnassigned(true);
+    setClusterDateFilter(selectedDate);
     const matches = clusters.filter((c) => c.date === selectedDate);
     if (matches.length === 1) {
       openCluster(matches[0].id);
@@ -608,7 +616,7 @@ export default function App() {
             ))}
             {outings.length === 0 && !error && <li>No outings yet — sync eBird + Flickr data first.</li>}
             {outings.length > 0 && visibleOutings.length === 0 && (
-              <li>No outings on this date.</li>
+              <li>No eBird outing found for this date.</li>
             )}
           </ul>
 
@@ -709,22 +717,29 @@ export default function App() {
               </>
             ) : (
               <>
-                <h2>Photos not on eBird</h2>
+                <h2>{clusterDateFilter ? `Photos not on eBird — ${clusterDateFilter}` : "Photos not on eBird"}</h2>
                 <p style={{ color: "var(--text-muted)" }}>
                   Grouped by date and capture-time proximity — no checklist to group by instead.
                 </p>
+                {clusterDateFilter && (
+                  <button className="btn" onClick={() => setClusterDateFilter(null)} style={{ marginBottom: "var(--space-3)" }}>
+                    Show all dates
+                  </button>
+                )}
                 <ul style={{ listStyle: "none", padding: 0 }}>
-                  {clusters.map((c) => (
-                    <li key={c.id} style={{ marginBottom: "var(--space-3)" }}>
-                      <button className="list-item-btn" onClick={() => openCluster(c.id)}>
-                        <strong>{c.date}</strong>
-                        <br />
-                        <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-                          {c.photo_count} photos
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                  {clusters
+                    .filter((c) => !clusterDateFilter || c.date === clusterDateFilter)
+                    .map((c) => (
+                      <li key={c.id} style={{ marginBottom: "var(--space-3)" }}>
+                        <button className="list-item-btn" onClick={() => openCluster(c.id)}>
+                          <strong>{c.date}</strong>
+                          <br />
+                          <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                            {c.photo_count} photos
+                          </span>
+                        </button>
+                      </li>
+                    ))}
                   {clusters.length === 0 && <li>No checklist-less photos — everything's on eBird.</li>}
                 </ul>
               </>
