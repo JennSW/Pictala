@@ -38,6 +38,19 @@ class Checklist(Base):
         back_populates="checklist", cascade="all, delete-orphan"
     )
 
+    outing_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    """Stored, explicit "this outing has been reviewed" state (issue
+    #43) -- deliberately a real column, not computed live from whether
+    any photos still need review, per Jen's call: this is likely to
+    anchor a future feature (the saved/locked-day concept from #11),
+    and a stored flag is one less thing to recompute wherever that
+    matters. There's no real Outing table (outings are computed groups
+    of checklists -- see app/services/outing_grouping.py), so this is
+    only ever meaningful on the group's *primary* checklist (the same
+    one whose id already serves as the outing's canonical id
+    elsewhere, e.g. in outings.py's list_outings) -- other members of
+    the group leave this null."""
+
 
 class Observation(Base):
     """One species entry within a checklist."""

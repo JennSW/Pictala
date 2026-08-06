@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,7 @@ from app.schemas import OutingSummary, OutingDetail, photo_out, ebird_checklist_
 from app.services.outing_grouping import group_checklists, get_checklist_group
 from app.services.timezone_check import check_mismatch
 from app.services.duplicate_detection import find_duplicate_groups
+from app.services.outing_review import compute_photo_groups
 
 
 def _is_resolved(match) -> bool:
@@ -49,6 +52,7 @@ def list_outings(db: Session = Depends(get_db)):
                 date=primary.date,
                 species_count=len(species),
                 photo_count=len(photo_ids),
+                reviewed_at=primary.outing_reviewed_at.isoformat() if primary.outing_reviewed_at else None,
             )
         )
     summaries.sort(key=lambda s: s.date, reverse=True)
@@ -78,6 +82,7 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
             matches_by_photo[m.photo_id] = m
 
     duplicate_groups = find_duplicate_groups(db)
+    primary = min(group, key=lambda c: c.id)
 
     return OutingDetail(
         id=checklist.id,
@@ -86,6 +91,8 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
         latitude=checklist.latitude,
         longitude=checklist.longitude,
         observations=all_observations,
+        reviewed_at=primary.outing_reviewed_at.isoformat() if primary.outing_reviewed_at else None,
+        photo_groups=compute_photo_groups(list(matches_by_photo.values()), all_observations),
         matches=[
             {
                 "checklist_id": m.checklist_id,
@@ -105,3 +112,31 @@ def get_outing(outing_id: int, db: Session = Depends(get_db)):
             for m in matches_by_photo.values()
         ],
     )
+
+
+def _resolve_primary(db: Session, outing_id: int) -> Checklist:
+    checklist = db.query(Checklist).filter(Checklist.id == outing_id).one_or_none()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Outing not found")
+    group = get_checklist_group(db, checklist)
+    return min(group, key=lambda c: c.id)
+
+
+@router.post("/{outing_id}/mark-reviewed")
+def mark_reviewed(outing_id: int, db: Session = Depends(get_db)):
+    """Explicit, stored "this outing has been reviewed" state (issue
+    #43) -- deliberately not computed live from whether any photos
+    still need review, since this is likely to anchor a future feature
+    (the saved/locked-day concept from #11)."""
+    primary = _resolve_primary(db, outing_id)
+    primary.outing_reviewed_at = datetime.utcnow()
+    db.commit()
+    return {"reviewed_at": primary.outing_reviewed_at.isoformat()}
+
+
+@router.post("/{outing_id}/unmark-reviewed")
+def unmark_reviewed(outing_id: int, db: Session = Depends(get_db)):
+    primary = _resolve_primary(db, outing_id)
+    primary.outing_reviewed_at = None
+    db.commit()
+    return {"reviewed_at": None}

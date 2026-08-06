@@ -9,6 +9,18 @@ export interface OutingSummary {
   date: string;
   species_count: number;
   photo_count: number;
+  reviewed_at: string | null;
+}
+
+// Grouping data for the outing review UI (issue #43) -- see
+// app/services/outing_review.py for the bucket definitions. Exposed
+// unconditionally; which buckets a given UI shows, and how they're
+// labeled, is a presentation decision, not decided here.
+export interface PhotoGroups {
+  ebird_and_flickr: number[];
+  flickr_best_guess: number[];
+  needs_claude: number[];
+  ebird_no_photo: number[];
 }
 
 export interface Observation {
@@ -72,11 +84,25 @@ export interface OutingDetail {
   longitude: number | null;
   observations: Observation[];
   matches: MatchEntry[];
+  reviewed_at: string | null;
+  photo_groups: PhotoGroups;
 }
 
 export async function fetchOutings(): Promise<OutingSummary[]> {
   const res = await fetch(`${API_BASE}/outings`);
   if (!res.ok) throw new Error(`Failed to load outings: ${res.status}`);
+  return res.json();
+}
+
+export async function markOutingReviewed(outingId: number): Promise<{ reviewed_at: string }> {
+  const res = await fetch(`${API_BASE}/outings/${outingId}/mark-reviewed`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to mark reviewed: ${res.status}`);
+  return res.json();
+}
+
+export async function unmarkOutingReviewed(outingId: number): Promise<{ reviewed_at: null }> {
+  const res = await fetch(`${API_BASE}/outings/${outingId}/unmark-reviewed`, { method: "POST" });
+  if (!res.ok) throw new Error(`Failed to unmark reviewed: ${res.status}`);
   return res.json();
 }
 

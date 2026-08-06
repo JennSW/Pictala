@@ -101,8 +101,20 @@ class OutingSummary(BaseModel):
     date: str
     species_count: int
     photo_count: int
+    reviewed_at: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class PhotoGroups(BaseModel):
+    """Grouping data for the outing review UI (issue #43) -- see
+    app/services/outing_review.py for the bucket definitions. Exposed
+    unconditionally regardless of reviewed state; which buckets a given
+    UI shows, and how they're labeled, is a frontend decision."""
+    ebird_and_flickr: list[int]
+    flickr_best_guess: list[int]
+    needs_claude: list[int]
+    ebird_no_photo: list[int]
 
 
 class OutingDetail(BaseModel):
@@ -113,6 +125,8 @@ class OutingDetail(BaseModel):
     longitude: float | None
     observations: list[ObservationOut]
     matches: list[MatchOut]
+    reviewed_at: str | None = None
+    photo_groups: PhotoGroups
 
     model_config = {"from_attributes": True}
 

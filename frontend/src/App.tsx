@@ -2,6 +2,8 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   fetchOutings,
   fetchOuting,
+  markOutingReviewed,
+  unmarkOutingReviewed,
   suggestSpecies,
   acceptSuggestion,
   assignSpecies,
@@ -353,6 +355,16 @@ export default function App() {
       setSelected(await fetchOuting(id));
       setSuggestions({});
       setShowUnassigned(false);
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function handleToggleReviewed(outingId: number, reviewed: boolean) {
+    try {
+      if (reviewed) await markOutingReviewed(outingId);
+      else await unmarkOutingReviewed(outingId);
+      setSelected(await fetchOuting(outingId));
     } catch (e) {
       setError(String(e));
     }
@@ -922,6 +934,23 @@ export default function App() {
             <h2>
               {selected.location_name} — {selected.date}
             </h2>
+            {/* Minimal surface for the stored reviewed state (issue #43)
+                -- not the grouped review layout, just enough to actually
+                use the flag while that design isn't settled yet. */}
+            <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
+              {selected.reviewed_at ? (
+                <>
+                  Reviewed{" "}
+                  <button className="btn" onClick={() => handleToggleReviewed(selected.id, false)}>
+                    Unmark
+                  </button>
+                </>
+              ) : (
+                <button className="btn" onClick={() => handleToggleReviewed(selected.id, true)}>
+                  Mark outing reviewed
+                </button>
+              )}
+            </p>
             <h3>Matched photos</h3>
             {checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id)).length > 0 && (
               <button
