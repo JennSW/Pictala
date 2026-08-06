@@ -62,7 +62,7 @@ class TimezoneMismatch(BaseModel):
 
 
 class MatchOut(BaseModel):
-    checklist_id: int
+    checklist_id: int | None
     photo: PhotoOut
     observation: ObservationOut | None
     method: str
@@ -104,6 +104,22 @@ class OutingDetail(BaseModel):
     matches: list[MatchOut]
 
     model_config = {"from_attributes": True}
+
+
+class ClusterSummary(BaseModel):
+    """A checklist-less photo cluster (see issue #35,
+    app/services/photo_clusters.py) -- photos grouped by date + capture-
+    time proximity since there's no checklist (and essentially never any
+    GPS) to group by instead. `id` is a synthetic string, not a DB row."""
+    id: str
+    date: str
+    photo_count: int
+
+
+class ClusterDetail(BaseModel):
+    id: str
+    date: str
+    matches: list[MatchOut]
 
 
 class SpeciesSuggestion(BaseModel):
@@ -162,14 +178,14 @@ class FallbackSuggestion(BaseModel):
     eBird gaps"."""
 
     photo_id: int
-    checklist_id: int
+    checklist_id: int | None
     is_bird: bool
     common_name: str | None
     scientific_name: str | None
     species_code: str | None
     confidence: float
     reasoning: str
-    ebird_checklist_url: str
+    ebird_checklist_url: str | None
     is_other: bool = False
     """True when `common_name` is a real guess (e.g. "Dragonfly") that
     just doesn't resolve against eBird's bird taxonomy -- species_code

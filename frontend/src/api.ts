@@ -35,7 +35,7 @@ export interface TimezoneMismatch {
 }
 
 export interface MatchEntry {
-  checklist_id: number;
+  checklist_id: number | null;
   photo: Photo;
   observation: Observation | null;
   method: string;
@@ -157,14 +157,14 @@ export async function assignSpecies(
 
 export interface FallbackSuggestion {
   photo_id: number;
-  checklist_id: number;
+  checklist_id: number | null;
   is_bird: boolean;
   common_name: string | null;
   scientific_name: string | null;
   species_code: string | null;
   confidence: number;
   reasoning: string;
-  ebird_checklist_url: string;
+  ebird_checklist_url: string | null;
   is_other: boolean;
 }
 
@@ -231,4 +231,60 @@ export async function adjustTimezone(checklistId: number, photoId: number): Prom
     method: "POST",
   });
   if (!res.ok) throw new Error(await readErrorDetail(res));
+}
+
+// Checklist-less photo clusters (issue #35) -- photos with no eBird
+// checklist at all, either permanently (never a countable sighting) or
+// not yet (checklist not uploaded). See app/services/photo_clusters.py.
+export interface ClusterSummary {
+  id: string;
+  date: string;
+  photo_count: number;
+}
+
+export interface ClusterDetail {
+  id: string;
+  date: string;
+  matches: MatchEntry[];
+}
+
+export async function fetchUnassignedClusters(): Promise<ClusterSummary[]> {
+  const res = await fetch(`${API_BASE}/unassigned`);
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+export async function fetchUnassignedCluster(clusterId: string): Promise<ClusterDetail> {
+  const res = await fetch(`${API_BASE}/unassigned/${clusterId}`);
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+export async function suggestUnassignedFallback(
+  clusterId: string,
+  photoId: number
+): Promise<FallbackSuggestion> {
+  const res = await fetch(`${API_BASE}/unassigned/${clusterId}/suggest/${photoId}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+export async function identifyUnassignedPhoto(
+  clusterId: string,
+  photoId: number,
+  commonName: string,
+  confidence?: number
+): Promise<MatchEntry> {
+  const res = await fetch(`${API_BASE}/unassigned/${clusterId}/identify/${photoId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      common_name: commonName,
+      ...(confidence !== undefined ? { confidence } : {}),
+    }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
 }

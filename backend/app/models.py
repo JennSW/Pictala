@@ -106,7 +106,18 @@ class Match(Base):
     __tablename__ = "matches"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    checklist_id: Mapped[int] = mapped_column(ForeignKey("checklists.id"))
+    checklist_id: Mapped[int | None] = mapped_column(
+        ForeignKey("checklists.id"), nullable=True
+    )
+    """Null means this photo has no eBird checklist at all -- either
+    permanently (e.g. a captive/indoor bird photo that will never be a
+    countable eBird sighting) or just not yet (a real outing whose
+    checklist hasn't been uploaded). Deliberately null, not a sentinel
+    id like 0: a real FK constraint already supports "no reference"
+    cleanly, and null can never be mistaken for a real checklist by
+    code that forgets a special-case rule. See
+    app/services/photo_clusters.py for how these get surfaced in the
+    UI, grouped by date since there's no checklist to group by."""
     photo_id: Mapped[int] = mapped_column(ForeignKey("photos.id"))
     observation_id: Mapped[int | None] = mapped_column(
         ForeignKey("observations.id"), nullable=True

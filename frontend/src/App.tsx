@@ -11,12 +11,18 @@ import {
   fetchSyncStatus,
   runSync,
   adjustTimezone,
+  fetchUnassignedClusters,
+  fetchUnassignedCluster,
+  suggestUnassignedFallback,
+  identifyUnassignedPhoto,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
   FallbackSuggestion,
   SearchResult,
   SyncStatus,
+  ClusterSummary,
+  ClusterDetail,
 } from "./api";
 import DatePicker from "./DatePicker";
 import "./theme.css";
@@ -98,6 +104,17 @@ export default function App() {
   // state since it's a per-card button.
   const [adjustingTimezone, setAdjustingTimezone] = useState<Record<number, boolean>>({});
 
+  // Checklist-less photo clusters (issue #35) -- a separate browse mode
+  // from the normal date-picker/outings view, entered via the "Not on
+  // eBird" button. selectedCluster === null means showing the cluster
+  // list; set means showing one cluster's photos.
+  const [showUnassigned, setShowUnassigned] = useState(false);
+  const [clusters, setClusters] = useState<ClusterSummary[]>([]);
+  const [selectedCluster, setSelectedCluster] = useState<ClusterDetail | null>(null);
+  const [clusterIdentifyText, setClusterIdentifyText] = useState<Record<number, string>>({});
+  const [clusterSuggesting, setClusterSuggesting] = useState<Record<number, boolean>>({});
+  const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
+
   useEffect(() => {
     fetchOutings()
       .then((data) => {
@@ -156,6 +173,52 @@ export default function App() {
     }
   }
 
+  async function loadUnassigned() {
+    setShowUnassigned(true);
+    setSelectedCluster(null);
+    try {
+      setClusters(await fetchUnassignedClusters());
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function openCluster(clusterId: string) {
+    try {
+      setSelectedCluster(await fetchUnassignedCluster(clusterId));
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function handleClusterSuggest(photoId: number) {
+    if (!selectedCluster) return;
+    setClusterSuggesting((prev) => ({ ...prev, [photoId]: true }));
+    try {
+      const result = await suggestUnassignedFallback(selectedCluster.id, photoId);
+      setClusterIdentifyText((prev) => ({ ...prev, [photoId]: result.common_name ?? "" }));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setClusterSuggesting((prev) => ({ ...prev, [photoId]: false }));
+    }
+  }
+
+  async function handleClusterIdentify(photoId: number) {
+    if (!selectedCluster) return;
+    const text = (clusterIdentifyText[photoId] ?? "").trim();
+    if (!text) return;
+    setClusterSaving((prev) => ({ ...prev, [photoId]: true }));
+    try {
+      await identifyUnassignedPhoto(selectedCluster.id, photoId, text);
+      setSelectedCluster(await fetchUnassignedCluster(selectedCluster.id));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setClusterSaving((prev) => ({ ...prev, [photoId]: false }));
+    }
+  }
+
   const availableDates = new Set(outings.map((o) => o.date));
   const visibleOutings = selectedDate ? outings.filter((o) => o.date === selectedDate) : outings;
 
@@ -163,6 +226,7 @@ export default function App() {
     try {
       setSelected(await fetchOuting(id));
       setSuggestions({});
+      setShowUnassigned(false);
     } catch (e) {
       setError(String(e));
     }
@@ -513,9 +577,106 @@ export default function App() {
               <li>No outings on this date.</li>
             )}
           </ul>
+
+          <button className="btn" onClick={loadUnassigned} style={{ marginTop: "var(--space-3)" }}>
+            Photos not on eBird
+          </button>
         </div>
 
-        {selected && (
+        {showUnassigned && (
+          <div style={{ flex: 1 }}>
+            {selectedCluster ? (
+              <>
+                <button className="btn" onClick={() => setSelectedCluster(null)} style={{ marginBottom: "var(--space-3)" }}>
+                  ← Back to clusters
+                </button>
+                <h2>{selectedCluster.date} — not on eBird</h2>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
+                  {selectedCluster.matches.map((m) => {
+                    const identified = Boolean(m.fallback_common_name);
+                    return (
+                      <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
+                        {m.photo.url_medium ? (
+                          <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
+                        ) : (
+                          <div className="photo-placeholder" />
+                        )}
+                        <figcaption style={{ padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
+                          {identified ? (
+                            <div style={{ marginBottom: "var(--space-1)" }}>
+                              {!m.fallback_scientific_name && (
+                                <span className="badge badge-neutral">Not on eBird</span>
+                              )}
+                              <div style={{ marginTop: "var(--space-1)" }}>
+                                {m.fallback_common_name}
+                                {m.fallback_scientific_name && (
+                                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontStyle: "italic" }}>
+                                    {m.fallback_scientific_name}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                              <input
+                                type="text"
+                                placeholder="Species name or note"
+                                value={clusterIdentifyText[m.photo.id] ?? ""}
+                                onChange={(e) =>
+                                  setClusterIdentifyText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                                }
+                                style={{ width: "100%" }}
+                              />
+                              <div>
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => handleClusterIdentify(m.photo.id)}
+                                  disabled={!(clusterIdentifyText[m.photo.id] ?? "").trim() || clusterSaving[m.photo.id]}
+                                >
+                                  {clusterSaving[m.photo.id] ? "Saving…" : "Save"}
+                                </button>{" "}
+                                <button
+                                  className="btn"
+                                  onClick={() => handleClusterSuggest(m.photo.id)}
+                                  disabled={clusterSuggesting[m.photo.id]}
+                                >
+                                  {clusterSuggesting[m.photo.id] ? "Asking…" : "Ask Claude"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </figcaption>
+                      </figure>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Photos not on eBird</h2>
+                <p style={{ color: "var(--text-muted)" }}>
+                  Grouped by date and capture-time proximity — no checklist to group by instead.
+                </p>
+                <ul style={{ listStyle: "none", padding: 0 }}>
+                  {clusters.map((c) => (
+                    <li key={c.id} style={{ marginBottom: "var(--space-3)" }}>
+                      <button className="list-item-btn" onClick={() => openCluster(c.id)}>
+                        <strong>{c.date}</strong>
+                        <br />
+                        <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                          {c.photo_count} photos
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {clusters.length === 0 && <li>No checklist-less photos — everything's on eBird.</li>}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+
+        {!showUnassigned && selected && (
           <div style={{ flex: 1 }}>
             <h2>
               {selected.location_name} — {selected.date}
@@ -674,7 +835,7 @@ export default function App() {
                           <div style={{ marginTop: "var(--space-1)" }}>
                             <button
                               className="btn"
-                              onClick={() => handleAdjustTimezone(m.checklist_id, m.photo.id)}
+                              onClick={() => handleAdjustTimezone(m.checklist_id as number, m.photo.id)}
                               disabled={adjustingTimezone[m.photo.id]}
                             >
                               {adjustingTimezone[m.photo.id] ? "Adjusting…" : "Adjust"}

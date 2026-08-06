@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import Base, engine
-from app.routers import outings, sync, match, search
+from app.routers import outings, sync, match, search, unassigned
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,6 +23,7 @@ app.include_router(outings.router)
 app.include_router(sync.router)
 app.include_router(match.router)
 app.include_router(search.router)
+app.include_router(unassigned.router)
 
 
 @app.get("/health")
