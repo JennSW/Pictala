@@ -6,6 +6,7 @@ import {
   acceptSuggestion,
   assignSpecies,
   suggestFallback,
+  suggestFallbackBatch,
   acceptFallback,
   searchBySpecies,
   fetchSyncStatus,
@@ -14,6 +15,7 @@ import {
   fetchUnassignedClusters,
   fetchUnassignedCluster,
   suggestUnassignedFallback,
+  suggestUnassignedFallbackBatch,
   identifyUnassignedPhoto,
   moveToCluster,
   OutingSummary,
@@ -122,6 +124,15 @@ export default function App() {
   const [clusterSuggesting, setClusterSuggesting] = useState<Record<number, boolean>>({});
   const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
 
+  // Batch "Ask Claude" (issue #5) -- a checkbox per unmatched/checklist-
+  // less photo, keyed by photo id (globally unique, so one map covers
+  // both the outing detail and cluster views). MAX_BATCH_PHOTOS mirrors
+  // the backend's cap (species_classifier.MAX_BATCH_SIZE) so the button
+  // disables before a request that would just get rejected.
+  const [checkedPhotos, setCheckedPhotos] = useState<Record<number, boolean>>({});
+  const [batchSuggesting, setBatchSuggesting] = useState(false);
+  const MAX_BATCH_PHOTOS = 10;
+
   useEffect(() => {
     fetchOutings()
       .then((data) => {
@@ -227,6 +238,34 @@ export default function App() {
       setError(String(e));
     } finally {
       setClusterSuggesting((prev) => ({ ...prev, [photoId]: false }));
+    }
+  }
+
+  function checkedPhotoIdsIn(photoIds: number[]): number[] {
+    return photoIds.filter((id) => checkedPhotos[id]);
+  }
+
+  async function handleClusterSuggestBatch() {
+    if (!selectedCluster) return;
+    const photoIds = checkedPhotoIdsIn(selectedCluster.matches.map((m) => m.photo.id));
+    if (photoIds.length === 0) return;
+    setBatchSuggesting(true);
+    try {
+      const results = await suggestUnassignedFallbackBatch(selectedCluster.id, photoIds);
+      setClusterIdentifyText((prev) => {
+        const next = { ...prev };
+        for (const r of results) next[r.photo_id] = r.common_name ?? "";
+        return next;
+      });
+      setCheckedPhotos((prev) => {
+        const next = { ...prev };
+        for (const id of photoIds) delete next[id];
+        return next;
+      });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBatchSuggesting(false);
     }
   }
 
@@ -438,6 +477,35 @@ export default function App() {
     }
   }
 
+  async function handleSuggestFallbackBatch(checklistId: number) {
+    if (!selected) return;
+    const photoIds = checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id));
+    if (photoIds.length === 0) return;
+    setBatchSuggesting(true);
+    try {
+      const results = await suggestFallbackBatch(checklistId, photoIds);
+      setFallbacks((prev) => {
+        const next = { ...prev };
+        for (const r of results) next[r.photo_id] = { status: "ready", data: r };
+        return next;
+      });
+      setFallbackText((prev) => {
+        const next = { ...prev };
+        for (const r of results) next[r.photo_id] = r.common_name ?? "";
+        return next;
+      });
+      setCheckedPhotos((prev) => {
+        const next = { ...prev };
+        for (const id of photoIds) delete next[id];
+        return next;
+      });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBatchSuggesting(false);
+    }
+  }
+
   async function handleAcceptFallback(checklistId: number, photoId: number, suggestion: FallbackSuggestion) {
     const text = (fallbackText[photoId] ?? "").trim();
     if (!text) return;
@@ -639,6 +707,18 @@ export default function App() {
                   ← Back to clusters
                 </button>
                 <h2>{selectedCluster.date} — not on eBird</h2>
+                {checkedPhotoIdsIn(selectedCluster.matches.map((m) => m.photo.id)).length > 0 && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ marginBottom: "var(--space-3)" }}
+                    onClick={handleClusterSuggestBatch}
+                    disabled={batchSuggesting}
+                  >
+                    {batchSuggesting
+                      ? "Asking…"
+                      : `Ask Claude for ${checkedPhotoIdsIn(selectedCluster.matches.map((m) => m.photo.id)).length} selected`}
+                  </button>
+                )}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
                   {selectedCluster.matches.map((m) => {
                     const identified = Boolean(m.fallback_common_name);
@@ -666,6 +746,21 @@ export default function App() {
                             </div>
                           ) : (
                             <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+                              <label style={{ fontSize: "var(--text-xs)" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(checkedPhotos[m.photo.id])}
+                                  disabled={
+                                    !checkedPhotos[m.photo.id] &&
+                                    checkedPhotoIdsIn(selectedCluster.matches.map((mm) => mm.photo.id)).length >=
+                                      MAX_BATCH_PHOTOS
+                                  }
+                                  onChange={(e) =>
+                                    setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))
+                                  }
+                                />{" "}
+                                Select for batch
+                              </label>
                               <input
                                 type="text"
                                 placeholder="Species name or note"
@@ -753,6 +848,18 @@ export default function App() {
               {selected.location_name} — {selected.date}
             </h2>
             <h3>Matched photos</h3>
+            {checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id)).length > 0 && (
+              <button
+                className="btn btn-primary"
+                style={{ marginBottom: "var(--space-3)" }}
+                onClick={() => handleSuggestFallbackBatch(selected.id)}
+                disabled={batchSuggesting}
+              >
+                {batchSuggesting
+                  ? "Asking…"
+                  : `Ask Claude for ${checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id)).length} selected`}
+              </button>
+            )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
               {selected.matches.map((m, index) => {
                 const suggestion = suggestions[m.photo.id];
@@ -873,7 +980,23 @@ export default function App() {
                             </>
                           )
                         ) : (
-                          <span className="badge badge-neutral">Unmatched</span>
+                          <>
+                            <span className="badge badge-neutral">Unmatched</span>
+                            <label style={{ marginLeft: "var(--space-2)", fontSize: "var(--text-xs)" }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(checkedPhotos[m.photo.id])}
+                                disabled={
+                                  !checkedPhotos[m.photo.id] &&
+                                  checkedPhotoIdsIn(selected.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
+                                }
+                                onChange={(e) =>
+                                  setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))
+                                }
+                              />{" "}
+                              Select for batch
+                            </label>
+                          </>
                         )}
                       </div>
                       {/* Method/confidence is diagnostic detail. Hidden once

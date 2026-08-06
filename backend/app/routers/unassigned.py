@@ -25,11 +25,23 @@ from app.services.photo_clusters import compute_clusters, get_cluster
 from app.services.ebird_taxonomy import find_species
 from app.services.species_classifier import (
     guess_species_unconstrained,
+    guess_species_unconstrained_batch,
     SpeciesClassifierNotConfigured,
     SpeciesClassifierError,
 )
 
 router = APIRouter(prefix="/unassigned", tags=["unassigned"])
+
+
+def _resolve_guess(common_name: str | None) -> tuple[str | None, str | None, str | None, bool]:
+    """Resolve a raw guessed name against eBird's taxonomy. Returns
+    (common_name, scientific_name, species_code, is_other)."""
+    if not common_name:
+        return None, None, None, False
+    resolved = find_species(common_name)
+    if resolved:
+        return resolved["common_name"], resolved["scientific_name"], resolved["species_code"], False
+    return common_name, None, None, True
 
 
 def _match_out_for_photo(db: Session, photo: Photo) -> dict:
@@ -92,17 +104,7 @@ def suggest_for_photo(cluster_id: str, photo_id: int, db: Session = Depends(get_
     except SpeciesClassifierError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    species_code = scientific_name = None
-    is_other = False
-    common_name = result["common_name"] or None
-    if common_name:
-        resolved = find_species(common_name)
-        if resolved:
-            common_name = resolved["common_name"]
-            scientific_name = resolved["scientific_name"]
-            species_code = resolved["species_code"]
-        else:
-            is_other = True
+    common_name, scientific_name, species_code, is_other = _resolve_guess(result["common_name"])
 
     return FallbackSuggestion(
         photo_id=photo_id,
@@ -116,6 +118,55 @@ def suggest_for_photo(cluster_id: str, photo_id: int, db: Session = Depends(get_
         ebird_checklist_url=None,
         is_other=is_other,
     )
+
+
+class SuggestBatchRequest(BaseModel):
+    photo_ids: list[int]
+
+
+@router.post("/{cluster_id}/suggest-batch", response_model=list[FallbackSuggestion])
+def suggest_batch(cluster_id: str, body: SuggestBatchRequest, db: Session = Depends(get_db)):
+    """Batch version of suggest (issue #5) -- one Claude call for every
+    checked photo instead of one round trip each. Particularly useful
+    here: a checklist-less cluster like a 50+ photo indoor falconry
+    session is exactly the "many photos, one at a time" problem #5 was
+    filed for. Same "nothing persisted yet" contract as the single-photo
+    version."""
+    photos = db.query(Photo).filter(Photo.id.in_(body.photo_ids)).all()
+    photos_by_id = {p.id: p for p in photos if p.url_medium}
+    if not photos_by_id:
+        return []
+
+    try:
+        results = guess_species_unconstrained_batch(
+            [
+                {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
+                for p in photos_by_id.values()
+            ]
+        )
+    except SpeciesClassifierNotConfigured as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (SpeciesClassifierError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    suggestions = []
+    for r in results:
+        common_name, scientific_name, species_code, is_other = _resolve_guess(r["common_name"])
+        suggestions.append(
+            FallbackSuggestion(
+                photo_id=r["photo_id"],
+                checklist_id=None,
+                is_bird=r["is_bird"],
+                common_name=common_name,
+                scientific_name=scientific_name,
+                species_code=species_code,
+                confidence=r["confidence"],
+                reasoning=r["reasoning"],
+                ebird_checklist_url=None,
+                is_other=is_other,
+            )
+        )
+    return suggestions
 
 
 class IdentifyRequest(BaseModel):

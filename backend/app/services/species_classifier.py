@@ -304,3 +304,143 @@ def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | N
         "confidence": float(result.get("confidence", 0.0)),
         "reasoning": result.get("reasoning", ""),
     }
+
+
+# Keeps the prompt (and cost) bounded to an actual "burst," not a whole
+# trip in one call -- see issue #5.
+MAX_BATCH_SIZE = 10
+
+BATCH_FALLBACK_TOOL = {
+    "name": "report_species_guesses",
+    "description": "Report your best guess for what's shown in each numbered photo.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "guesses": {
+                "type": "array",
+                "description": "One entry per photo, in the same order the photos were given.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "photo_number": {
+                            "type": "integer",
+                            "description": "The 1-based photo number this guess is for, matching the numbering used in the prompt.",
+                        },
+                        "is_bird": {
+                            "type": "boolean",
+                            "description": "Whether the photo clearly shows a bird.",
+                        },
+                        "common_name": {
+                            "type": "string",
+                            "description": (
+                                "Best guess at what's shown, bird or not -- a standard "
+                                "English bird common name if it is one, or a plain "
+                                "description otherwise (e.g. 'Dragonfly'). Empty string "
+                                "only if nothing identifiable is visible."
+                            ),
+                        },
+                        "confidence": {"type": "number", "description": "0.0 to 1.0."},
+                        "reasoning": {
+                            "type": "string",
+                            "description": "One brief sentence on the visual field marks used for this specific photo.",
+                        },
+                    },
+                    "required": ["photo_number", "is_bird", "common_name", "confidence", "reasoning"],
+                },
+            },
+        },
+        "required": ["guesses"],
+    },
+}
+
+
+def guess_species_unconstrained_batch(photos: list[dict]) -> list[dict]:
+    """Batch version of guess_species_unconstrained -- one Claude call for
+    up to MAX_BATCH_SIZE photos instead of one round trip per photo (issue
+    #5: a trip with many photos of the same species, e.g. Smith Island's
+    Tufted Puffins or a 50+ photo indoor falconry session, was both slow
+    one-at-a-time and judged each photo with zero context from its
+    neighbors).
+
+    `photos`: list of {"photo_id": int, "url": str, "title": str | None,
+    "tags": str | None}. Returns a list of {"photo_id": int, "is_bird":
+    bool, "common_name": str | None, "confidence": float, "reasoning":
+    str} -- not necessarily one result per input photo (the model can
+    skip one), so callers should key off the returned photo_id rather
+    than assume positional alignment.
+    """
+    if not settings.anthropic_api_key:
+        raise SpeciesClassifierNotConfigured(
+            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
+            "see .env.example for how to add it."
+        )
+    if not photos:
+        return []
+    if len(photos) > MAX_BATCH_SIZE:
+        raise ValueError(f"Batch too large ({len(photos)} photos) -- max is {MAX_BATCH_SIZE}")
+
+    content: list[dict] = []
+    for i, photo in enumerate(photos, start=1):
+        image_b64, media_type = _fetch_image_as_base64(photo["url"])
+        hints = " / ".join(h for h in (photo.get("title"), photo.get("tags")) if h)
+        label = f"Photo {i}" + (f" (title/tags: {hints})" if hints else "") + ":"
+        content.append({"type": "text", "text": label})
+        content.append(
+            {
+                "type": "image",
+                "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+            }
+        )
+
+    prompt = (
+        f"These are {len(photos)} numbered photos from the same birdwatching trip. "
+        "For EACH photo, identify what's shown -- if it's a bird, give its species; "
+        "if it's clearly not a bird, still give your best guess at what it is rather "
+        "than reporting nothing. Judge each photo on its own visual evidence -- they "
+        "may show the same species as each other, or different ones. Then call "
+        "report_species_guesses with exactly one entry per photo, in order."
+    )
+    content.append({"type": "text", "text": prompt})
+
+    payload = {
+        "model": settings.anthropic_model,
+        "max_tokens": 256 * len(photos) + 256,
+        "tools": [BATCH_FALLBACK_TOOL],
+        "tool_choice": {"type": "tool", "name": "report_species_guesses"},
+        "messages": [{"role": "user", "content": content}],
+    }
+    headers = {
+        "x-api-key": settings.anthropic_api_key,
+        "anthropic-version": ANTHROPIC_API_VERSION,
+        "content-type": "application/json",
+    }
+
+    try:
+        resp = requests.post(
+            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as exc:
+        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
+
+    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
+    if not tool_use_blocks:
+        raise SpeciesClassifierError(f"Expected a tool_use block in the response, got: {data}")
+
+    guesses = tool_use_blocks[0].get("input", {}).get("guesses", [])
+    results = []
+    for g in guesses:
+        idx = g.get("photo_number")
+        if not isinstance(idx, int) or not (1 <= idx <= len(photos)):
+            continue
+        results.append(
+            {
+                "photo_id": photos[idx - 1]["photo_id"],
+                "is_bird": bool(g.get("is_bird", False)),
+                "common_name": g.get("common_name") or None,
+                "confidence": float(g.get("confidence", 0.0)),
+                "reasoning": g.get("reasoning", ""),
+            }
+        )
+    return results

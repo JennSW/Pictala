@@ -21,6 +21,7 @@ not calling accept -- nothing was ever written, so there's nothing to undo.
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -40,6 +41,7 @@ from app.services.ebird_taxonomy import find_species
 from app.services.species_classifier import (
     guess_species,
     guess_species_unconstrained,
+    guess_species_unconstrained_batch,
     SpeciesClassifierNotConfigured,
     SpeciesClassifierError,
 )
@@ -214,6 +216,24 @@ def assign_species(
     }
 
 
+def _resolve_fallback_guess(common_name: str | None) -> tuple[str | None, str | None, str | None, bool]:
+    """Shared by the single and batch fallback endpoints: resolve a raw
+    guessed name against eBird's taxonomy. Returns (common_name,
+    scientific_name, species_code, is_other)."""
+    if not common_name:
+        return None, None, None, False
+    resolved = find_species(common_name)
+    if resolved:
+        return resolved["common_name"], resolved["scientific_name"], resolved["species_code"], False
+    # Not in eBird's bird taxonomy -- either genuinely not a bird (a
+    # dragonfly, a squirrel) or a bird named in a way the taxonomy
+    # doesn't recognize. Either way this is a legitimate "Other" guess to
+    # offer, not an error to discard -- the model still gets to propose
+    # *something*, per the non-bird case discovered live
+    # (docs/USER_STORIES.md, "Species ID fallback for eBird gaps").
+    return common_name, None, None, True
+
+
 @router.post("/{checklist_id}/suggest-fallback/{photo_id}", response_model=FallbackSuggestion)
 def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get_db)):
     """Broader, unconstrained guess for a photo that doesn't match any of
@@ -236,24 +256,7 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
     except SpeciesClassifierError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    species_code = scientific_name = None
-    is_other = False
-    common_name = result["common_name"] or None
-    if common_name:
-        resolved = find_species(common_name)
-        if resolved:
-            common_name = resolved["common_name"]
-            scientific_name = resolved["scientific_name"]
-            species_code = resolved["species_code"]
-        else:
-            # Not in eBird's bird taxonomy -- either genuinely not a bird
-            # (a dragonfly, a squirrel) or a bird named in a way the
-            # taxonomy doesn't recognize. Either way this is a legitimate
-            # "Other" guess to offer, not an error to discard -- the model
-            # still gets to propose *something*, per the non-bird case
-            # discovered live (docs/USER_STORIES.md, "Species ID fallback
-            # for eBird gaps").
-            is_other = True
+    common_name, scientific_name, species_code, is_other = _resolve_fallback_guess(result["common_name"])
 
     return FallbackSuggestion(
         photo_id=photo_id,
@@ -267,6 +270,57 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
         ebird_checklist_url=ebird_checklist_url(checklist),
         is_other=is_other,
     )
+
+
+class SuggestFallbackBatchRequest(BaseModel):
+    photo_ids: list[int]
+
+
+@router.post("/{checklist_id}/suggest-fallback-batch", response_model=list[FallbackSuggestion])
+def suggest_fallback_batch(checklist_id: int, body: SuggestFallbackBatchRequest, db: Session = Depends(get_db)):
+    """Batch version of suggest-fallback (issue #5) -- one Claude call for
+    every checked photo instead of one round trip each. Same "nothing
+    persisted yet" contract as the single-photo version; the caller
+    still accepts each result individually via accept-fallback."""
+    checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Checklist not found")
+
+    photos = db.query(Photo).filter(Photo.id.in_(body.photo_ids)).all()
+    photos_by_id = {p.id: p for p in photos if p.url_medium}
+    if not photos_by_id:
+        return []
+
+    try:
+        results = guess_species_unconstrained_batch(
+            [
+                {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
+                for p in photos_by_id.values()
+            ]
+        )
+    except SpeciesClassifierNotConfigured as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (SpeciesClassifierError, ValueError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    suggestions = []
+    for r in results:
+        common_name, scientific_name, species_code, is_other = _resolve_fallback_guess(r["common_name"])
+        suggestions.append(
+            FallbackSuggestion(
+                photo_id=r["photo_id"],
+                checklist_id=checklist_id,
+                is_bird=r["is_bird"],
+                common_name=common_name,
+                scientific_name=scientific_name,
+                species_code=species_code,
+                confidence=r["confidence"],
+                reasoning=r["reasoning"],
+                ebird_checklist_url=ebird_checklist_url(checklist),
+                is_other=is_other,
+            )
+        )
+    return suggestions
 
 
 @router.post("/{checklist_id}/accept-fallback/{photo_id}", response_model=MatchOut)

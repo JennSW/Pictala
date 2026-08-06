@@ -182,6 +182,22 @@ export async function suggestFallback(
   return res.json();
 }
 
+// Batch version (issue #5) -- one Claude call for every checked photo
+// instead of one round trip each. Same "nothing persisted yet" contract;
+// caller still accepts each result individually.
+export async function suggestFallbackBatch(
+  checklistId: number,
+  photoIds: number[]
+): Promise<FallbackSuggestion[]> {
+  const res = await fetch(`${API_BASE}/match/${checklistId}/suggest-fallback-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_ids: photoIds }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
 // Submit a name for this photo -- typed by hand, or accepted from an
 // unconstrained AI guess. The backend resolves it (checklist's own
 // species -> eBird's full taxonomy -> plain note) rather than trusting
@@ -266,6 +282,20 @@ export async function suggestUnassignedFallback(
 ): Promise<FallbackSuggestion> {
   const res = await fetch(`${API_BASE}/unassigned/${clusterId}/suggest/${photoId}`, {
     method: "POST",
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// Batch version (issue #5) -- see suggestFallbackBatch's comment.
+export async function suggestUnassignedFallbackBatch(
+  clusterId: string,
+  photoIds: number[]
+): Promise<FallbackSuggestion[]> {
+  const res = await fetch(`${API_BASE}/unassigned/${clusterId}/suggest-batch`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ photo_ids: photoIds }),
   });
   if (!res.ok) throw new Error(await readErrorDetail(res));
   return res.json();
