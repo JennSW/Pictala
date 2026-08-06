@@ -132,6 +132,13 @@ export default function App() {
     fetchSyncStatus()
       .then(setSyncStatus)
       .catch((e) => setError(String(e)));
+    // Fetched eagerly (not just when "Photos not on eBird" is opened) so
+    // the calendar can mark checklist-less dates as available too --
+    // otherwise a date like July 11 (real photos, no checklist) looks
+    // identical to a date with nothing at all.
+    fetchUnassignedClusters()
+      .then(setClusters)
+      .catch((e) => setError(String(e)));
   }, []);
 
   async function performSync() {
@@ -184,6 +191,16 @@ export default function App() {
     }
   }
 
+  function viewClustersForDate() {
+    setShowUnassigned(true);
+    const matches = clusters.filter((c) => c.date === selectedDate);
+    if (matches.length === 1) {
+      openCluster(matches[0].id);
+    } else {
+      setSelectedCluster(null);
+    }
+  }
+
   async function openCluster(clusterId: string) {
     try {
       setSelectedCluster(await fetchUnassignedCluster(clusterId));
@@ -231,8 +248,13 @@ export default function App() {
     }
   }
 
-  const availableDates = new Set(outings.map((o) => o.date));
+  // Union of checklist-backed outing dates and checklist-less cluster
+  // dates -- a date like July 11 (real photos, no eBird checklist)
+  // needs to show as available too, not look identical to a date with
+  // nothing at all.
+  const availableDates = new Set([...outings.map((o) => o.date), ...clusters.map((c) => c.date)]);
   const visibleOutings = selectedDate ? outings.filter((o) => o.date === selectedDate) : outings;
+  const clustersForSelectedDate = selectedDate ? clusters.filter((c) => c.date === selectedDate) : [];
 
   async function openOuting(id: number) {
     try {
@@ -589,6 +611,12 @@ export default function App() {
               <li>No outings on this date.</li>
             )}
           </ul>
+
+          {clustersForSelectedDate.length > 0 && (
+            <button className="btn" onClick={viewClustersForDate} style={{ marginBottom: "var(--space-3)" }}>
+              {clustersForSelectedDate.reduce((sum, c) => sum + c.photo_count, 0)} photos not on eBird for this date
+            </button>
+          )}
 
           <button className="btn" onClick={loadUnassigned} style={{ marginTop: "var(--space-3)" }}>
             Photos not on eBird
