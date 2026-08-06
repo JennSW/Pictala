@@ -26,9 +26,44 @@ import {
   SyncStatus,
   ClusterSummary,
   ClusterDetail,
+  MatchEntry,
 } from "./api";
 import DatePicker from "./DatePicker";
+import PhotoLightbox, { LightboxEntry } from "./PhotoLightbox";
 import "./theme.css";
+
+// Read-only status/species summary for the lightbox (issue #44) --
+// mirrors the badge language each grid already shows, recomputed here
+// since the lightbox needs it for every photo in the list, not just
+// the one currently open.
+function outingLightboxEntry(m: MatchEntry): LightboxEntry {
+  const needsReview = Boolean(m.observation) && !m.reviewed_at;
+  const isNote = Boolean(m.fallback_common_name) && !m.fallback_scientific_name && m.confidence === 1;
+  let statusLabel: string;
+  if (m.observation) {
+    statusLabel = needsReview ? "Needs review" : "Confirmed";
+  } else if (m.fallback_common_name) {
+    statusLabel = m.fallback_scientific_name ? "Off checklist" : isNote ? "Note" : "Other";
+  } else {
+    statusLabel = "Unmatched";
+  }
+  return {
+    photo: m.photo,
+    statusLabel,
+    speciesLabel: m.observation?.common_name ?? m.fallback_common_name ?? null,
+    scientificName: m.observation?.scientific_name ?? m.fallback_scientific_name ?? null,
+  };
+}
+
+function clusterLightboxEntry(m: MatchEntry): LightboxEntry {
+  const identified = Boolean(m.fallback_common_name);
+  return {
+    photo: m.photo,
+    statusLabel: identified ? (m.fallback_scientific_name ? "Identified" : "Not on eBird") : "Unidentified",
+    speciesLabel: m.fallback_common_name ?? null,
+    scientificName: m.fallback_scientific_name ?? null,
+  };
+}
 
 // Per-photo state for the "Suggest species" flow (Strategy B). Keyed by
 // photo id. Nothing here is persisted until the user clicks Accept --
@@ -132,6 +167,16 @@ export default function App() {
   const [checkedPhotos, setCheckedPhotos] = useState<Record<number, boolean>>({});
   const [batchSuggesting, setBatchSuggesting] = useState(false);
   const MAX_BATCH_PHOTOS = 10;
+
+  // Inline photo lightbox (issue #44) -- a modal, not a new-tab
+  // navigation, so looking at a photo closer never loses page state
+  // (see #45). Read-only status/species context, deliberately no
+  // actions and no prev/next -- see PhotoLightbox.tsx for why.
+  const [lightboxEntry, setLightboxEntry] = useState<LightboxEntry | null>(null);
+
+  function closeLightbox() {
+    setLightboxEntry(null);
+  }
 
   useEffect(() => {
     fetchOutings()
@@ -725,13 +770,13 @@ export default function App() {
                     return (
                       <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                         {m.photo.url_medium ? (
-                          m.photo.flickr_url ? (
-                            <a href={m.photo.flickr_url} target="_blank" rel="noreferrer">
-                              <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
-                            </a>
-                          ) : (
-                            <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
-                          )
+                          <img
+                            src={m.photo.url_medium}
+                            alt={m.photo.title ?? ""}
+                            width={180}
+                            style={{ cursor: "pointer" }}
+                            onClick={() => setLightboxEntry(clusterLightboxEntry(m))}
+                          />
                         ) : (
                           <div className="photo-placeholder" />
                         )}
@@ -914,13 +959,13 @@ export default function App() {
                       {index + 1}
                     </span>
                     {m.photo.url_medium ? (
-                      m.photo.flickr_url ? (
-                        <a href={m.photo.flickr_url} target="_blank" rel="noreferrer">
-                          <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
-                        </a>
-                      ) : (
-                        <img src={m.photo.url_medium} alt={m.photo.title ?? ""} width={180} />
-                      )
+                      <img
+                        src={m.photo.url_medium}
+                        alt={m.photo.title ?? ""}
+                        width={180}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => setLightboxEntry(outingLightboxEntry(m))}
+                      />
                     ) : (
                       <div className="photo-placeholder" />
                     )}
@@ -1428,6 +1473,8 @@ export default function App() {
       </div>
       )}
       </div>
+
+      {lightboxEntry && <PhotoLightbox entry={lightboxEntry} onClose={closeLightbox} />}
     </div>
   );
 }
