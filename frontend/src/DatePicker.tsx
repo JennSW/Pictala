@@ -23,7 +23,14 @@ export default function DatePicker({ availableDates, selected, onSelect }: DateP
       mode="single"
       selected={selectedDate}
       defaultMonth={new Date()}
-      onSelect={(date) => onSelect(date ? format(date, ISO_FORMAT) : null)}
+      // DayPicker's single mode toggles a date off (fires onSelect with
+      // undefined) if you click the already-selected one again -- that
+      // clashes with there already being a dedicated "Clear date" button
+      // as the one deliberate way to reset, and left the outings list
+      // and the "Photos not on eBird" panel out of sync with each other
+      // on a repeat click (issue found live 2026-08-06). Ignoring the
+      // deselect event keeps a click on the current date a no-op instead.
+      onSelect={(date) => date && onSelect(format(date, ISO_FORMAT))}
       disabled={(date) => !availableDates.has(format(date, ISO_FORMAT))}
       aria-label="Jump to a specific outing date"
     />
