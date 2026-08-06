@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BirdTrip — Outing grouping mockup (issue #43)</title>
+<link rel="stylesheet" href="../../frontend/src/theme.css">
+<style>
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: var(--space-6);
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-5); }
+  .toolbar h1 { margin: 0; font-size: var(--text-xl); }
+  .toolbar p { color: var(--text-muted); margin: 4px 0 0; font-size: var(--text-sm); }
+  .toggle-btn { font: inherit; padding: var(--space-2) var(--space-4); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; }
+  .toggle-btn.active { font-weight: 600; border-color: var(--primary); color: var(--primary); }
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+  .col-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .count-badge { font-size: var(--text-xs); padding: 2px 10px; border-radius: var(--radius-md); font-weight: 600; }
+  .col-title { font-size: var(--text-sm); font-weight: 600; }
+  .photo-card { display: flex; align-items: center; gap: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2); margin-bottom: var(--space-2); box-shadow: var(--shadow-card); }
+  .photo-card img { width: 44px; height: 44px; object-fit: cover; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .photo-card .label { font-size: var(--text-sm); font-weight: 600; }
+  .photo-card .label.unid { color: var(--text-muted); font-weight: 400; }
+  .photo-card .sub { font-size: var(--text-xs); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .no-photo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); display: flex; align-items: center; gap: var(--space-2); }
+  .no-photo-card .label { font-size: var(--text-sm); font-weight: 600; }
+  .no-photo-card .sub { font-size: var(--text-xs); color: var(--text-faint); }
+  .notes { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border); font-size: var(--text-sm); color: var(--text-muted); }
+  .notes li { margin-bottom: var(--space-2); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>
+    <h1>Marymoor Park — 2026-05-04</h1>
+    <p>17 photos · 5 species — rough mockup, not final, see docs/USER_STORIES.md #43</p>
+  </div>
+  <div>
+    <button class="toggle-btn active" id="btn-before" onclick="setMode('before')">Before review</button>
+    <button class="toggle-btn" id="btn-after" onclick="setMode('after')">After review</button>
+  </div>
+</div>
+
+<div id="before-view" class="cols">
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--success-bg); color: var(--success);">4</span>
+      <span class="col-title">eBird + Flickr match</span>
+    </div>
+    <div class="stack" data-set="ebird"></div>
+  </div>
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--warning-bg); color: var(--warning);">5</span>
+      <span class="col-title">Flickr + best guess</span>
+    </div>
+    <div class="stack" data-set="guess"></div>
+  </div>
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--neutral-bg); color: var(--neutral);">8</span>
+      <span class="col-title">Needs Claude</span>
+    </div>
+    <div class="stack" data-set="unknown"></div>
+  </div>
+</div>
+
+<div id="after-view" class="cols" style="display: none;">
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--success-bg); color: var(--success);">4</span>
+      <span class="col-title">eBird + Flickr matched</span>
+    </div>
+    <div class="stack" data-set="ebird"></div>
+  </div>
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--warning-bg); color: var(--warning);">5</span>
+      <span class="col-title">On Flickr, not on eBird</span>
+    </div>
+    <div class="stack" data-set="guess"></div>
+  </div>
+  <div>
+    <div class="col-header">
+      <span class="count-badge" style="background: var(--neutral-bg); color: var(--neutral);">1</span>
+      <span class="col-title">On eBird, not on Flickr</span>
+    </div>
+    <div class="no-photo-card">
+      <div>
+        <div class="label">Brown-headed Cowbird</div>
+        <div class="sub">Reported, no photo yet</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ul class="notes">
+  <li>The "Flickr + best guess" / "on Flickr, not on eBird" column has identical contents before and after review -- same 5 Heron photos, just relabeled. Worth deciding if the relabel is necessary.</li>
+  <li>"Needs Claude" disappears entirely after review, implicitly assuming everything unmatched gets triaged by the time an outing is marked reviewed. Confirm whether that's a hard requirement, or whether leftover unidentified photos need their own "still unresolved" column even after review.</li>
+  <li>"On eBird, not on Flickr" is a different kind of thing than the other columns -- a species with no photo, not a photo with a label. Decide whether it belongs in the same grid or set apart visually.</li>
+</ul>
+
+<script>
+const photos = {
+  ebird: [
+    {t:"Common Yellowthroat", s:"May 4 Marymoor Common Yellowthroat", u:"https://live.staticflickr.com/65535/55249783869_9418fa2a1d.jpg"},
+    {t:"Common Yellowthroat", s:"May 4 Marymoor Common Yellowthroat", u:"https://live.staticflickr.com/65535/55249783914_3bbca02c95.jpg"},
+    {t:"Bald Eagle", s:"May 4 Juvenile Bald Eagle", u:"https://live.staticflickr.com/65535/55249543011_cbfe7c1d80.jpg"},
+    {t:"Tree Swallow", s:"May 4 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55249784009_b3530bcff4.jpg"}
+  ],
+  guess: [
+    {t:"Great Blue Heron", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249946885_2e00e2fb58.jpg"},
+    {t:"Great Blue Heron", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249784094_8a97efe80a.jpg"},
+    {t:"Great Blue Heron", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55248645297_5fe275710f.jpg"},
+    {t:"Great Blue Heron", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249784154_4cb85d9ce7.jpg"},
+    {t:"Great Blue Heron", s:"May 4 Marymoor Heron Flying", u:"https://live.staticflickr.com/65535/55249543071_553d9eaaef.jpg"}
+  ],
+  unknown: [
+    {t:null, s:"May 4-14 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55248645142_2f18771dc0.jpg"},
+    {t:null, s:"May 4 Martins", u:"https://live.staticflickr.com/65535/55249946850_6224815070.jpg"},
+    {t:null, s:"May 4 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55249784024_c51f0521b3.jpg"},
+    {t:null, s:"May 4 Marymoor Song Sparrow", u:"https://live.staticflickr.com/65535/55249543091_800090f81e.jpg"},
+    {t:null, s:"May 4 Marymoor Duck Family", u:"https://live.staticflickr.com/65535/55249691263_0d21cda5a4.jpg"},
+    {t:null, s:"May 4 Marymoor Gadwall", u:"https://live.staticflickr.com/65535/55248645242_30282bda25.jpg"},
+    {t:null, s:"May 4 Marymoor Pathway", u:"https://live.staticflickr.com/65535/55249691513_0d0b376b29.jpg"},
+    {t:null, s:"May 4 Marymoor Cowbird", u:"https://live.staticflickr.com/65535/55249946815_9a20135e96.jpg"}
+  ]
+};
+
+function card(p) {
+  var labelHtml = p.t
+    ? '<div class="label">' + p.t + '</div>'
+    : '<div class="label unid">Unidentified</div>';
+  return '<div class="photo-card"><img src="' + p.u + '" alt="">' +
+    '<div>' + labelHtml + '<div class="sub">' + p.s + '</div></div></div>';
+}
+
+document.querySelectorAll('.stack').forEach(function (el) {
+  el.innerHTML = photos[el.dataset.set].map(card).join('');
+});
+
+function setMode(mode) {
+  document.getElementById('before-view').style.display = mode === 'before' ? 'grid' : 'none';
+  document.getElementById('after-view').style.display = mode === 'after' ? 'grid' : 'none';
+  document.getElementById('btn-before').classList.toggle('active', mode === 'before');
+  document.getElementById('btn-after').classList.toggle('active', mode === 'after');
+}
+</script>
+</body>
+</html>
