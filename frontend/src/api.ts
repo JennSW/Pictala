@@ -288,3 +288,16 @@ export async function identifyUnassignedPhoto(
   if (!res.ok) throw new Error(await readErrorDetail(res));
   return res.json();
 }
+
+export async function moveToCluster(
+  fromClusterId: string,
+  photoId: number,
+  toClusterId: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/unassigned/${fromClusterId}/move/${photoId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to_cluster_id: toClusterId }),
+  });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+}

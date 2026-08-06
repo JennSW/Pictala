@@ -162,3 +162,37 @@ def identify_photo(cluster_id: str, photo_id: int, body: IdentifyRequest, db: Se
     db.refresh(match)
 
     return _match_out_for_photo(db, photo)
+
+
+class MoveRequest(BaseModel):
+    to_cluster_id: str
+
+
+@router.post("/{cluster_id}/move/{photo_id}")
+def move_photo(cluster_id: str, photo_id: int, body: MoveRequest, db: Session = Depends(get_db)):
+    """Moves a photo into a different checklist-less cluster by setting
+    its date_taken to match the target cluster's earliest photo --
+    clustering is purely date-proximity-driven (see photo_clusters.py),
+    so this is the same "fix the underlying field, let derived behavior
+    follow" approach the timezone-mismatch Adjust action uses, not a
+    separate override concept. For a photo whose real capture time is
+    known to be wrong or misleading (e.g. a re-exported duplicate that
+    picked up a different timestamp than its sibling -- see issue #35),
+    this is the actual fix, not a workaround."""
+    photo = db.query(Photo).filter(Photo.id == photo_id).one_or_none()
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    target = get_cluster(db, body.to_cluster_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="Target cluster not found")
+
+    target_photos = db.query(Photo).filter(Photo.id.in_(target["photo_ids"])).all()
+    if not target_photos:
+        raise HTTPException(status_code=400, detail="Target cluster is empty")
+
+    earliest = min(datetime.fromisoformat(p.date_taken) for p in target_photos)
+    photo.date_taken = earliest.strftime("%Y-%m-%d %H:%M:%S")
+    db.commit()
+
+    return {"date_taken": photo.date_taken}

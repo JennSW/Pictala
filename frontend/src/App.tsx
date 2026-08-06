@@ -15,6 +15,7 @@ import {
   fetchUnassignedCluster,
   suggestUnassignedFallback,
   identifyUnassignedPhoto,
+  moveToCluster,
   OutingSummary,
   OutingDetail,
   SpeciesSuggestion,
@@ -216,6 +217,17 @@ export default function App() {
       setError(String(e));
     } finally {
       setClusterSaving((prev) => ({ ...prev, [photoId]: false }));
+    }
+  }
+
+  async function handleMoveToCluster(photoId: number, toClusterId: string) {
+    if (!selectedCluster || !toClusterId) return;
+    try {
+      await moveToCluster(selectedCluster.id, photoId, toClusterId);
+      setClusters(await fetchUnassignedClusters());
+      setSelectedCluster(await fetchUnassignedCluster(selectedCluster.id));
+    } catch (e) {
+      setError(String(e));
     }
   }
 
@@ -644,6 +656,22 @@ export default function App() {
                                 </button>
                               </div>
                             </div>
+                          )}
+                          {clusters.filter((c) => c.date === selectedCluster.date && c.id !== selectedCluster.id).length > 0 && (
+                            <select
+                              value=""
+                              onChange={(e) => handleMoveToCluster(m.photo.id, e.target.value)}
+                              style={{ marginTop: "var(--space-2)", width: "100%", fontSize: "var(--text-xs)" }}
+                            >
+                              <option value="">Move to another group…</option>
+                              {clusters
+                                .filter((c) => c.date === selectedCluster.date && c.id !== selectedCluster.id)
+                                .map((c) => (
+                                  <option key={c.id} value={c.id}>
+                                    Group of {c.photo_count} ({c.id})
+                                  </option>
+                                ))}
+                            </select>
                           )}
                         </figcaption>
                       </figure>
