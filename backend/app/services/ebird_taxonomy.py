@@ -43,3 +43,24 @@ def find_species(common_name: str) -> dict | None:
                 "scientific_name": entry["sciName"],
             }
     return None
+
+
+def resolve_guess(common_name: str | None) -> tuple[str | None, str | None, str | None, bool]:
+    """Resolve a raw guessed name (from an AI suggestion or a hand-typed
+    note) against eBird's taxonomy. Returns (common_name,
+    scientific_name, species_code, is_other). Shared by every fallback-ID
+    endpoint -- checklist-scoped (match.py) and checklist-less
+    (unassigned.py) alike -- since resolving a guess against the
+    taxonomy doesn't care which flow it came from."""
+    if not common_name:
+        return None, None, None, False
+    resolved = find_species(common_name)
+    if resolved:
+        return resolved["common_name"], resolved["scientific_name"], resolved["species_code"], False
+    # Not in eBird's bird taxonomy -- either genuinely not a bird (a
+    # dragonfly, a squirrel) or a bird named in a way the taxonomy
+    # doesn't recognize. Either way this is a legitimate "Other" guess to
+    # offer, not an error to discard -- the model still gets to propose
+    # *something*, per the non-bird case discovered live
+    # (docs/USER_STORIES.md, "Species ID fallback for eBird gaps").
+    return common_name, None, None, True

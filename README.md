@@ -23,4 +23,5 @@ root directory to just this README and whatever's current.
 - [2026-07-31, 2:35 PM](docs/README-2026-07-31-1435.md)
 - [2026-08-04, 12:01 PM](docs/README-2026-08-04-1201.md)
 - [2026-08-05, 11:53 AM](docs/README-2026-08-05-1153.md)
-- [2026-08-06, 1:32 PM](README-2026-08-06-1332.md)
+- [2026-08-06, 1:32 PM](docs/README-2026-08-06-1332.md)
+- [2026-08-07, 12:03 AM](README-2026-08-07-0003.md)

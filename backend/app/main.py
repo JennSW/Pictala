@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import Base, engine
+from app.db import Base, engine, add_missing_columns
 from app.routers import outings, sync, match, search, unassigned
 
 Base.metadata.create_all(bind=engine)
+add_missing_columns()
 
 app = FastAPI(
     title="BirdTrip API",

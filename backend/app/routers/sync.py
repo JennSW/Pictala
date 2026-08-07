@@ -15,6 +15,7 @@ from app.services.ebird_import import import_ebird_csv
 from app.services.flickr_client import get_photos_in_range
 from app.services.flickr_exif import get_utc_offset
 from app.services.matcher import run_rule_based_matching
+from app.services.duplicate_detection import recompute_and_store
 from app.models import Photo, SyncLog
 
 router = APIRouter(prefix="/sync", tags=["sync"])
@@ -98,6 +99,14 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
         )
         created += 1
     db.commit()
+
+    # Recompute duplicate flags here, at write time, once -- not on every
+    # outing/cluster page load. Only worth it if titles/data actually
+    # changed (a title edit on Flickr is the only thing that can move a
+    # photo in or out of a duplicate group).
+    if created or updated:
+        recompute_and_store(db)
+
     return {"photos_created": created, "photos_updated": updated}
 
 

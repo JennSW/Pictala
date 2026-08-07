@@ -43,6 +43,19 @@ Same calendar day, not exact date_taken: a real duplicate pair found
 live on 2026-08-06 (photo 348, "July 11-02239-2") had a *different*
 exact timestamp than its non-suffixed sibling, because one export had
 real EXIF and the other fell back to upload time.
+
+Scale note: detection itself needs a full-library scan (there's no way
+to know a photo is a duplicate without comparing it against the rest of
+the library), but that scan only needs to happen once per sync, not
+once per page view. `compute_duplicate_group_keys` below is the pure
+algorithm (easy to unit test, no DB writes); `recompute_and_store`
+runs it once and persists the result onto `Photo.duplicate_group_key`
+(see models.py); `get_duplicates_for_photo` is the cheap read path a
+request actually takes -- one indexed `WHERE duplicate_group_key = ?`
+instead of re-deriving the whole library's groups on every request.
+Three call sites (outings.py, unassigned.py x2) all used to pay the
+full scan on every single page load; now they don't pay anything extra
+at all.
 """
 import re
 
@@ -70,37 +83,76 @@ def _looks_like_a_frame_number(base_title: str) -> bool:
     return bool(m) and len(m.group(1)) >= MIN_FRAME_NUMBER_DIGITS
 
 
-def find_duplicate_groups(db: Session) -> dict[int, list[int]]:
-    """Returns {photo_id: [other photo ids sharing its duplicate
-    group]} for every photo with at least one likely duplicate --
-    see module docstring for the matching rule."""
-    photos = db.query(Photo).filter(Photo.title.isnot(None)).all()
+def compute_duplicate_group_keys(photos: list[Photo]) -> dict[int, str]:
+    """Pure function: given a list of photos, returns {photo_id: group
+    key} for every photo that's part of a likely-duplicate group -- see
+    module docstring for the matching rule. No DB access here, so this
+    is straightforward to unit test against a list of fake Photo rows.
 
+    The group key itself (not an arbitrary id) is what two duplicate
+    photos share -- "{base title}|{calendar day}" -- so grouping is just
+    "do these rows have the same string", both here and at read time."""
     # (exact title, calendar day) -> photos with that exact title on
     # that day -- the lookup used to check "does the stripped base
     # exist as its own real photo".
     by_exact: dict[tuple[str, str], list[Photo]] = {}
     for p in photos:
+        if not p.title:
+            continue
         day = (p.date_taken or "")[:10]
         if not day:
             continue
         by_exact.setdefault((p.title.strip().lower(), day), []).append(p)
 
-    result: dict[int, list[int]] = {}
+    result: dict[int, str] = {}
     for p in photos:
+        if not p.title:
+            continue
         day = (p.date_taken or "")[:10]
         if not day:
             continue
         base = _strip_suffix(p.title)
         if not base or not _looks_like_a_frame_number(base):
             continue
-        base_matches = by_exact.get((base.lower(), day), [])
+        base_key = (base.lower(), day)
+        base_matches = by_exact.get(base_key, [])
         if not base_matches:
             continue
-        group_ids = {p.id} | {m.id for m in base_matches}
-        for gid in group_ids:
-            existing = result.setdefault(gid, [])
-            for other in group_ids:
-                if other != gid and other not in existing:
-                    existing.append(other)
+        group_key = f"{base_key[0]}|{base_key[1]}"
+        result[p.id] = group_key
+        for m in base_matches:
+            result[m.id] = group_key
     return result
+
+
+def recompute_and_store(db: Session) -> int:
+    """Run duplicate detection once over the whole library and persist
+    the result onto Photo.duplicate_group_key -- call this from the
+    sync pipeline (see sync.py), not from a request handler. Clears the
+    key on photos no longer in any group (a title edit on Flickr can
+    dissolve a group between syncs), so this is safe to call repeatedly.
+    Returns the number of photos whose stored key actually changed."""
+    photos = db.query(Photo).all()
+    new_keys = compute_duplicate_group_keys(photos)
+    changed = 0
+    for p in photos:
+        key = new_keys.get(p.id)
+        if p.duplicate_group_key != key:
+            p.duplicate_group_key = key
+            changed += 1
+    db.commit()
+    return changed
+
+
+def get_duplicates_for_photo(db: Session, photo: Photo) -> list[Photo]:
+    """Cheap read-time lookup -- an indexed equality query, not a
+    library scan. Empty list if `photo` isn't part of any stored group
+    (including if a sync hasn't run since duplicate_group_key was
+    added -- see recompute_and_store)."""
+    if not photo.duplicate_group_key:
+        return []
+    return (
+        db.query(Photo)
+        .filter(Photo.duplicate_group_key == photo.duplicate_group_key, Photo.id != photo.id)
+        .all()
+    )

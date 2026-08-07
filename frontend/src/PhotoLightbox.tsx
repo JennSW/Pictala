@@ -27,7 +27,7 @@ function largeFlickrUrl(urlMedium: string | null): string | null {
 // we already know," not a second place to do the review workflow.
 export interface LightboxEntry {
   photo: Photo;
-  statusLabel: string;
+  statusLabel: string | null;
   speciesLabel: string | null;
   scientificName: string | null;
 }
@@ -94,7 +94,7 @@ export default function PhotoLightbox({ entry, onClose }: PhotoLightboxProps) {
           <div style={{ color: "white" }}>No image available</div>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)", color: "white" }}>
-          <span className="badge badge-neutral">{entry.statusLabel}</span>
+          {entry.statusLabel && <span className="badge badge-neutral">{entry.statusLabel}</span>}
           {entry.speciesLabel && (
             <span>
               {entry.speciesLabel}

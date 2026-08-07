@@ -12,7 +12,6 @@ import {
   acceptFallback,
   searchBySpecies,
   fetchSyncStatus,
-  runSync,
   adjustTimezone,
   fetchUnassignedClusters,
   fetchUnassignedCluster,
@@ -32,6 +31,7 @@ import {
 } from "./api";
 import DatePicker from "./DatePicker";
 import PhotoLightbox, { LightboxEntry } from "./PhotoLightbox";
+import SyncPanel from "./SyncPanel";
 import "./theme.css";
 
 // Read-only status/species summary for the lightbox (issue #44) --
@@ -40,15 +40,14 @@ import "./theme.css";
 // the one currently open.
 function outingLightboxEntry(m: MatchEntry): LightboxEntry {
   const needsReview = Boolean(m.observation) && !m.reviewed_at;
-  const isNote = Boolean(m.fallback_common_name) && !m.fallback_scientific_name && m.confidence === 1;
-  let statusLabel: string;
-  if (m.observation) {
-    statusLabel = needsReview ? "Needs review" : "Confirmed";
-  } else if (m.fallback_common_name) {
-    statusLabel = m.fallback_scientific_name ? "Off checklist" : isNote ? "Note" : "Other";
-  } else {
-    statusLabel = "Unmatched";
-  }
+  // Only status shown here is "Unconfirmed" (issue #47) -- the grid's
+  // more specific language (Needs review/Off checklist/Note/Other/
+  // Unmatched) is diagnostic detail that belongs in the review workflow,
+  // not this read-only glance. Confirmed photos show no badge at all.
+  // A fallback label (manual/AI-accepted/note) counts as confirmed too --
+  // it already required a person to look and agree (see issue #32).
+  const confirmed = m.observation ? !needsReview : Boolean(m.fallback_common_name);
+  const statusLabel = confirmed ? null : "Unconfirmed";
   return {
     photo: m.photo,
     statusLabel,
@@ -132,13 +131,12 @@ export default function App() {
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
   const [searching, setSearching] = useState(false);
 
-  // Manual "Sync now" button (docs/USER_STORIES.md, "Story: Manual
-  // sync") -- capped server-side at 4/day. confirmLastSync gates the
-  // last available sync of the day behind an explicit "sync anyway"
-  // step, so a click doesn't silently burn the last one.
+  // Sync status is still read here (the calendar/outings-list panel
+  // needs it), but the button/confirm-last-sync/syncing state itself
+  // lives in SyncPanel.tsx now -- it doesn't share anything with the
+  // rest of this component beyond "here's the current status" and "a
+  // sync just finished, here's the fresh data."
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [confirmLastSync, setConfirmLastSync] = useState(false);
 
   // Timezone-mismatch "Adjust" action (issue #6) -- per-photo loading
   // state since it's a per-card button.
@@ -204,32 +202,6 @@ export default function App() {
       .then(setClusters)
       .catch((e) => setError(String(e)));
   }, []);
-
-  async function performSync() {
-    setSyncing(true);
-    setConfirmLastSync(false);
-    try {
-      await runSync();
-      const [status, freshOutings] = await Promise.all([fetchSyncStatus(), fetchOutings()]);
-      setSyncStatus(status);
-      setOutings(freshOutings);
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setSyncing(false);
-    }
-  }
-
-  function handleSyncClick() {
-    // Warn before the last available sync of the day rather than just
-    // burning it, so the user can choose to wait for more Flickr
-    // uploads first.
-    if (syncStatus && syncStatus.remaining === 1 && !confirmLastSync) {
-      setConfirmLastSync(true);
-      return;
-    }
-    performSync();
-  }
 
   async function handleAdjustTimezone(checklistId: number, photoId: number) {
     setAdjustingTimezone((prev) => ({ ...prev, [photoId]: true }));
@@ -687,42 +659,14 @@ export default function App() {
             </button>
           )}
 
-          <div className="card" style={{ marginBottom: "var(--space-4)", padding: "var(--space-3)" }}>
-            {syncStatus && (
-              <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: "var(--space-2)" }}>
-                {syncStatus.remaining > 0
-                  ? `${syncStatus.remaining} of ${syncStatus.limit} syncs left today`
-                  : "No syncs left today — resets at midnight"}
-                {syncStatus.last_synced_at && (
-                  <>
-                    <br />
-                    Last synced {new Date(syncStatus.last_synced_at).toLocaleTimeString()}
-                  </>
-                )}
-              </div>
-            )}
-            {confirmLastSync ? (
-              <div>
-                <p style={{ fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
-                  This is your last sync available today. Wait for more Flickr uploads first?
-                </p>
-                <button className="btn btn-primary" onClick={performSync} disabled={syncing}>
-                  {syncing ? "Syncing…" : "Sync anyway"}
-                </button>{" "}
-                <button className="btn" onClick={() => setConfirmLastSync(false)}>
-                  Wait
-                </button>
-              </div>
-            ) : (
-              <button
-                className="btn"
-                onClick={handleSyncClick}
-                disabled={syncing || syncStatus?.remaining === 0}
-              >
-                {syncing ? "Syncing…" : "Sync now"}
-              </button>
-            )}
-          </div>
+          <SyncPanel
+            syncStatus={syncStatus}
+            onSynced={(status, freshOutings) => {
+              setSyncStatus(status);
+              setOutings(freshOutings);
+            }}
+            onError={(message) => setError(message)}
+          />
 
           <ul style={{ listStyle: "none", padding: 0 }}>
             {visibleOutings.map((o) => (
@@ -878,13 +822,13 @@ export default function App() {
                                 borderRadius: "var(--radius-sm)",
                               }}
                             >
-                              Possible duplicate upload —{" "}
+                              Possible duplicate —{" "}
                               {m.possible_duplicate.other_flickr_urls
                                 .filter((url): url is string => Boolean(url))
                                 .map((url, i, arr) => (
                                   <span key={url}>
                                     <a href={url} target="_blank" rel="noreferrer">
-                                      view other copy ↗
+                                      Update Flickr ↗
                                     </a>
                                     {i < arr.length - 1 && ", "}
                                   </span>
@@ -946,9 +890,25 @@ export default function App() {
                   </button>
                 </>
               ) : (
-                <button className="btn" onClick={() => handleToggleReviewed(selected.id, true)}>
-                  Mark outing reviewed
-                </button>
+                (() => {
+                  // Same "confirmed" test as the lightbox badge (issue #47):
+                  // an eBird-backed match needs its own review, a
+                  // fallback-labeled photo already required a person to
+                  // agree, and an unmatched photo isn't confirmed at all.
+                  const allConfirmed = selected.matches.every((m) =>
+                    m.observation ? Boolean(m.reviewed_at) : Boolean(m.fallback_common_name)
+                  );
+                  return (
+                    <button
+                      className="btn"
+                      onClick={() => handleToggleReviewed(selected.id, true)}
+                      disabled={!allConfirmed}
+                      title={allConfirmed ? undefined : "Every photo needs to be confirmed before this outing can be marked reviewed"}
+                    >
+                      Mark outing reviewed
+                    </button>
+                  );
+                })()
               )}
             </p>
             <h3>Matched photos</h3>
@@ -1109,17 +1069,16 @@ export default function App() {
                           </>
                         )}
                       </div>
-                      {/* Method/confidence is diagnostic detail. Hidden once
-                          plainly confirmed or a hand-typed Note (both
-                          assumed correct, just noise) and for unmatched
-                          (nothing to have confidence about yet --
-                          rule_based_same_day/50% means nothing to a user).
-                          Still shown for needs-review/off-checklist/other,
-                          where it's the whole point. */}
+                      {/* Method is diagnostic detail. Hidden once plainly
+                          confirmed or a hand-typed Note (both assumed
+                          correct, just noise) and for unmatched (nothing to
+                          say yet). Still shown for needs-review/off-
+                          checklist/other, where it's the whole point.
+                          Confidence score removed from display (issue #47)
+                          -- still tracked internally, just not shown. */}
                       {resolved && !(m.observation && !needsReview) && !isNote && (
                         <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
                           {m.method}
-                          {m.method !== "rule_based" && ` · ${Math.round(m.confidence * 100)}%`}
                         </div>
                       )}
                       {m.timezone_mismatch && (
@@ -1158,13 +1117,13 @@ export default function App() {
                             borderRadius: "var(--radius-sm)",
                           }}
                         >
-                          Possible duplicate upload —{" "}
+                          Possible duplicate —{" "}
                           {m.possible_duplicate.other_flickr_urls
                             .filter((url): url is string => Boolean(url))
                             .map((url, i, arr) => (
                               <span key={url}>
                                 <a href={url} target="_blank" rel="noreferrer">
-                                  view other copy ↗
+                                  Update Flickr ↗
                                 </a>
                                 {i < arr.length - 1 && ", "}
                               </span>
@@ -1304,8 +1263,7 @@ export default function App() {
                         {suggestion.data.suggested_observation_id != null ? (
                           <>
                             <div>
-                              AI suggests: <strong>{suggestion.data.suggested_common_name}</strong>{" "}
-                              ({Math.round(suggestion.data.confidence * 100)}%)
+                              AI suggests: <strong>{suggestion.data.suggested_common_name}</strong>
                             </div>
                             <div className="panel-reasoning">{suggestion.data.reasoning}</div>
                             <div className="panel-actions">
@@ -1484,8 +1442,7 @@ export default function App() {
                               <div>
                                 {fallback.data.species_code ? (
                                   <>
-                                    Broader guess: <strong>{fallback.data.common_name}</strong>{" "}
-                                    ({Math.round(fallback.data.confidence * 100)}%)
+                                    Broader guess: <strong>{fallback.data.common_name}</strong>
                                   </>
                                 ) : fallback.data.is_other ? (
                                   <>
@@ -1539,10 +1496,7 @@ export default function App() {
             <h3>Species seen</h3>
             <ul>
               {selected.observations.map((obs) => (
-                <li key={obs.id}>
-                  {obs.common_name}
-                  {obs.count ? ` (${obs.count})` : ""}
-                </li>
+                <li key={obs.id}>{obs.common_name}</li>
               ))}
             </ul>
           </div>
