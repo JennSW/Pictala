@@ -80,6 +80,24 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
           {syncing ? "Syncing…" : "Sync now"}
         </button>
       )}
+      {/* eBird has no personal-data API/OAuth (see app/services/
+          ebird_import.py's docstring) -- CSV download is the only way to
+          get a checklist out, so "sync" for eBird just means opening this
+          page and uploading what it gives you, not something this app can
+          do on your behalf (issue #49). */}
+      <div style={{ marginTop: "var(--space-3)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)" }}>
+        <a
+          href="https://ebird.org/downloadMyData"
+          target="_blank"
+          rel="noreferrer"
+          style={{ fontSize: "var(--text-sm)" }}
+        >
+          Get eBird checklist CSV ↗
+        </a>
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", marginTop: 2 }}>
+          Opens eBird's own download page — log in there if you aren't already, then upload the CSV it gives you.
+        </div>
+      </div>
     </div>
   );
 }

@@ -32,6 +32,7 @@ import {
 import DatePicker from "./DatePicker";
 import PhotoLightbox, { LightboxEntry } from "./PhotoLightbox";
 import SyncPanel from "./SyncPanel";
+import ebirdMatchIcon from "./assets/icons/ebird-match.png";
 import "./theme.css";
 
 // Read-only status/species summary for the lightbox (issue #44) --
@@ -177,6 +178,30 @@ export default function App() {
   function closeLightbox() {
     setLightboxEntry(null);
   }
+
+  // Hero trip-card thumbnails (issue #4 follow-up) -- OutingSummary
+  // doesn't carry a representative photo, so this fetches full detail
+  // just for the 3 outings actually shown as hero cards, not every
+  // outing. Keyed by outing id and cached indefinitely once resolved;
+  // null (as opposed to not-yet-present) means "checked, this outing
+  // really has no Flickr photo at all" (eBird-only), not "still loading."
+  const [tripThumbnails, setTripThumbnails] = useState<Record<number, string | null>>({});
+
+  useEffect(() => {
+    const topIds = outings.slice(0, 3).map((o) => o.id);
+    const missing = topIds.filter((id) => !(id in tripThumbnails));
+    missing.forEach((id) => {
+      fetchOuting(id)
+        .then((detail) => {
+          const photoUrl = detail.matches.find((m) => m.photo.url_medium)?.photo.url_medium ?? null;
+          setTripThumbnails((prev) => ({ ...prev, [id]: photoUrl }));
+        })
+        .catch(() => {
+          setTripThumbnails((prev) => ({ ...prev, [id]: null }));
+        });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outings]);
 
   useEffect(() => {
     fetchOutings()
@@ -575,14 +600,559 @@ export default function App() {
     });
   }
 
+  // Outing review grouping (issue #43, DESIGN.md §10.3) -- photo_groups
+  // gives photo ids per bucket; look each one up in outing.matches, which
+  // already carries everything a match card needs.
+  function matchesForIds(outing: OutingDetail, ids: number[]): MatchEntry[] {
+    const byId = new Map(outing.matches.map((m) => [m.photo.id, m]));
+    return ids.map((id) => byId.get(id)).filter((m): m is MatchEntry => Boolean(m));
+  }
+
+  // One match card, reused across the To review/Confirmed column and the
+  // Needs Claude sidebar section -- same interactive suggest/reject/
+  // fallback/batch/timezone/duplicate machinery as before, just relocated
+  // out of the old single flat grid so it can render in either place.
+  function renderMatchCard(outing: OutingDetail, m: MatchEntry) {
+    const suggestion = suggestions[m.photo.id];
+    const fallback = fallbacks[m.photo.id];
+    const resolved = m.observation || m.fallback_common_name;
+    // Temporary reference number, kept stable across the whole outing
+    // (not just within whichever bucket this card landed in) -- not a
+    // permanent design decision, just for talking through specific
+    // photos together.
+    const displayIndex = outing.matches.findIndex((mm) => mm.photo.id === m.photo.id) + 1;
+    // Fallback methods (manual assignment, AI-suggestion accept, fallback
+    // ID) all require a person to have looked at this specific photo and
+    // agreed -- only a rule-based match has never actually been reviewed
+    // by anyone (see issue #32).
+    const needsReview = Boolean(m.observation) && !m.reviewed_at;
+    // Only worth pointing out right after it happened -- once it's old
+    // news (from a previous session), the checkmark is just noise; the
+    // plain name is enough.
+    const justConfirmed =
+      Boolean(m.observation) &&
+      !needsReview &&
+      Boolean(m.reviewed_at) &&
+      (!sessionBoundary || (m.reviewed_at as string) > sessionBoundary);
+    // A Label typed by hand (a Note), not an AI guess -- confidence only
+    // ever lands on exactly 1 when there was no suggestion behind it to
+    // inherit a real value from.
+    const isNote = Boolean(m.fallback_common_name) && !m.fallback_scientific_name && m.confidence === 1;
+    // eBird-match badge (issue #48, DESIGN.md §10.8) -- a real reported
+    // observation, same condition photo_groups.ebird_and_flickr uses.
+    const onEbird = Boolean(m.observation);
+
+    return (
+      <figure key={m.photo.id} className="card match-card" style={{ margin: 0, overflow: "hidden" }}>
+        <div className="match-card-header" style={{ padding: "var(--space-2) var(--space-3) 0" }}>
+          <div className="thumb">
+            {m.photo.url_medium ? (
+              <img
+                src={m.photo.url_medium}
+                alt={m.photo.title ?? ""}
+                onClick={() => setLightboxEntry(outingLightboxEntry(m))}
+              />
+            ) : (
+              <div className="photo-placeholder" />
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", fontWeight: 600 }}>
+              #{displayIndex}
+            </span>
+            <div style={{ marginTop: 2 }}>
+              {m.observation ? (
+                needsReview ? (
+                  <>
+                    <span className="badge badge-warning">Needs review</span>
+                    <div style={{ marginTop: "var(--space-1)" }}>
+                      {m.observation.common_name}
+                      {/* Icon shown regardless of whether a scientific
+                          name exists -- it's independent data (eBird's
+                          per-checklist CSV export has no scientific-name
+                          column at all, see conversation with Jen,
+                          2026-08-07), so tying the icon's visibility to it
+                          would silently hide the icon whenever that gap
+                          shows up. */}
+                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                        {m.observation.scientific_name && <span style={{ fontStyle: "italic" }}>{m.observation.scientific_name}</span>}
+                        {onEbird && <img src={ebirdMatchIcon} alt="Logged on eBird" className="ebird-match-icon" />}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    {m.observation.common_name}
+                    {justConfirmed && (
+                      <span
+                        aria-label="Confirmed"
+                        style={{ color: "var(--success)", marginLeft: "var(--space-1)" }}
+                      >
+                        ✓
+                      </span>
+                    )}
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                      {m.observation.scientific_name && <span style={{ fontStyle: "italic" }}>{m.observation.scientific_name}</span>}
+                      {onEbird && <img src={ebirdMatchIcon} alt="Logged on eBird" className="ebird-match-icon" />}
+                    </div>
+                  </div>
+                )
+              ) : m.fallback_common_name ? (
+                m.fallback_scientific_name ? (
+                  <>
+                    <span className="badge badge-warning">Off checklist</span>
+                    <div style={{ marginTop: "var(--space-1)" }}>
+                      {m.fallback_common_name}
+                      {m.ebird_checklist_url && (
+                        <>
+                          {" — "}
+                          <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
+                            add to eBird
+                          </a>
+                        </>
+                      )}
+                    </div>
+                  </>
+                ) : isNote ? (
+                  // A Note -- typed by hand, no AI guess behind it
+                  // (confidence is only ever exactly 1 when there was no
+                  // suggestion to inherit a real confidence value from).
+                  // The Label speaks for itself; "Other" would just be
+                  // noise here.
+                  <div>{m.fallback_common_name}</div>
+                ) : (
+                  // An AI guess that didn't resolve to a real eBird
+                  // species (e.g. "Dragonfly") -- eBird checklists only
+                  // track birds, so there's nothing sensible to "add to
+                  // eBird" here. Just confirmed in BirdTrip's own data.
+                  <>
+                    <span className="badge badge-neutral">Other</span>
+                    <div style={{ marginTop: "var(--space-1)" }}>{m.fallback_common_name}</div>
+                  </>
+                )
+              ) : (
+                <>
+                  <span className="badge badge-neutral">Unmatched</span>
+                  <label style={{ marginLeft: "var(--space-2)", fontSize: "var(--text-xs)" }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(checkedPhotos[m.photo.id])}
+                      disabled={
+                        !checkedPhotos[m.photo.id] &&
+                        checkedPhotoIdsIn(outing.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
+                      }
+                      onChange={(e) => setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))}
+                    />{" "}
+                    Select for batch
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+        <figcaption style={{ padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
+          {m.timezone_mismatch && (
+            <div
+              style={{
+                marginTop: "var(--space-2)",
+                padding: "var(--space-2)",
+                fontSize: "var(--text-xs)",
+                background: "var(--warning-bg, #fff3cd)",
+                border: "1px solid var(--warning, #e0a800)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              Camera recorded {m.timezone_mismatch.photo_utc_offset}, but this location was on{" "}
+              {m.timezone_mismatch.expected_utc_offset} at the time — possible clock/timezone mismatch.
+              <div style={{ marginTop: "var(--space-1)" }}>
+                <button
+                  className="btn"
+                  onClick={() => handleAdjustTimezone(m.checklist_id as number, m.photo.id)}
+                  disabled={adjustingTimezone[m.photo.id]}
+                >
+                  {adjustingTimezone[m.photo.id] ? "Adjusting…" : "Adjust"}
+                </button>
+              </div>
+            </div>
+          )}
+          {m.possible_duplicate && (
+            <div
+              style={{
+                marginTop: "var(--space-2)",
+                padding: "var(--space-2)",
+                fontSize: "var(--text-xs)",
+                background: "var(--warning-bg, #fff3cd)",
+                border: "1px solid var(--warning, #e0a800)",
+                borderRadius: "var(--radius-sm)",
+              }}
+            >
+              Possible duplicate —{" "}
+              {m.possible_duplicate.other_flickr_urls
+                .filter((url): url is string => Boolean(url))
+                .map((url, i, arr) => (
+                  <span key={url}>
+                    <a href={url} target="_blank" rel="noreferrer">
+                      Update Flickr ↗
+                    </a>
+                    {i < arr.length - 1 && ", "}
+                  </span>
+                ))}
+            </div>
+          )}
+        </figcaption>
+
+        {!resolved && !suggestion && (
+          <div style={{ padding: "0 var(--space-3) var(--space-2)" }}>
+            <select
+              value={manualPick[m.photo.id] ?? ""}
+              onChange={(e) => setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+              style={{ width: "100%", marginBottom: manualPick[m.photo.id] ? "var(--space-2)" : 0 }}
+            >
+              {/* Neutral hint until the user actually picks something --
+                  nothing below the dropdown until then. "Other" pinned
+                  first in the real options, since most unmatched photos
+                  here are non-birds or off-checklist. */}
+              <option value="" disabled hidden>
+                It's actually…
+              </option>
+              <option value="other">Other</option>
+              {outing.observations.map((obs) => (
+                <option key={obs.id} value={obs.id}>
+                  {obs.common_name}
+                </option>
+              ))}
+            </select>
+
+            {manualPick[m.photo.id] && (
+              <>
+                {/* Stays visible for a real species pick too, not just
+                    Other -- general notes (e.g. "juvenile", "distant/
+                    blurry shot") are useful either way. Not yet wired to
+                    persist anything when a real species is selected --
+                    see conversation with Jen, 2026-08-04. */}
+                <input
+                  type="text"
+                  value={noteText[m.photo.id] ?? ""}
+                  onChange={(e) => setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+                  placeholder="Write a note"
+                />
+                {manualPick[m.photo.id] === "other" ? (
+                  <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
+                    <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
+                      Ask Claude
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                      onClick={() => handleSaveNote(outing.id, m.photo.id)}
+                    >
+                      {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-primary btn-block"
+                    style={{ marginTop: "var(--space-2)" }}
+                    onClick={() => handleAssign(outing.id, m.photo.id)}
+                  >
+                    Assign
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {resolved && needsReview && !suggestion && (
+          <>
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() =>
+                handleConfirmMatch(outing.id, m.photo.id, (m.observation as NonNullable<typeof m.observation>).id)
+              }
+            >
+              Confirm — this is right
+            </button>
+            <button
+              className="btn"
+              onClick={() => handleOpenFix(m.photo.id)}
+              style={{
+                border: "none",
+                background: "none",
+                color: "var(--text-faint)",
+                fontSize: "var(--text-xs)",
+                padding: "var(--space-1) var(--space-3) var(--space-2)",
+                width: "100%",
+              }}
+            >
+              It's actually something else
+            </button>
+          </>
+        )}
+
+        {resolved && !needsReview && !suggestion && (
+          <button
+            className="btn"
+            onClick={() => handleOpenFix(m.photo.id)}
+            aria-label="Fix this match"
+            style={{
+              border: "none",
+              background: "none",
+              color: "var(--text-faint)",
+              fontSize: "var(--text-xs)",
+              padding: "0 var(--space-3) var(--space-2)",
+              width: "100%",
+              textAlign: "right",
+            }}
+          >
+            Edit
+          </button>
+        )}
+
+        {suggestion?.status === "loading" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
+        )}
+
+        {suggestion?.status === "accepting" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
+        )}
+
+        {suggestion?.status === "error" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{suggestion.message}</p>
+        )}
+
+        {suggestion?.status === "ready" && (
+          <div className="panel">
+            {suggestion.data.suggested_observation_id != null ? (
+              <>
+                <div>
+                  AI suggests: <strong>{suggestion.data.suggested_common_name}</strong>
+                </div>
+                <div className="panel-reasoning">{suggestion.data.reasoning}</div>
+                <div className="panel-actions">
+                  <button
+                    className="btn btn-primary"
+                    onClick={() =>
+                      handleAccept(
+                        outing.id,
+                        m.photo.id,
+                        suggestion.data.suggested_observation_id as number,
+                        suggestion.data.confidence
+                      )
+                    }
+                  >
+                    Accept
+                  </button>
+                  <button className="btn btn-danger" onClick={() => handleReject(m.photo.id)}>
+                    Reject
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>No confident match among this outing's species.</div>
+                <div className="panel-reasoning">{suggestion.data.reasoning}</div>
+
+                <div style={{ marginTop: "var(--space-2)" }}>
+                  <select
+                    value={manualPick[m.photo.id] ?? ""}
+                    onChange={(e) => setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+                    style={{ maxWidth: "100%" }}
+                  >
+                    <option value="">It's actually…</option>
+                    {outing.observations.map((obs) => (
+                      <option key={obs.id} value={obs.id}>
+                        {obs.common_name}
+                      </option>
+                    ))}
+                  </select>{" "}
+                  <button
+                    className="btn btn-primary"
+                    disabled={!manualPick[m.photo.id]}
+                    onClick={() => handleAssign(outing.id, m.photo.id)}
+                  >
+                    Assign
+                  </button>
+                </div>
+
+                <div className="panel-actions">
+                  <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
+                    Ask Claude
+                  </button>
+                  <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
+                    Dismiss
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {suggestion?.status === "rejected" && (
+          <div className="panel">
+            <div>Rejected — what should this be instead?</div>
+
+            <div style={{ marginTop: "var(--space-2)" }}>
+              <select
+                value={manualPick[m.photo.id] ?? ""}
+                onChange={(e) => setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+                style={{ maxWidth: "100%" }}
+              >
+                <option value="">It's actually…</option>
+                {outing.observations.map((obs) => (
+                  <option key={obs.id} value={obs.id}>
+                    {obs.common_name}
+                  </option>
+                ))}
+              </select>{" "}
+              <button
+                className="btn btn-primary"
+                disabled={!manualPick[m.photo.id]}
+                onClick={() => handleAssign(outing.id, m.photo.id)}
+              >
+                Assign
+              </button>
+            </div>
+
+            <div style={{ marginTop: "var(--space-2)" }}>
+              <input
+                type="text"
+                value={noteText[m.photo.id] ?? ""}
+                onChange={(e) => setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+                placeholder="Or write a note"
+              />
+              <button
+                className="btn btn-primary"
+                disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                onClick={() => handleSaveNote(outing.id, m.photo.id)}
+              >
+                {savingNote[m.photo.id] ? "Saving…" : "Save note"}
+              </button>
+            </div>
+
+            <div className="panel-actions">
+              <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
+                Ask Claude
+              </button>
+              <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {suggestion?.status === "editing" && (
+          <div className="panel">
+            <input
+              type="text"
+              value={noteText[m.photo.id] ?? ""}
+              onChange={(e) => setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+              placeholder="What is it? (matches the checklist if it's on there)"
+            />
+            <div className="panel-actions" style={{ marginTop: 0 }}>
+              <button
+                className="btn btn-primary"
+                disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
+                onClick={() => handleSaveNote(outing.id, m.photo.id)}
+              >
+                {savingNote[m.photo.id] ? "Saving…" : "Save"}
+              </button>
+              <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
+                Ask Claude
+              </button>
+              <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
+        {fallback?.status === "loading" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
+        )}
+
+        {fallback?.status === "accepting" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
+        )}
+
+        {fallback?.status === "error" && (
+          <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{fallback.message}</p>
+        )}
+
+        {fallback?.status === "ready" && (
+          <div className="panel">
+            {(() => {
+              // Claude's guess isn't checked against this outing's own
+              // species -- an unconstrained guess can land on something
+              // that's actually on the checklist. Check here so the
+              // messaging matches what accept-fallback will actually do
+              // with it.
+              const onChecklist =
+                fallback.data.species_code != null &&
+                outing.observations.some(
+                  (obs) => obs.common_name.toLowerCase() === fallback.data.common_name?.toLowerCase()
+                );
+              return (
+                <>
+                  <div>
+                    {fallback.data.species_code ? (
+                      <>
+                        Broader guess: <strong>{fallback.data.common_name}</strong>
+                      </>
+                    ) : fallback.data.is_other ? (
+                      <>
+                        Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
+                      </>
+                    ) : fallback.data.is_bird ? (
+                      "Couldn't confidently identify the species."
+                    ) : (
+                      "Doesn't look like a bird, and couldn't guess what it is."
+                    )}
+                  </div>
+                  <div className="panel-reasoning">{fallback.data.reasoning}</div>
+                  {fallback.data.species_code && (
+                    <div className="panel-note">
+                      {onChecklist
+                        ? "Actually on this checklist -- saving will link it properly."
+                        : "Not on this checklist — saving labels the photo only, and won't be written back to eBird."}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+            <input
+              type="text"
+              value={fallbackText[m.photo.id] ?? ""}
+              onChange={(e) => setFallbackText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))}
+              placeholder="Accept the guess above, or write your own note"
+            />
+            <div className="panel-actions" style={{ marginTop: 0 }}>
+              <button
+                className="btn btn-primary"
+                disabled={!(fallbackText[m.photo.id] ?? "").trim()}
+                onClick={() => handleAcceptFallback(outing.id, m.photo.id, fallback.data)}
+              >
+                Save
+              </button>
+              <button className="btn" onClick={() => handleDismissFallback(m.photo.id)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+      </figure>
+    );
+  }
+
   return (
     <div>
       <header className="app-header">
-        <h1>BirdTrip</h1>
+        <span className="wordmark">BirdTrip</span>
         <p>Your eBird outings, matched with your Flickr photos.</p>
       </header>
 
       <div className="app-shell" style={{ padding: "0 var(--space-5)" }}>
+      <h1 className="page-title">Browse Trips</h1>
       {error && (
         <p className="badge badge-danger" style={{ display: "block", padding: "var(--space-2) var(--space-3)", marginBottom: "var(--space-4)" }}>
           {error} — is the backend running at localhost:8000? (`uvicorn app.main:app --reload`)
@@ -644,11 +1214,64 @@ export default function App() {
       ) : (
       <div style={{ display: "flex", gap: "var(--space-6)" }}>
         <div style={{ minWidth: 260 }}>
-          <DatePicker
-            availableDates={availableDates}
-            selected={selectedDate}
-            onSelect={setSelectedDate}
-          />
+          {/* "Last 3 trips" -- promoted to the hero position per DESIGN.md
+              §10.1 (resolved): the actual point of the app (what you saw
+              + what you shot) leads, instead of the calendar being the
+              first thing shown. Only shown unfiltered -- once a specific
+              date is picked, the flow is about that date, not "browse
+              recent trips" (per docs/mockups/entry-screen-mockup.html's
+              intent; that mockup didn't model the date-filter interaction
+              at all, so this is a judgment call, not a resolved decision
+              itself). Thumbnail is the first Flickr photo found on that
+              outing (any match status, not filtered to confirmed-only --
+              see tripThumbnails effect above); an eBird-only outing with
+              genuinely zero photos gets a larger eBird-match icon instead
+              of a generic pin, same icon/meaning used elsewhere in the
+              app (DESIGN.md §10.8) rather than a new symbol. */}
+          {!selectedDate && outings.length > 0 && (
+            <div className="trip-list">
+              <h2 className="section-heading" style={{ fontSize: "var(--text-lg)", fontWeight: 700, margin: "0 0 var(--space-3)" }}>
+                Last 3 trips
+              </h2>
+              {outings.slice(0, 3).map((o) => (
+                <button key={o.id} className="trip-card" onClick={() => openOuting(o.id)}>
+                  {tripThumbnails[o.id] ? (
+                    <img className="trip-thumb" src={tripThumbnails[o.id] as string} alt="" />
+                  ) : o.photo_count === 0 ? (
+                    <span className="trip-thumb placeholder" aria-hidden="true">
+                      <img src={ebirdMatchIcon} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} />
+                    </span>
+                  ) : (
+                    <span className="trip-thumb placeholder" aria-hidden="true">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/>
+                        <circle cx="12" cy="10" r="2.5"/>
+                      </svg>
+                    </span>
+                  )}
+                  <span className="trip-info">
+                    <span className="name">{o.location_name}</span>
+                    <br />
+                    <span className="meta">{o.date} · {o.species_count} species · {o.photo_count} photos</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Calendar -- demoted to a compact secondary widget (DESIGN.md
+              §10.1, resolved). Same DatePicker component/functionality as
+              before (date selection, disabled/unavailable dates) -- only
+              the visual treatment (smaller cells via react-day-picker's
+              own CSS vars, muted eyebrow label) changed. */}
+          <div className="calendar-compact">
+            <div className="cal-eyebrow">Trip activity</div>
+            <DatePicker
+              availableDates={availableDates}
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+            />
+          </div>
           {selectedDate && (
             <button
               className="btn"
@@ -668,6 +1291,7 @@ export default function App() {
             onError={(message) => setError(message)}
           />
 
+          <div className="cal-eyebrow">{selectedDate ? "Outings on this date" : "All trips"}</div>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {visibleOutings.map((o) => (
               <li key={o.id} style={{ marginBottom: "var(--space-3)" }}>
@@ -911,594 +1535,101 @@ export default function App() {
                 })()
               )}
             </p>
-            <h3>Matched photos</h3>
-            {checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id)).length > 0 && (
-              <button
-                className="btn btn-primary"
-                style={{ marginBottom: "var(--space-3)" }}
-                onClick={() => handleSuggestFallbackBatch(selected.id)}
-                disabled={batchSuggesting}
-              >
-                {batchSuggesting
-                  ? "Asking…"
-                  : `Ask Claude for ${checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id)).length} selected`}
-              </button>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
-              {selected.matches.map((m, index) => {
-                const suggestion = suggestions[m.photo.id];
-                const fallback = fallbacks[m.photo.id];
-                const resolved = m.observation || m.fallback_common_name;
-                // Fallback methods (manual assignment, AI-suggestion
-                // accept, fallback ID) all require a person to have
-                // looked at this specific photo and agreed -- only a
-                // rule-based match has never actually been reviewed by
-                // anyone (see issue #32).
-                const needsReview = Boolean(m.observation) && !m.reviewed_at;
-                // Only worth pointing out right after it happened -- once
-                // it's old news (from a previous session), the checkmark
-                // is just noise; the plain name is enough.
-                const justConfirmed =
-                  Boolean(m.observation) &&
-                  !needsReview &&
-                  Boolean(m.reviewed_at) &&
-                  (!sessionBoundary || (m.reviewed_at as string) > sessionBoundary);
-                // A Label typed by hand (a Note), not an AI guess --
-                // confidence only ever lands on exactly 1 when there was
-                // no suggestion behind it to inherit a real value from.
-                const isNote =
-                  Boolean(m.fallback_common_name) &&
-                  !m.fallback_scientific_name &&
-                  m.confidence === 1;
-                return (
-                  <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden", position: "relative" }}>
-                    {/* Temporary reference numbers, for talking through
-                        specific photos together -- not a permanent design
-                        decision. */}
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: "var(--space-1)",
-                        left: "var(--space-1)",
-                        background: "rgba(0, 0, 0, 0.65)",
-                        color: "white",
-                        fontSize: "var(--text-xs)",
-                        fontWeight: 600,
-                        padding: "1px 6px",
-                        borderRadius: "var(--radius-sm)",
-                        zIndex: 1,
-                      }}
-                    >
-                      {index + 1}
-                    </span>
-                    {m.photo.url_medium ? (
-                      <img
-                        src={m.photo.url_medium}
-                        alt={m.photo.title ?? ""}
-                        width={180}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => setLightboxEntry(outingLightboxEntry(m))}
-                      />
-                    ) : (
-                      <div className="photo-placeholder" />
-                    )}
-                    <figcaption style={{ padding: "var(--space-2) var(--space-3) var(--space-3)" }}>
-                      <div style={{ marginBottom: "var(--space-1)" }}>
-                        {m.observation ? (
-                          needsReview ? (
-                            <>
-                              <span className="badge badge-warning">Needs review</span>
-                              <div style={{ marginTop: "var(--space-1)" }}>
-                                {m.observation.common_name}
-                                {m.observation.scientific_name && (
-                                  <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontStyle: "italic" }}>
-                                    {m.observation.scientific_name}
-                                  </div>
-                                )}
-                              </div>
-                            </>
-                          ) : (
-                            <div>
-                              {m.observation.common_name}
-                              {justConfirmed && (
-                                <span
-                                  aria-label="Confirmed"
-                                  style={{ color: "var(--success)", marginLeft: "var(--space-1)" }}
-                                >
-                                  ✓
-                                </span>
-                              )}
-                              {m.observation.scientific_name && (
-                                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontStyle: "italic" }}>
-                                  {m.observation.scientific_name}
-                                </div>
-                              )}
-                            </div>
-                          )
-                        ) : m.fallback_common_name ? (
-                          m.fallback_scientific_name ? (
-                            <>
-                              <span className="badge badge-warning">Off checklist</span>
-                              <div style={{ marginTop: "var(--space-1)" }}>
-                                {m.fallback_common_name}
-                                {m.ebird_checklist_url && (
-                                  <>
-                                    {" — "}
-                                    <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
-                                      add to eBird
-                                    </a>
-                                  </>
-                                )}
-                              </div>
-                            </>
-                          ) : isNote ? (
-                            // A Note -- typed by hand, no AI guess behind
-                            // it (confidence is only ever exactly 1 when
-                            // there was no suggestion to inherit a real
-                            // confidence value from). The Label speaks for
-                            // itself; "Other" would just be noise here.
-                            <div>{m.fallback_common_name}</div>
-                          ) : (
-                            // An AI guess that didn't resolve to a real
-                            // eBird species (e.g. "Dragonfly") -- eBird
-                            // checklists only track birds, so there's
-                            // nothing sensible to "add to eBird" here. Just
-                            // confirmed in BirdTrip's own data.
-                            <>
-                              <span className="badge badge-neutral">Other</span>
-                              <div style={{ marginTop: "var(--space-1)" }}>{m.fallback_common_name}</div>
-                            </>
-                          )
-                        ) : (
-                          <>
-                            <span className="badge badge-neutral">Unmatched</span>
-                            <label style={{ marginLeft: "var(--space-2)", fontSize: "var(--text-xs)" }}>
-                              <input
-                                type="checkbox"
-                                checked={Boolean(checkedPhotos[m.photo.id])}
-                                disabled={
-                                  !checkedPhotos[m.photo.id] &&
-                                  checkedPhotoIdsIn(selected.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
-                                }
-                                onChange={(e) =>
-                                  setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))
-                                }
-                              />{" "}
-                              Select for batch
-                            </label>
-                          </>
-                        )}
-                      </div>
-                      {/* Method is diagnostic detail. Hidden once plainly
-                          confirmed or a hand-typed Note (both assumed
-                          correct, just noise) and for unmatched (nothing to
-                          say yet). Still shown for needs-review/off-
-                          checklist/other, where it's the whole point.
-                          Confidence score removed from display (issue #47)
-                          -- still tracked internally, just not shown. */}
-                      {resolved && !(m.observation && !needsReview) && !isNote && (
-                        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)" }}>
-                          {m.method}
-                        </div>
-                      )}
-                      {m.timezone_mismatch && (
-                        <div
-                          style={{
-                            marginTop: "var(--space-2)",
-                            padding: "var(--space-2)",
-                            fontSize: "var(--text-xs)",
-                            background: "var(--warning-bg, #fff3cd)",
-                            border: "1px solid var(--warning, #e0a800)",
-                            borderRadius: "var(--radius-sm)",
-                          }}
-                        >
-                          Camera recorded {m.timezone_mismatch.photo_utc_offset}, but this
-                          location was on {m.timezone_mismatch.expected_utc_offset} at the time
-                          — possible clock/timezone mismatch.
-                          <div style={{ marginTop: "var(--space-1)" }}>
-                            <button
-                              className="btn"
-                              onClick={() => handleAdjustTimezone(m.checklist_id as number, m.photo.id)}
-                              disabled={adjustingTimezone[m.photo.id]}
-                            >
-                              {adjustingTimezone[m.photo.id] ? "Adjusting…" : "Adjust"}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {m.possible_duplicate && (
-                        <div
-                          style={{
-                            marginTop: "var(--space-2)",
-                            padding: "var(--space-2)",
-                            fontSize: "var(--text-xs)",
-                            background: "var(--warning-bg, #fff3cd)",
-                            border: "1px solid var(--warning, #e0a800)",
-                            borderRadius: "var(--radius-sm)",
-                          }}
-                        >
-                          Possible duplicate —{" "}
-                          {m.possible_duplicate.other_flickr_urls
-                            .filter((url): url is string => Boolean(url))
-                            .map((url, i, arr) => (
-                              <span key={url}>
-                                <a href={url} target="_blank" rel="noreferrer">
-                                  Update Flickr ↗
-                                </a>
-                                {i < arr.length - 1 && ", "}
-                              </span>
-                            ))}
-                        </div>
-                      )}
-                    </figcaption>
+            {(() => {
+              const groups = selected.photo_groups;
+              const toReviewOrConfirmed = matchesForIds(selected, [
+                ...groups.ebird_and_flickr,
+                ...groups.flickr_best_guess,
+              ]);
+              const needsClaudeMatches = matchesForIds(selected, groups.needs_claude);
+              const noPhotoObservations = selected.observations.filter((o) =>
+                groups.ebird_no_photo.includes(o.id)
+              );
+              const reviewed = Boolean(selected.reviewed_at);
+              const primaryTitle = reviewed ? "Confirmed" : "To review";
+              const checkedInPrimary = checkedPhotoIdsIn(toReviewOrConfirmed.map((m) => m.photo.id));
 
-                    {!resolved && !suggestion && (
-                      <div style={{ padding: "0 var(--space-3) var(--space-2)" }}>
-                        <select
-                          value={manualPick[m.photo.id] ?? ""}
-                          onChange={(e) =>
-                            setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                          }
-                          style={{ width: "100%", marginBottom: manualPick[m.photo.id] ? "var(--space-2)" : 0 }}
-                        >
-                          {/* Neutral hint until the user actually picks
-                              something -- nothing below the dropdown until
-                              then. "Other" pinned first in the real
-                              options, since most unmatched photos here are
-                              non-birds or off-checklist. */}
-                          <option value="" disabled hidden>
-                            It's actually…
-                          </option>
-                          <option value="other">Other</option>
-                          {selected.observations.map((obs) => (
-                            <option key={obs.id} value={obs.id}>
-                              {obs.common_name}
-                            </option>
-                          ))}
-                        </select>
-
-                        {manualPick[m.photo.id] && (
-                          <>
-                            {/* Stays visible for a real species pick too,
-                                not just Other -- general notes (e.g.
-                                "juvenile", "distant/blurry shot") are
-                                useful either way. Not yet wired to persist
-                                anything when a real species is selected --
-                                see conversation with Jen, 2026-08-04. */}
-                            <input
-                              type="text"
-                              value={noteText[m.photo.id] ?? ""}
-                              onChange={(e) =>
-                                setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                              }
-                              placeholder="Write a note"
-                            />
-                            {manualPick[m.photo.id] === "other" ? (
-                              <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
-                                <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                                  Ask Claude
-                                </button>
-                                <button
-                                  className="btn btn-primary"
-                                  disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
-                                  onClick={() => handleSaveNote(selected.id, m.photo.id)}
-                                >
-                                  {savingNote[m.photo.id] ? "Saving…" : "Save note"}
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                className="btn btn-primary btn-block"
-                                style={{ marginTop: "var(--space-2)" }}
-                                onClick={() => handleAssign(selected.id, m.photo.id)}
-                              >
-                                Assign
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {resolved && needsReview && !suggestion && (
-                      <>
-                        <button
-                          className="btn btn-primary btn-block"
-                          onClick={() =>
-                            handleConfirmMatch(selected.id, m.photo.id, (m.observation as NonNullable<typeof m.observation>).id)
-                          }
-                        >
-                          Confirm — this is right
-                        </button>
-                        <button
-                          className="btn"
-                          onClick={() => handleOpenFix(m.photo.id)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            color: "var(--text-faint)",
-                            fontSize: "var(--text-xs)",
-                            padding: "var(--space-1) var(--space-3) var(--space-2)",
-                            width: "100%",
-                          }}
-                        >
-                          It's actually something else
-                        </button>
-                      </>
-                    )}
-
-                    {resolved && !needsReview && !suggestion && (
+              return (
+                <div className="outing-grid">
+                  <div>
+                    <div className="outing-col-header">
+                      <span className="outing-count-badge">{toReviewOrConfirmed.length}</span>
+                      <span className="outing-col-title">{primaryTitle}</span>
+                    </div>
+                    {checkedInPrimary.length > 0 && (
                       <button
-                        className="btn"
-                        onClick={() => handleOpenFix(m.photo.id)}
-                        aria-label="Fix this match"
-                        style={{
-                          border: "none",
-                          background: "none",
-                          color: "var(--text-faint)",
-                          fontSize: "var(--text-xs)",
-                          padding: "0 var(--space-3) var(--space-2)",
-                          width: "100%",
-                          textAlign: "right",
-                        }}
+                        className="btn btn-primary"
+                        style={{ marginBottom: "var(--space-3)" }}
+                        onClick={() => handleSuggestFallbackBatch(selected.id)}
+                        disabled={batchSuggesting}
                       >
-                        Edit
+                        {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedInPrimary.length} selected`}
                       </button>
                     )}
+                    <div className="outing-match-grid">
+                      {toReviewOrConfirmed.map((m) => renderMatchCard(selected, m))}
+                      {toReviewOrConfirmed.length === 0 && <p>No photos matched this outing yet.</p>}
+                    </div>
+                  </div>
 
-                    {suggestion?.status === "loading" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
-                    )}
-
-                    {suggestion?.status === "accepting" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
-                    )}
-
-                    {suggestion?.status === "error" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{suggestion.message}</p>
-                    )}
-
-                    {suggestion?.status === "ready" && (
-                      <div className="panel">
-                        {suggestion.data.suggested_observation_id != null ? (
-                          <>
-                            <div>
-                              AI suggests: <strong>{suggestion.data.suggested_common_name}</strong>
-                            </div>
-                            <div className="panel-reasoning">{suggestion.data.reasoning}</div>
-                            <div className="panel-actions">
-                              <button
-                                className="btn btn-primary"
-                                onClick={() =>
-                                  handleAccept(
-                                    selected.id,
-                                    m.photo.id,
-                                    suggestion.data.suggested_observation_id as number,
-                                    suggestion.data.confidence
-                                  )
-                                }
-                              >
-                                Accept
-                              </button>
-                              <button className="btn btn-danger" onClick={() => handleReject(m.photo.id)}>
-                                Reject
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>No confident match among this outing's species.</div>
-                            <div className="panel-reasoning">{suggestion.data.reasoning}</div>
-
-                            <div style={{ marginTop: "var(--space-2)" }}>
-                              <select
-                                value={manualPick[m.photo.id] ?? ""}
-                                onChange={(e) =>
-                                  setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                                }
-                                style={{ maxWidth: "100%" }}
-                              >
-                                <option value="">It's actually…</option>
-                                {selected.observations.map((obs) => (
-                                  <option key={obs.id} value={obs.id}>
-                                    {obs.common_name}
-                                  </option>
-                                ))}
-                              </select>{" "}
-                              <button
-                                className="btn btn-primary"
-                                disabled={!manualPick[m.photo.id]}
-                                onClick={() => handleAssign(selected.id, m.photo.id)}
-                              >
-                                Assign
-                              </button>
-                            </div>
-
-                            <div className="panel-actions">
-                              <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                                Ask Claude
-                              </button>
-                              <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
-                                Dismiss
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {suggestion?.status === "rejected" && (
-                      <div className="panel">
-                        <div>Rejected — what should this be instead?</div>
-
-                        <div style={{ marginTop: "var(--space-2)" }}>
-                          <select
-                            value={manualPick[m.photo.id] ?? ""}
-                            onChange={(e) =>
-                              setManualPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                            }
-                            style={{ maxWidth: "100%" }}
-                          >
-                            <option value="">It's actually…</option>
-                            {selected.observations.map((obs) => (
-                              <option key={obs.id} value={obs.id}>
-                                {obs.common_name}
-                              </option>
-                            ))}
-                          </select>{" "}
-                          <button
-                            className="btn btn-primary"
-                            disabled={!manualPick[m.photo.id]}
-                            onClick={() => handleAssign(selected.id, m.photo.id)}
-                          >
-                            Assign
-                          </button>
+                  <div className="outing-sidebar">
+                    {needsClaudeMatches.length > 0 && (
+                      <div>
+                        <div className="outing-col-header">
+                          <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
+                            {needsClaudeMatches.length}
+                          </span>
+                          <span className="outing-col-title">Needs Claude</span>
                         </div>
-
-                        <div style={{ marginTop: "var(--space-2)" }}>
-                          <input
-                            type="text"
-                            value={noteText[m.photo.id] ?? ""}
-                            onChange={(e) =>
-                              setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                            }
-                            placeholder="Or write a note"
-                          />
-                          <button
-                            className="btn btn-primary"
-                            disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
-                            onClick={() => handleSaveNote(selected.id, m.photo.id)}
-                          >
-                            {savingNote[m.photo.id] ? "Saving…" : "Save note"}
-                          </button>
-                        </div>
-
-                        <div className="panel-actions">
-                          <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                            Ask Claude
-                          </button>
-                          <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
-                            Dismiss
-                          </button>
+                        <div className="outing-match-grid">
+                          {needsClaudeMatches.map((m) => renderMatchCard(selected, m))}
                         </div>
                       </div>
                     )}
 
-                    {suggestion?.status === "editing" && (
-                      <div className="panel">
-                        <input
-                          type="text"
-                          value={noteText[m.photo.id] ?? ""}
-                          onChange={(e) =>
-                            setNoteText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                          }
-                          placeholder="What is it? (matches the checklist if it's on there)"
-                        />
-                        <div className="panel-actions" style={{ marginTop: 0 }}>
-                          <button
-                            className="btn btn-primary"
-                            disabled={!(noteText[m.photo.id] ?? "").trim() || savingNote[m.photo.id]}
-                            onClick={() => handleSaveNote(selected.id, m.photo.id)}
-                          >
-                            {savingNote[m.photo.id] ? "Saving…" : "Save"}
-                          </button>
-                          <button className="btn" onClick={() => handleSuggestFallback(selected.id, m.photo.id)}>
-                            Ask Claude
-                          </button>
-                          <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {fallback?.status === "loading" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Thinking…</p>
-                    )}
-
-                    {fallback?.status === "accepting" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", padding: "0 var(--space-3) var(--space-2)" }}>Saving…</p>
-                    )}
-
-                    {fallback?.status === "error" && (
-                      <p style={{ fontSize: "var(--text-xs)", color: "var(--danger)", padding: "0 var(--space-3) var(--space-2)" }}>{fallback.message}</p>
-                    )}
-
-                    {fallback?.status === "ready" && (
-                      <div className="panel">
-                        {(() => {
-                          // Claude's guess isn't checked against this
-                          // outing's own species -- an unconstrained guess
-                          // can land on something that's actually on the
-                          // checklist. Check here so the messaging matches
-                          // what accept-fallback will actually do with it.
-                          const onChecklist =
-                            fallback.data.species_code != null &&
-                            selected.observations.some(
-                              (obs) => obs.common_name.toLowerCase() === fallback.data.common_name?.toLowerCase()
-                            );
-                          return (
-                            <>
-                              <div>
-                                {fallback.data.species_code ? (
-                                  <>
-                                    Broader guess: <strong>{fallback.data.common_name}</strong>
-                                  </>
-                                ) : fallback.data.is_other ? (
-                                  <>
-                                    Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
-                                  </>
-                                ) : fallback.data.is_bird ? (
-                                  "Couldn't confidently identify the species."
-                                ) : (
-                                  "Doesn't look like a bird, and couldn't guess what it is."
-                                )}
-                              </div>
-                              <div className="panel-reasoning">{fallback.data.reasoning}</div>
-                              {fallback.data.species_code && (
-                                <div className="panel-note">
-                                  {onChecklist
-                                    ? "Actually on this checklist -- saving will link it properly."
-                                    : "Not on this checklist — saving labels the photo only, and won't be written back to eBird."}
+                    {/* "No photos on Flickr" -- a species entry, not a
+                        photo card, in its own collapsed-by-default list.
+                        Originally gated behind full-outing review
+                        (DESIGN.md §10.3's "after review" bucket), moved
+                        to always-visible-when-non-empty per Jen: a
+                        species having no photo doesn't actually depend on
+                        anything else in the outing being resolved first,
+                        unlike Confirmed/Not-a-bird which do -- gating it
+                        just hid real data behind unrelated unresolved
+                        photos (School Pond, 2026-08-11 review: 4 no-photo
+                        species invisible behind 14 unrelated Needs-Claude
+                        photos). Note: the mockup's fourth post-review
+                        bucket, "Not a bird," has no backend representation
+                        yet (see app/services/outing_review.py) -- there's
+                        currently no way to distinguish "still needs
+                        Claude" from "Claude looked and it's not a bird,"
+                        so it's omitted here rather than faked. */}
+                    {noPhotoObservations.length > 0 && (
+                      <details className="outing-sidebar-section" open>
+                        <summary className="outing-col-header">
+                          <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
+                            {noPhotoObservations.length}
+                          </span>
+                          <span className="outing-col-title">No photos on Flickr</span>
+                        </summary>
+                        <ul className="no-photo-list">
+                          {noPhotoObservations.map((obs) => (
+                            <li key={obs.id} className="no-photo-item">
+                              <div style={{ fontSize: "var(--text-sm)", fontWeight: 700 }}>{obs.common_name}</div>
+                              {obs.scientific_name && (
+                                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", fontStyle: "italic" }}>
+                                  {obs.scientific_name}
                                 </div>
                               )}
-                            </>
-                          );
-                        })()}
-                        <input
-                          type="text"
-                          value={fallbackText[m.photo.id] ?? ""}
-                          onChange={(e) =>
-                            setFallbackText((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                          }
-                          placeholder="Accept the guess above, or write your own note"
-                        />
-                        <div className="panel-actions" style={{ marginTop: 0 }}>
-                          <button
-                            className="btn btn-primary"
-                            disabled={!(fallbackText[m.photo.id] ?? "").trim()}
-                            onClick={() => handleAcceptFallback(selected.id, m.photo.id, fallback.data)}
-                          >
-                            Save
-                          </button>
-                          <button className="btn" onClick={() => handleDismissFallback(m.photo.id)}>
-                            Dismiss
-                          </button>
-                        </div>
-                      </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     )}
-                  </figure>
-                );
-              })}
-              {selected.matches.length === 0 && <p>No photos matched this outing yet.</p>}
-            </div>
-
-            <h3>Species seen</h3>
-            <ul>
-              {selected.observations.map((obs) => (
-                <li key={obs.id}>{obs.common_name}</li>
-              ))}
-            </ul>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
