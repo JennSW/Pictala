@@ -17,13 +17,25 @@ Checklist Comments, ML Catalog Numbers
 The importer is deliberately tolerant of missing/renamed columns (eBird has
 changed export headers before) -- it looks columns up by best-effort match
 rather than fixed position.
+
+Also accepts eBird's other CSV export -- the single-checklist "Download"
+button on an individual checklist page (filename like
+S123456789_observations.csv). That format has no Submission ID column at
+all (every row already belongs to the one checklist named in the file),
+uses different column names (Species, Observation Date, Start Time), and
+a free-text duration ("1 hour(s), 53 minute(s)") instead of a plain number
+of minutes -- handled below rather than asking the user to re-export in
+the other format.
 """
 import csv
+import re
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.models import Checklist, Match, Observation
+
+_CHECKLIST_ID_RE = re.compile(r"(S\d+)")
 
 
 def _get(row: dict, *candidates: str) -> str | None:
@@ -38,7 +50,7 @@ def _get(row: dict, *candidates: str) -> str | None:
     return None
 
 
-def import_ebird_csv(db: Session, csv_path: str) -> dict:
+def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None = None) -> dict:
     created_checklists = 0
     created_observations = 0
     skipped = 0
@@ -48,8 +60,22 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
 
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
+
+        # Single-checklist exports have no Submission ID column -- derive
+        # one from the filename (eBird names these S<digits>_observations.csv)
+        # and share it across every row, since they all belong to that one
+        # checklist.
+        has_submission_id_column = reader.fieldnames and any(
+            fn.strip().lower() == "submission id" for fn in reader.fieldnames
+        )
+        fallback_submission_id = None
+        if not has_submission_id_column:
+            m = _CHECKLIST_ID_RE.search(original_filename or csv_path)
+            if m:
+                fallback_submission_id = m.group(1)
+
         for row in reader:
-            submission_id = _get(row, "Submission ID", "submission_id")
+            submission_id = _get(row, "Submission ID", "submission_id") or fallback_submission_id
             if not submission_id:
                 skipped += 1
                 continue
@@ -60,11 +86,11 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
                 .one_or_none()
             )
             if checklist is None:
-                date_raw = _get(row, "Date")
+                date_raw = _get(row, "Date", "Observation Date")
                 date_iso = _normalize_date(date_raw) if date_raw else ""
                 lat = _get(row, "Latitude")
                 lon = _get(row, "Longitude")
-                duration = _get(row, "Duration (Min)", "Duration(Min)")
+                duration_raw = _get(row, "Duration (Min)", "Duration(Min)", "Duration")
 
                 checklist = Checklist(
                     submission_id=submission_id,
@@ -73,8 +99,8 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
                     latitude=float(lat) if lat else None,
                     longitude=float(lon) if lon else None,
                     date=date_iso,
-                    start_time=_get(row, "Time"),
-                    duration_minutes=float(duration) if duration else None,
+                    start_time=_get(row, "Time", "Start Time"),
+                    duration_minutes=_parse_duration_minutes(duration_raw),
                 )
                 db.add(checklist)
                 db.flush()  # get checklist.id
@@ -97,7 +123,7 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
             db.add(
                 Observation(
                     checklist_id=checklist.id,
-                    common_name=_get(row, "Common Name") or "Unknown species",
+                    common_name=_get(row, "Common Name", "Species") or "Unknown species",
                     scientific_name=_get(row, "Scientific Name"),
                     count=_get(row, "Count"),
                 )
@@ -113,10 +139,32 @@ def import_ebird_csv(db: Session, csv_path: str) -> dict:
 
 
 def _normalize_date(date_raw: str) -> str:
-    """eBird exports dates like '14 Jun 2026' -- normalize to ISO 8601."""
-    for fmt in ("%d %b %Y", "%Y-%m-%d", "%m/%d/%Y"):
+    """eBird exports dates like '14 Jun 2026' (history export) or
+    'Aug 7, 2026' (single-checklist export) -- normalize to ISO 8601."""
+    for fmt in ("%d %b %Y", "%b %d, %Y", "%Y-%m-%d", "%m/%d/%Y"):
         try:
             return datetime.strptime(date_raw, fmt).date().isoformat()
         except ValueError:
             continue
     return date_raw  # fall back to whatever eBird gave us
+
+
+_DURATION_TEXT_RE = re.compile(
+    r"(?:(?P<hours>\d+)\s*hour\(s\))?,?\s*(?:(?P<minutes>\d+)\s*minute\(s\))?"
+)
+
+
+def _parse_duration_minutes(raw: str | None) -> float | None:
+    """The history export gives a plain number of minutes ("113"); the
+    single-checklist export gives free text ("1 hour(s), 53 minute(s)") --
+    parse either."""
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    m = _DURATION_TEXT_RE.search(raw)
+    if not m or not (m.group("hours") or m.group("minutes")):
+        return None
+    return float(int(m.group("hours") or 0) * 60 + int(m.group("minutes") or 0))

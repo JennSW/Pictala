@@ -40,7 +40,7 @@ async def sync_ebird(db: Session = Depends(get_db), file: UploadFile = File(...)
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
-    return import_ebird_csv(db, tmp_path)
+    return import_ebird_csv(db, tmp_path, original_filename=file.filename)
 
 
 def _parse_flickr_coord(raw) -> float | None:
