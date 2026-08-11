@@ -23,3 +23,15 @@ frontend.log
 PROJECT_HISTORY.md
 docs/PROCESS_RETROSPECTIVE.md
 docs/TIME_TRACKING.md
+
+# Stray files that have shown up untracked across several sessions --
+# unclear whether they're intentional, so kept out of GitHub until
+# that's decided rather than committed by accident.
+backend/seed_data/not a starling.jpg
+docs/BirdTrip_Project_History.zip
+docs/birdtripconversation.txt
+docs/birdtripprojecthistory.md
+docs/birdtripscaffold.zip
+docs/mockups/Camera.svg
+docs/mockups/summertime-35.png
+preview-screenshot.png

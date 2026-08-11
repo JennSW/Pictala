@@ -69,9 +69,49 @@
   }
 
   .app-shell {
-    max-width: 640px;
+    max-width: 960px;
     margin: 0 auto;
     padding: 0 var(--space-5) var(--space-6);
+  }
+
+  /* Two-column page layout, per Jen: the single centered 640px column
+     left a lot of unused space on the right at normal desktop widths.
+     Main content keeps its original 640px measure (unchanged below);
+     the new right rail is a rough placeholder for account/download-type
+     links, not a decided feature -- see notes. */
+  .page-grid {
+    display: grid;
+    grid-template-columns: 640px 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .page-main { min-width: 0; }
+  .page-rail {
+    padding-top: var(--space-5);
+  }
+  .rail-heading {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    margin-bottom: var(--space-3);
+  }
+  .rail-links { display: flex; flex-direction: column; gap: var(--space-2); }
+  .rail-links a {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: var(--space-1) 0;
+  }
+  .rail-links a:hover { color: var(--navy); text-decoration: underline; }
+
+  /* Page title -- per Jen, the entry screen needs an actual heading
+     identifying what this screen is, not just the app wordmark. */
+  .page-title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-4);
   }
 
   /* ---- Header / logo ---- */
@@ -292,6 +332,8 @@
   /* ---- Mobile layout (DESIGN.md §10.2) ---- */
   @media (max-width: 640px) {
     .app-shell { padding: 0 var(--space-4) var(--space-5); }
+    .page-grid { grid-template-columns: 1fr; }
+    .page-rail { padding-top: 0; border-top: 1px solid var(--border); margin-top: var(--space-5); }
     .card { padding: var(--space-4); }
     .greeting-actions { flex-direction: column; }
     .greeting-actions .btn { width: 100%; text-align: center; }
@@ -325,6 +367,11 @@
     </svg>
     <span class="wordmark">BirdTrip</span>
   </header>
+
+  <h1 class="page-title">Browse Trips</h1>
+
+  <div class="page-grid">
+  <div class="page-main">
 
   <!-- 1. Greeting + new-activity prompt (DESIGN.md §10.1, step 1) -->
   <section class="card greeting">
@@ -404,8 +451,27 @@
     </div>
   </section>
 
+  </div>
+  <!-- Right rail -- rough placeholder only, not a decided feature (see
+       notes). Jen's idea: the empty space next to the 640px main column
+       at normal desktop widths could hold account/download-type links
+       instead of going unused. Nothing here is wired to anything real. -->
+  <aside class="page-rail">
+    <div class="rail-heading">Account</div>
+    <div class="rail-links">
+      <a href="#">eBird account</a>
+      <a href="#">Flickr account</a>
+      <a href="#">Download my data</a>
+      <a href="#">Settings</a>
+    </div>
+  </aside>
+  </div>
+
   <ul class="notes">
     <li><strong>Revised from the first pass:</strong> the calendar was visually dominant (a 6-row grid) while the trips themselves -- the actual point of the app -- were a plain list at the bottom. Swapped the order and weighting: trips are now the hero section with larger cards and a real photo, and the calendar is a compact secondary widget below it.</li>
+    <li><strong>Revised again, this pass:</strong> two changes per Jen, reviewing the calendar-placement question fresh in light of the outing-review sidebar's own "everything could be long" problem. (1) Added an actual page title, "Browse Trips" -- the screen previously had only the app wordmark, no heading identifying what this specific screen is. (2) Widened the shell from a single centered 640px column to a two-column layout (640px main + a right rail) -- the centered column left the right side of the screen empty at normal desktop widths. The main column's content/width is otherwise unchanged from the prior pass.</li>
+    <li><strong>Right rail is a rough placeholder, not a decided feature</strong> -- Jen's idea was that the newly-freed space could hold account/download-type links instead of sitting empty, but which links and whether this is the right place for them is still open. The four links shown (eBird account, Flickr account, Download my data, Settings) are illustrative guesses at plausible content, not a scoped list. On mobile the rail stacks below the main content rather than disappearing, so nothing in it becomes unreachable -- untested against any real content, just a reasonable default.</li>
+    <li><strong>Calendar placement itself is still not resolved</strong> -- this pass only addressed the page shell around it (title + two columns); the calendar's own compact-widget treatment from the prior pass is otherwise unchanged here, still the open question this session's review was trying to get to.</li>
     <li>Rough mockup, not final -- see <a href="../DESIGN.md#10-visual--ux-design-decisions">docs/DESIGN.md §10</a> and issue #4.</li>
     <li>Greeting counts (2 eBird / 1 Flickr) are illustrative placeholder text, not live data.</li>
     <li>Marymoor Park uses a real photo from the project's Flickr data as an example of what a trip-card thumbnail could look like; Tolt-MacDonald and Juanita Bay Park use a generic placeholder since this mockup doesn't have a representative photo wired up for them.</li>
