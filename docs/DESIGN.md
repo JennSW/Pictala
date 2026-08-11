@@ -386,3 +386,71 @@ either viable:
 
 Not yet implemented — this documents feasibility for whenever the
 confirmed-match / eBird-no-photo UI actually gets built.
+
+### 10.8 eBird-match icon (#48) — resolved
+
+**Problem:** the "on eBird" indicator (10.3's bird icon, marking eBird-matched
+entries in "To review"/"Confirmed") can't actually use eBird's own logo —
+it's a recognizable trademark BirdTrip has no license to use if this ever
+became public. Needed a replacement that doesn't need eBird's mark to make
+the same "matched" claim.
+
+**Decided:** a licensed list/notebook stock icon (reads as "logged on a
+checklist," which is conceptually honest to what eBird actually is) —
+icon present = eBird-matched, absent = guess-only. Same on/off meaning
+the old bird-icon emoji carried, new (licensed, trademark-free) icon.
+
+**Placement, revised after being built into the real app:** originally a
+corner badge on the photo thumbnail (tested and initially chosen over an
+inline-before-the-label placement — see the mockup history below). Once
+actually built into the live outing page against real bird photos rather
+than mockup placeholders, the same badge that read fine in isolation
+interfered with the photo itself — Jen's call. **Moved inline**: the icon
+now sits below the common name, next to the scientific name when one
+exists, not overlapping the thumbnail at all. Also fixed in the same
+pass: the icon's visibility was originally conditioned on a scientific
+name being present, which would silently hide it whenever that field's
+missing — and it turns out eBird's single-checklist CSV export (as
+opposed to the full history export) has no scientific-name column at
+all, so that gap wasn't hypothetical. The icon now shows unconditionally
+whenever a photo is eBird-matched, scientific name present or not.
+
+A second licensed icon (camera) was tested alongside it as the answer to "how
+do we also show a photo exists," but it's **not used** on the "To
+review"/"Confirmed" screen specifically — every card there is already a
+Flickr photo by definition, so a "has a photo" badge would be on 100% of
+cards and distinguish nothing. Reserved for a future view where photo
+presence isn't already implied by the card itself (e.g. a per-species summary
+row that may or may not have a photo attached) — that's also where the
+original "how do we show a species is on both eBird and Flickr" question
+actually gets answered: two independent badges that can co-occur, rather
+than one icon trying to carry both meanings.
+
+Mockup history (superseded by the real-app revision above, kept for
+context): the corner-badge version was worked out live against real
+thumbnails in
+[docs/mockups/outing-grouping-icons-mockup.html](mockups/outing-grouping-icons-mockup.html)
+(a variant of 10.3's grouping mockup with only the icon swapped,
+everything else unchanged) — thumbnail 60×60px (up from 10.3's original
+44px), badge 24px circle, white background, thin border, `object-fit:
+contain`. Earlier passes at a smaller badge (18px, then down to 11px)
+looked identically oversized regardless of the container size — turned
+out to be a CSS specificity bug (an unscoped `.thumb img` rule was also
+matching the badge's inner `<img>`, forcing it to the full 44px thumbnail
+size with `object-fit: cover`), not an actual sizing question. The exact
+same class of bug recurred once ported into the real app's `theme.css`
+(same unscoped-selector mistake, independently made and independently
+fixed) before the placement itself changed.
+
+Current (real app): 60×60px thumbnail unchanged; the icon itself is a
+small 13px inline image next to the scientific name, no badge/circle/
+border — see `frontend/src/theme.css`'s `.ebird-match-icon` and
+`App.tsx`'s `renderMatchCard()`.
+
+Icon colors (lavender camera, peach list) are provisional — both are close to
+colors 10.4's brand-direction table explicitly dropped
+(`#D19FFF`, `#FFC7A7`). Jen's call: icon badges need to contrast against
+whatever's in the photo itself, which is a different goal than the rest of
+the UI chrome's palette, so this may intentionally diverge from 10.4's
+dropped-colors list rather than being an oversight. Not yet reconciled;
+revisit once final icon colors are picked from the Brand Book.
