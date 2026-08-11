@@ -243,6 +243,36 @@ export function runSync(): Promise<{ remaining: number }> {
   return request("/sync/run", { method: "POST" });
 }
 
+export interface EbirdSyncResult {
+  checklists_created: number;
+  observations_created: number;
+  rows_skipped: number;
+}
+
+// File upload -- not JSON, so this bypasses request()/postJson() and sets
+// its own multipart body (the browser sets the correct Content-Type,
+// including the boundary, when given a FormData with no explicit header).
+// Not gated by the Flickr sync's daily limit -- see app/routers/sync.py,
+// only /sync/run writes a SyncLog.
+export async function syncEbirdCsv(file: File): Promise<EbirdSyncResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/sync/ebird`, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(await readErrorDetail(res));
+  return res.json();
+}
+
+// Re-run matching after an eBird import so newly-added checklists match
+// against photos already synced, without waiting for the next Flickr
+// sync (which is the only other thing that currently triggers this).
+export function runMatch(): Promise<{
+  checklist_photo_matches: number;
+  species_level_matches: number;
+  same_day_fallback_matches: number;
+}> {
+  return request("/sync/match", { method: "POST" });
+}
+
 export function adjustTimezone(checklistId: number, photoId: number): Promise<void> {
   return request(`/match/${checklistId}/adjust-timezone/${photoId}`, { method: "POST" });
 }

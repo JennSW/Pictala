@@ -1,5 +1,14 @@
-import { useState } from "react";
-import { runSync, fetchSyncStatus, fetchOutings, OutingSummary, SyncStatus } from "./api";
+import { ChangeEvent, useRef, useState } from "react";
+import {
+  runSync,
+  fetchSyncStatus,
+  fetchOutings,
+  syncEbirdCsv,
+  runMatch,
+  EbirdSyncResult,
+  OutingSummary,
+  SyncStatus,
+} from "./api";
 
 // Manual "Sync now" button (docs/USER_STORIES.md, "Story: Manual
 // sync") -- capped server-side at 4/day. confirmLastSync gates the
@@ -14,6 +23,9 @@ interface SyncPanelProps {
 export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelProps) {
   const [syncing, setSyncing] = useState(false);
   const [confirmLastSync, setConfirmLastSync] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<EbirdSyncResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function performSync() {
     setSyncing(true);
@@ -38,6 +50,32 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
       return;
     }
     performSync();
+  }
+
+  // In-app eBird CSV upload (issue #49) -- previously only reachable via
+  // the /docs Swagger page or curl, despite CSV ingestion being core v1
+  // sync scope. Not gated by the Flickr sync's daily limit (see
+  // api.ts's syncEbirdCsv). Runs the matcher right after so newly
+  // imported checklists match against photos already synced, instead of
+  // silently sitting unmatched until the next Flickr sync happens to
+  // trigger one.
+  async function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset so picking the same file again still fires onChange
+    if (!file) return;
+    setUploading(true);
+    setUploadResult(null);
+    try {
+      const result = await syncEbirdCsv(file);
+      await runMatch();
+      const [status, freshOutings] = await Promise.all([fetchSyncStatus(), fetchOutings()]);
+      onSynced(status, freshOutings);
+      setUploadResult(result);
+    } catch (err) {
+      onError(String(err));
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
@@ -94,9 +132,31 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
         >
           Get eBird checklist CSV ↗
         </a>
-        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", marginTop: 2 }}>
-          Opens eBird's own download page — log in there if you aren't already, then upload the CSV it gives you.
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", marginTop: 2, marginBottom: "var(--space-2)" }}>
+          eBird emails this to you rather than downloading it instantly —
+          submit the request there, then come back once it's arrived. (A
+          single checklist's own "Download" button, on that checklist's
+          page on eBird, is immediate instead, if that's all you need.)
         </div>
+        <input
+          type="file"
+          accept=".csv"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={handleFileSelected}
+        />
+        <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+          {uploading ? "Importing…" : "Upload eBird CSV"}
+        </button>
+        {uploadResult && (
+          <div style={{ fontSize: "var(--text-xs)", color: "var(--success)", marginTop: "var(--space-2)" }}>
+            Imported {uploadResult.checklists_created} checklist{uploadResult.checklists_created === 1 ? "" : "s"},{" "}
+            {uploadResult.observations_created} observation{uploadResult.observations_created === 1 ? "" : "s"}
+            {uploadResult.rows_skipped > 0 &&
+              ` (${uploadResult.rows_skipped} row${uploadResult.rows_skipped === 1 ? "" : "s"} skipped — unrecognized format?)`}
+            .
+          </div>
+        )}
       </div>
     </div>
   );
