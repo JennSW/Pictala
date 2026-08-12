@@ -215,6 +215,24 @@ a:hover {
   background: var(--neutral-bg);
 }
 
+/* Top-level browse (calendar/trips/sync) | outing-detail layout. Plain
+   side-by-side flex with no breakpoint used to overflow horizontally on
+   a real phone (issue #55) -- the detail column tried to sit beside the
+   sidebar instead of stacking below it once index.html actually had a
+   viewport meta tag (also #55; without one, mobile browsers rendered
+   the whole app at a virtual 980px canvas and zoomed out, so this never
+   showed up until that was fixed). Breakpoint matches the entry-screen
+   mockup's existing 640px convention. */
+.browse-shell {
+  display: flex;
+  gap: var(--space-6);
+}
+@media (max-width: 640px) {
+  .browse-shell {
+    flex-direction: column;
+  }
+}
+
 /* Outing review grouping (issue #43, DESIGN.md §10.3) -- wide primary
    column (To review / Confirmed) + a narrow sidebar (Needs Claude / No
    photos on Flickr), instead of one flat undifferentiated grid. */
@@ -223,6 +241,11 @@ a:hover {
   grid-template-columns: 2fr 1fr;
   gap: var(--space-5);
   align-items: start;
+}
+@media (max-width: 640px) {
+  .outing-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .outing-sidebar {
   display: flex;
@@ -241,11 +264,21 @@ a:hover {
   border-radius: var(--radius-md);
   font-weight: 700;
   background: var(--periwinkle-tint);
-  color: var(--periwinkle);
+  /* --periwinkle itself (#728CFF) on --periwinkle-tint measures 2.68:1 --
+     fails WCAG AA's 4.5:1 for text this size. Darkened for this specific
+     text use (not used anywhere else, so no shared-variable fallout) --
+     4152B8 on periwinkle-tint measures 5.93:1. */
+  color: #4152B8;
 }
+/* Section titles ("Confirmed", "Needs Claude", "No photos on Flickr",
+   "All Trips") render as h3 elements now, not styled spans -- a screen
+   reader's heading-navigation previously skipped them entirely. Reset
+   the h3 defaults so promoting the element doesn't change how it looks. */
 .outing-col-title {
   font-size: var(--text-sm);
   font-weight: 700;
+  margin: 0;
+  display: inline;
 }
 .outing-sidebar-section summary.outing-col-header {
   cursor: pointer;
@@ -283,17 +316,43 @@ a:hover {
   height: 60px;
   flex-shrink: 0;
 }
-.match-card .thumb > img,
+.match-card .thumb > .thumb-button,
 .match-card .thumb > .photo-placeholder {
   width: 60px;
   height: 60px;
-  object-fit: cover;
   border-radius: var(--radius-sm);
   display: block;
   cursor: pointer;
 }
 .match-card .thumb .photo-placeholder {
   background: var(--neutral-bg);
+}
+/* object-fit only applies to the img itself, not the button wrapping it. */
+.match-card .thumb .thumb-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+/* Unstyled <button> wrapper around a photo thumbnail -- previously a bare
+   <img onClick>, meaning a keyboard/screen-reader user had no way to open
+   the lightbox at all. Chrome reset only -- deliberately doesn't size the
+   img itself, so the existing context-specific sizing (.match-card .thumb
+   > .thumb-button above, .photo-card img below) keeps working exactly as
+   before through the new wrapper. */
+.thumb-button {
+  border: none;
+  background: none;
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.thumb-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* eBird-match icon (issue #48) -- the licensed list/notebook icon, next

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Photo } from "./api";
 
 // Larger inline view of a single photo (issue #44) -- deliberately a
@@ -39,10 +39,49 @@ interface PhotoLightboxProps {
 
 export default function PhotoLightbox({ entry, onClose }: PhotoLightboxProps) {
   const photo = entry.photo;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Move focus into the dialog on open, and back to whatever triggered it
+  // once this unmounts -- previously focus just stayed wherever it was on
+  // the page underneath, disorienting a keyboard/screen-reader user once
+  // the overlay covered it. Deliberately mount/unmount-only ([] deps): App
+  // passes a fresh `onClose` closure every render, and depending on it here
+  // would re-run this on every parent re-render while the dialog is still
+  // open, recapturing "previously focused" as whatever's currently focused
+  // *inside* the dialog instead of the original trigger button.
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+    return () => {
+      previouslyFocused?.focus();
+    };
+  }, []);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Minimal focus trap -- without this, Tab/Shift+Tab can reach the
+      // page content obscured behind the overlay, since nothing else
+      // stops native tab order from just continuing past this dialog.
+      if (e.key === "Tab" && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'button, a[href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -50,6 +89,7 @@ export default function PhotoLightbox({ entry, onClose }: PhotoLightboxProps) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={photo.title ?? "Photo"}
@@ -65,6 +105,7 @@ export default function PhotoLightbox({ entry, onClose }: PhotoLightboxProps) {
       }}
     >
       <button
+        ref={closeButtonRef}
         aria-label="Close"
         onClick={onClose}
         className="btn"

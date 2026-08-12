@@ -57,6 +57,16 @@ function outingLightboxEntry(m: MatchEntry): LightboxEntry {
   };
 }
 
+// Accessible name for the "view larger" button around each photo
+// thumbnail. Previously the <img>'s alt text was just the raw Flickr
+// title (e.g. "Aug 7-05658" -- meaningless to a screen reader, and often
+// empty) even when the app already knows the identified species -- use
+// that when there is one.
+function photoAccessibleLabel(m: MatchEntry): string {
+  const species = m.observation?.common_name ?? m.fallback_common_name;
+  return species ? `View larger photo — ${species}` : `View larger photo — ${m.photo.title || "unidentified bird"}`;
+}
+
 function clusterLightboxEntry(m: MatchEntry): LightboxEntry {
   const identified = Boolean(m.fallback_common_name);
   return {
@@ -647,11 +657,14 @@ export default function App() {
         <div className="match-card-header" style={{ padding: "var(--space-2) var(--space-3) 0" }}>
           <div className="thumb">
             {m.photo.url_medium ? (
-              <img
-                src={m.photo.url_medium}
-                alt={m.photo.title ?? ""}
+              <button
+                type="button"
+                className="thumb-button"
+                aria-label={photoAccessibleLabel(m)}
                 onClick={() => setLightboxEntry(outingLightboxEntry(m))}
-              />
+              >
+                <img src={m.photo.url_medium} alt="" />
+              </button>
             ) : (
               <div className="photo-placeholder" />
             )}
@@ -1220,8 +1233,17 @@ export default function App() {
           )}
         </div>
       ) : (
-      <div style={{ display: "flex", gap: "var(--space-6)" }}>
-        <div style={{ minWidth: 260 }}>
+      <div className="browse-shell">
+        {/* minWidth alone let this balloon to ~790px in the "Photos not
+            on eBird" view: with flex-basis:auto and no competing pressure
+            from that sibling's plain wrapping text (unlike the outing-
+            detail view's fixed-width match cards, which happen to force
+            enough shrinkage to mask the same underlying issue), the
+            sidebar sized itself to its widest *unwrapped* line of text
+            (a long paragraph in the sync panel) instead of wrapping
+            within a sane width. maxWidth forces wrapping regardless of
+            what's on the other side of the flex row. */}
+        <div style={{ minWidth: 260, maxWidth: 360, flexShrink: 0 }}>
           {/* "Last 3 trips" -- promoted to the hero position per DESIGN.md
               §10.1 (resolved): the actual point of the app (what you saw
               + what you shot) leads, instead of the calendar being the
@@ -1299,36 +1321,50 @@ export default function App() {
             onError={(message) => setError(message)}
           />
 
-          <div className="cal-eyebrow">{selectedDate ? "Outings on this date" : "All trips"}</div>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {visibleOutings.map((o) => (
-              <li key={o.id} style={{ marginBottom: "var(--space-3)" }}>
-                <button
-                  className="list-item-btn"
-                  onClick={() => openOuting(o.id)}
-                >
-                  <strong>{o.location_name}</strong>
-                  <br />
-                  <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-                    {o.date} · {o.species_count} species · {o.photo_count} photos
-                  </span>
-                </button>
-              </li>
-            ))}
-            {outings.length === 0 && !error && <li>No outings yet — sync eBird + Flickr data first.</li>}
-            {outings.length > 0 && visibleOutings.length === 0 && (
-              <li>No eBird outing found for this date.</li>
-            )}
-          </ul>
+          {/* Collapsed by default (issue: "layout is difficult to read") --
+              the full outings list can get very long (dozens of entries)
+              and was previously always fully expanded, dominating the
+              page. Reuses the same collapsible pattern as the outing-
+              detail sidebar sections below for visual consistency. Stays
+              open once a date is picked -- that's a short, actively-
+              relevant list, not the long unfiltered one. */}
+          <details className="outing-sidebar-section" open={Boolean(selectedDate)}>
+            <summary className="outing-col-header">
+              <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
+                {visibleOutings.length}
+              </span>
+              <h3 className="outing-col-title">{selectedDate ? "Outings on this date" : "All Trips"}</h3>
+            </summary>
+            <ul style={{ listStyle: "none", padding: 0, marginTop: "var(--space-2)" }}>
+              {visibleOutings.map((o) => (
+                <li key={o.id} style={{ marginBottom: "var(--space-3)" }}>
+                  <button
+                    className="list-item-btn"
+                    onClick={() => openOuting(o.id)}
+                  >
+                    <strong>{o.location_name}</strong>
+                    <br />
+                    <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                      {o.date} · {o.species_count} species · {o.photo_count} photos
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {outings.length === 0 && !error && <li>No outings yet — sync eBird + Flickr data first.</li>}
+              {outings.length > 0 && visibleOutings.length === 0 && (
+                <li>No eBird outing found for this date.</li>
+              )}
+            </ul>
 
-          {clustersForSelectedDate.length > 0 && (
-            <button className="btn" onClick={viewClustersForDate} style={{ marginBottom: "var(--space-3)" }}>
-              {clustersForSelectedDate.reduce((sum, c) => sum + c.photo_count, 0)} photos not on eBird for this date
-            </button>
-          )}
+            {clustersForSelectedDate.length > 0 && (
+              <button className="btn" onClick={viewClustersForDate} style={{ marginBottom: "var(--space-3)" }}>
+                {clustersForSelectedDate.reduce((sum, c) => sum + c.photo_count, 0)} photos not on eBird for this date
+              </button>
+            )}
+          </details>
 
           <button className="btn" onClick={loadUnassigned} style={{ marginTop: "var(--space-3)" }}>
-            Photos not on eBird
+            Show all photos not on eBird
           </button>
         </div>
 
@@ -1358,13 +1394,14 @@ export default function App() {
                     return (
                       <figure key={m.photo.id} className="card photo-card" style={{ margin: 0, overflow: "hidden" }}>
                         {m.photo.url_medium ? (
-                          <img
-                            src={m.photo.url_medium}
-                            alt={m.photo.title ?? ""}
-                            width={180}
-                            style={{ cursor: "pointer" }}
+                          <button
+                            type="button"
+                            className="thumb-button"
+                            aria-label={photoAccessibleLabel(m)}
                             onClick={() => setLightboxEntry(clusterLightboxEntry(m))}
-                          />
+                          >
+                            <img src={m.photo.url_medium} alt="" width={180} />
+                          </button>
                         ) : (
                           <div className="photo-placeholder" />
                         )}
@@ -1562,7 +1599,7 @@ export default function App() {
                   <div>
                     <div className="outing-col-header">
                       <span className="outing-count-badge">{toReviewOrConfirmed.length}</span>
-                      <span className="outing-col-title">{primaryTitle}</span>
+                      <h3 className="outing-col-title">{primaryTitle}</h3>
                     </div>
                     {checkedInPrimary.length > 0 && (
                       <button
@@ -1587,7 +1624,7 @@ export default function App() {
                           <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
                             {needsClaudeMatches.length}
                           </span>
-                          <span className="outing-col-title">Needs Claude</span>
+                          <h3 className="outing-col-title">Needs Claude</h3>
                         </div>
                         <div className="outing-match-grid">
                           {needsClaudeMatches.map((m) => renderMatchCard(selected, m))}
@@ -1618,7 +1655,7 @@ export default function App() {
                           <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
                             {noPhotoObservations.length}
                           </span>
-                          <span className="outing-col-title">No photos on Flickr</span>
+                          <h3 className="outing-col-title">No photos on Flickr</h3>
                         </summary>
                         <ul className="no-photo-list">
                           {noPhotoObservations.map((obs) => (
