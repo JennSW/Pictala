@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db import Base
-from app.models import Checklist, Observation, Photo
+from app.models import Checklist, Match, Observation, Photo
 from app.services.matcher import run_rule_based_matching
 
 
@@ -108,6 +108,47 @@ def test_photo_outside_window_does_not_match(db_session):
     result = run_rule_based_matching(db_session)
 
     assert result["checklist_photo_matches"] == 0
+
+
+def test_same_day_fallback_still_runs_when_checklist_already_has_tight_matches(db_session):
+    """Regression test for issue #59, found live: a checklist with strong
+    tight-window matches used to skip the same-day fallback entirely (it
+    only ran when the tight window found zero candidates for the whole
+    checklist), so an outlier same-day photo -- e.g. one with a wrong
+    camera clock/timezone offset landing its recorded time hours outside
+    the window -- got no match at all instead of falling back. Real case:
+    an outing with 17 photos correctly inside the tight window, plus 2
+    more genuinely-same-day photos recorded ~6 hours later than reality
+    due to a wrong EXIF timezone offset."""
+    checklist = Checklist(
+        submission_id="S1",
+        location_name="Lake Merritt",
+        date="2026-06-14",
+        start_time="13:33",
+        duration_minutes=216,
+    )
+    db_session.add(checklist)
+    db_session.flush()
+    db_session.add(
+        Photo(flickr_id="p1", title="In the tight window", date_taken="2026-06-14T14:06:47")
+    )
+    db_session.add(
+        Photo(
+            flickr_id="p2",
+            title="Same day, clock way off",
+            date_taken="2026-06-14T23:07:16",  # same calendar day, well outside the window
+        )
+    )
+    db_session.commit()
+
+    result = run_rule_based_matching(db_session)
+
+    assert result["checklist_photo_matches"] == 2
+    assert result["same_day_fallback_matches"] == 1
+
+    methods = {m.photo.flickr_id: m.method for m in db_session.query(Match).all()}
+    assert methods["p1"] == "rule_based"
+    assert methods["p2"] == "rule_based_same_day"
 
 
 def test_photo_far_away_does_not_match_even_in_time_window(db_session):

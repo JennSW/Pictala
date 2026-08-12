@@ -9,12 +9,19 @@ why this comes before any model call. Three rules, in order:
 2. SAME-DAY FALLBACK: real eBird exports include a lot of "Casual
    Observation" checklists whose recorded time is when the sighting was
    entered into eBird, not when it actually happened -- sometimes off by
-   hours from the real outing. When rule 1 finds nothing for a checklist,
-   fall back to matching any photo taken on the same calendar day (and
-   within a looser GPS radius, when both sides have coordinates). These
-   matches are recorded with a distinct method/lower confidence so the UI
-   can show them as looser than a tight time-window match, not hide the
-   distinction.
+   hours from the real outing. Also catches the opposite case: a photo
+   whose own timestamp is wrong (bad camera clock, wrong recorded
+   timezone offset) and so falls outside a checklist's tight window even
+   though it's genuinely from that outing. Applied per photo, not
+   per checklist -- a checklist with strong tight-window matches from
+   rule 1 can still separately pick up same-day photos rule 1 missed
+   (issue #59; previously this only ran when rule 1 found *zero* matches
+   for the whole checklist, so an outlier photo on an otherwise
+   well-matched day silently got no match at all instead of falling back).
+   Same-day matches use a looser GPS radius (when both sides have
+   coordinates) and are recorded with a distinct method/lower confidence
+   so the UI can show them as looser than a tight time-window match, not
+   hide the distinction.
 3. SPECIES TEXT MATCH (optional, only if the checklist matched): a photo
    matches a specific observation within that checklist if the species'
    common name (or a simple alias) appears in the photo's title or tags.
@@ -129,9 +136,7 @@ def run_rule_based_matching(db: Session) -> dict:
 
         window = _checklist_window(checklist)
 
-        candidates = []
-        method = "rule_based"
-
+        tight_candidates = []
         if window:
             start, end = window
             for photo, taken in parsed_photos:
@@ -148,29 +153,36 @@ def run_rule_based_matching(db: Session) -> dict:
                     )
                     if dist > MAX_MATCH_DISTANCE_KM:
                         continue
-                candidates.append(photo)
+                tight_candidates.append(photo)
 
-        if not candidates:
-            # Nothing in the tight window -- fall back to same-day matching
-            # (see module docstring, rule 2) rather than reporting zero.
-            method = "rule_based_same_day"
-            for photo, taken in parsed_photos:
-                if taken.date() != checklist_date:
+        # Same-day fallback (issue #59): additive per photo, not
+        # conditional on the tight window finding nothing -- a checklist
+        # with plenty of tight-window matches can still separately pick
+        # up an outlier same-day photo (wrong camera clock/timezone) that
+        # rule 1 missed, instead of that photo getting no match at all.
+        tight_ids = {p.id for p in tight_candidates}
+        same_day_candidates = []
+        for photo, taken in parsed_photos:
+            if photo.id in tight_ids:
+                continue
+            if taken.date() != checklist_date:
+                continue
+            if (
+                checklist.latitude
+                and checklist.longitude
+                and photo.latitude
+                and photo.longitude
+            ):
+                dist = _haversine_km(
+                    checklist.latitude, checklist.longitude, photo.latitude, photo.longitude
+                )
+                if dist > SAME_DAY_MAX_DISTANCE_KM:
                     continue
-                if (
-                    checklist.latitude
-                    and checklist.longitude
-                    and photo.latitude
-                    and photo.longitude
-                ):
-                    dist = _haversine_km(
-                        checklist.latitude, checklist.longitude, photo.latitude, photo.longitude
-                    )
-                    if dist > SAME_DAY_MAX_DISTANCE_KM:
-                        continue
-                candidates.append(photo)
+            same_day_candidates.append(photo)
 
-        for photo in candidates:
+        for photo, method in [(p, "rule_based") for p in tight_candidates] + [
+            (p, "rule_based_same_day") for p in same_day_candidates
+        ]:
             if (checklist.id, photo.id) in already_matched:
                 continue
 
