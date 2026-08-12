@@ -699,20 +699,20 @@ export default function App() {
                 )
               ) : m.fallback_common_name ? (
                 m.fallback_scientific_name ? (
-                  <>
-                    <span className="badge badge-warning">Off checklist</span>
-                    <div style={{ marginTop: "var(--space-1)" }}>
-                      {m.fallback_common_name}
-                      {m.ebird_checklist_url && (
-                        <>
-                          {" — "}
-                          <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
-                            add to eBird
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  </>
+                  // "Off checklist" badge removed per Jen (issue #41) --
+                  // the "add to eBird" link already says everything the
+                  // badge did, just without a second label repeating it.
+                  <div>
+                    {m.fallback_common_name}
+                    {m.ebird_checklist_url && (
+                      <>
+                        {" — "}
+                        <a href={m.ebird_checklist_url} target="_blank" rel="noreferrer">
+                          add to eBird
+                        </a>
+                      </>
+                    )}
+                  </div>
                 ) : isNote ? (
                   // A Note -- typed by hand, no AI guess behind it
                   // (confidence is only ever exactly 1 when there was no
@@ -1169,15 +1169,23 @@ export default function App() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="e.g. Bald Eagle"
+          disabled={outings.length === 0}
           style={{ padding: "var(--space-2)", width: 220, border: "1px solid var(--border-strong)", borderRadius: "var(--radius-sm)", fontSize: "var(--text-sm)" }}
         />
-        <button type="submit" className="btn btn-primary" disabled={!searchQuery.trim() || searching} style={{ marginLeft: "var(--space-2)" }}>
+        <button type="submit" className="btn btn-primary" disabled={outings.length === 0 || !searchQuery.trim() || searching} style={{ marginLeft: "var(--space-2)" }}>
           {searching ? "Searching…" : "Search"}
         </button>
         {searchResults !== null && (
           <button type="button" className="btn" onClick={clearSearch} style={{ marginLeft: "var(--space-2)" }}>
             Clear search
           </button>
+        )}
+        {/* Nothing to search yet on a brand-new install (issue #58) --
+            disabled rather than left active against an empty dataset. */}
+        {outings.length === 0 && (
+          <div style={{ fontSize: "var(--text-xs)", color: "var(--text-faint)", marginTop: 2 }}>
+            Sync your first outing to search by species.
+          </div>
         )}
       </form>
 

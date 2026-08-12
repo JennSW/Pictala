@@ -10,6 +10,20 @@ import {
   SyncStatus,
 } from "./api";
 
+// Pulsing three-dot loading indicator (issue #56) -- stronger affordance
+// than a bare "Syncing…" text change for something that can take several
+// real seconds. aria-hidden since the button's own text already carries
+// the accessible loading state.
+function LoadingDots() {
+  return (
+    <span className="loading-dots" aria-hidden="true">
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 // Manual "Sync now" button (docs/USER_STORIES.md, "Story: Manual
 // sync") -- capped server-side at 4/day. confirmLastSync gates the
 // last available sync of the day behind an explicit "sync anyway"
@@ -25,6 +39,11 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
   const [confirmLastSync, setConfirmLastSync] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<EbirdSyncResult | null>(null);
+  // Set when a sync succeeds but leaves zero outings (issue #57) -- a
+  // Flickr-only sync with no eBird data yet is a real success (photos did
+  // sync) that produces no visible change, which otherwise reads exactly
+  // like a freeze or a failure.
+  const [showEbirdHint, setShowEbirdHint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function performSync() {
@@ -33,6 +52,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
     try {
       await runSync();
       const [status, freshOutings] = await Promise.all([fetchSyncStatus(), fetchOutings()]);
+      setShowEbirdHint(freshOutings.length === 0);
       onSynced(status, freshOutings);
     } catch (e) {
       onError(String(e));
@@ -69,6 +89,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
       const result = await syncEbirdCsv(file);
       await runMatch();
       const [status, freshOutings] = await Promise.all([fetchSyncStatus(), fetchOutings()]);
+      setShowEbirdHint(freshOutings.length === 0);
       onSynced(status, freshOutings);
       setUploadResult(result);
     } catch (err) {
@@ -103,7 +124,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
             This is your last sync available today. Wait for more Flickr uploads first?
           </p>
           <button className="btn btn-primary" onClick={performSync} disabled={syncing}>
-            {syncing ? "Syncing…" : "Sync anyway"}
+            {syncing ? (<>Syncing<LoadingDots /></>) : "Sync anyway"}
           </button>{" "}
           <button className="btn" onClick={() => setConfirmLastSync(false)}>
             Wait
@@ -115,8 +136,17 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
           onClick={handleSyncClick}
           disabled={syncing || syncStatus?.remaining === 0}
         >
-          {syncing ? "Syncing…" : "Sync now"}
+          {syncing ? (<>Syncing<LoadingDots /></>) : "Sync now"}
         </button>
+      )}
+      {/* A Flickr-only sync with no eBird data yet succeeds but produces
+          zero visible change (issue #57) -- without this, that reads
+          exactly like a freeze or a failure. */}
+      {showEbirdHint && (
+        <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>
+          BirdTrip works best with your eBird data. Get your checklist CSV
+          and upload it below to get started.
+        </p>
       )}
       {/* eBird has no personal-data API/OAuth (see app/services/
           ebird_import.py's docstring) -- CSV download is the only way to
@@ -146,7 +176,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
           onChange={handleFileSelected}
         />
         <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          {uploading ? "Importing…" : "Upload eBird CSV"}
+          {uploading ? (<>Importing<LoadingDots /></>) : "Upload eBird CSV"}
         </button>
         {uploadResult && (
           <div style={{ fontSize: "var(--text-xs)", color: "var(--success)", marginTop: "var(--space-2)" }}>
