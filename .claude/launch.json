@@ -7,6 +7,12 @@
       "runtimeArgs": ["frontend/node_modules/vite/bin/vite.js", "frontend"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "birdtrip-backend",
+      "runtimeExecutable": "backend/run_dev.sh",
+      "runtimeArgs": [],
+      "port": 8000
     }
   ]
 }

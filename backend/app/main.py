@@ -15,7 +15,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    # Both hostnames point at the same Vite dev server, but browsers treat
+    # them as different origins for CORS purposes -- localhost vs 127.0.0.1
+    # is a common source of a browser-blocked (not server-side) fetch
+    # failure depending on which one ends up in the address bar.
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
