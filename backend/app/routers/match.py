@@ -37,7 +37,7 @@ from app.schemas import (
     ebird_checklist_url,
 )
 from app.services.outing_grouping import get_checklist_group
-from app.services.ebird_taxonomy import find_species
+from app.services.ebird_taxonomy import find_species, resolve_guess
 from app.services.species_classifier import (
     guess_species,
     guess_species_unconstrained,
@@ -216,22 +216,6 @@ def assign_species(
     }
 
 
-def _resolve_fallback_guess(common_name: str | None) -> tuple[str | None, str | None, str | None, bool]:
-    """Shared by the single and batch fallback endpoints: resolve a raw
-    guessed name against eBird's taxonomy. Returns (common_name,
-    scientific_name, species_code, is_other)."""
-    if not common_name:
-        return None, None, None, False
-    resolved = find_species(common_name)
-    if resolved:
-        return resolved["common_name"], resolved["scientific_name"], resolved["species_code"], False
-    # Not in eBird's bird taxonomy -- either genuinely not a bird (a
-    # dragonfly, a squirrel) or a bird named in a way the taxonomy
-    # doesn't recognize. Either way this is a legitimate "Other" guess to
-    # offer, not an error to discard -- the model still gets to propose
-    # *something*, per the non-bird case discovered live
-    # (docs/USER_STORIES.md, "Species ID fallback for eBird gaps").
-    return common_name, None, None, True
 
 
 @router.post("/{checklist_id}/suggest-fallback/{photo_id}", response_model=FallbackSuggestion)
@@ -256,7 +240,7 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
     except SpeciesClassifierError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
-    common_name, scientific_name, species_code, is_other = _resolve_fallback_guess(result["common_name"])
+    common_name, scientific_name, species_code, is_other = resolve_guess(result["common_name"])
 
     return FallbackSuggestion(
         photo_id=photo_id,
@@ -305,7 +289,7 @@ def suggest_fallback_batch(checklist_id: int, body: SuggestFallbackBatchRequest,
 
     suggestions = []
     for r in results:
-        common_name, scientific_name, species_code, is_other = _resolve_fallback_guess(r["common_name"])
+        common_name, scientific_name, species_code, is_other = resolve_guess(r["common_name"])
         suggestions.append(
             FallbackSuggestion(
                 photo_id=r["photo_id"],

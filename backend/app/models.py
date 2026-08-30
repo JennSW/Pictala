@@ -87,6 +87,17 @@ class Photo(Base):
     this tag). Powers the timezone-mismatch check (issue #6): compare
     against the checklist location's *actual* offset on that date to
     catch a camera clock that was never updated while traveling."""
+    duplicate_group_key: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    """Set at sync time by app/services/duplicate_detection.py, not
+    computed live -- duplicate detection needs a full-library scan to
+    find matches, which is wasted work to repeat on every outing/cluster
+    page load. Computed once per sync instead and stored here, so a page
+    load just does an indexed `WHERE duplicate_group_key = ?` instead of
+    re-scanning every photo. Two photos are duplicates of each other iff
+    they share the same non-null value here -- the value itself is the
+    heuristic's own group identity (stripped title + calendar day), not
+    an arbitrary id, so no separate lookup table is needed. Null means
+    not currently flagged as part of a duplicate group."""
 
     matches: Mapped[list["Match"]] = relationship(
         back_populates="photo", cascade="all, delete-orphan"

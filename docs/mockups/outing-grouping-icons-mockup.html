@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BirdTrip — Outing grouping w/ finalized icons (issues #43, #48)</title>
+
+<!-- Preview-only: loads Public Sans from Google Fonts so this mockup renders
+     correctly without a build step. The real app should self-host it (e.g.
+     the @fontsource/public-sans npm package) rather than depend on a
+     third-party CDN at runtime. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  /* Same proposed token set as outing-grouping-mockup.html, per DESIGN.md
+     §10.4's confirmed brand direction. Not yet merged into
+     frontend/src/theme.css -- self-contained here for review. */
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --border: #e2e2e5;
+    --border-strong: #cfcfd4;
+
+    --text: #1a1a1e;
+    --text-muted: #63636b;
+    --text-faint: #8b8b93;
+
+    --navy: #3C689A;
+    --navy-hover: #2c4d75;
+    --navy-tint: #eaf0f7;
+
+    --mauve: #AB7F99;
+    --mauve-tint: #f4eef1;
+    --sage: #A3B899;
+    --sage-tint: #eef3ea;
+    --periwinkle: #728CFF;
+    --periwinkle-tint: #edf0ff;
+    --rose: #E38A99;
+
+    --neutral: #63636b;
+    --neutral-bg: #ececef;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.85rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.75rem;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: var(--space-6);
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .toolbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-3); }
+  .toolbar h1 { margin: 0; font-size: var(--text-xl); }
+  .toolbar p { color: var(--text-muted); margin: 4px 0 0; font-size: var(--text-sm); }
+  .toggle-btn { font: inherit; font-weight: 600; padding: var(--space-2) var(--space-4); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); cursor: pointer; color: var(--text); }
+  .toggle-btn.active { border-color: var(--navy); color: var(--navy); background: var(--navy-tint); }
+  .toggle-btn.small { padding: var(--space-1) var(--space-3); font-size: var(--text-xs); }
+  .day-toggle { margin-top: var(--space-3); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+  .cols-after { grid-template-columns: 2fr 1fr; align-items: start; }
+  .sidebar { display: flex; flex-direction: column; gap: var(--space-5); }
+  .sidebar-section summary.col-header {
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+  .sidebar-section summary.col-header::-webkit-details-marker { display: none; }
+  .sidebar-section summary.col-header::marker { content: ""; }
+  .sidebar-section[open] summary.col-header { margin-bottom: var(--space-3); }
+  .disclosure-chevron {
+    display: inline-block;
+    font-size: 0.7em;
+    color: var(--text-faint);
+    transition: transform 0.15s ease;
+    width: 0.8em;
+  }
+  .sidebar-section[open] .disclosure-chevron { transform: rotate(90deg); }
+  .col-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .count-badge { font-size: var(--text-xs); padding: 2px 10px; border-radius: var(--radius-md); font-weight: 700; }
+  .col-title { font-size: var(--text-sm); font-weight: 700; }
+
+  /* App-wide card layout per DESIGN.md §10.3: thumbnail-left, text-right. */
+  .photo-card { display: flex; align-items: center; gap: var(--space-2); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-2); margin-bottom: var(--space-2); box-shadow: var(--shadow-card); }
+  .photo-card .thumb { position: relative; width: 60px; height: 60px; flex-shrink: 0; }
+  .photo-card .thumb img.photo { width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius-sm); display: block; }
+  .photo-card .label { font-size: var(--text-sm); font-weight: 700; }
+  .photo-card .label.unid { color: var(--text-muted); font-weight: 400; }
+  .photo-card .sub { font-size: var(--text-xs); color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+  .photo-card .ebird-link { font-size: var(--text-xs); color: var(--navy); text-decoration: none; }
+  .photo-card .ebird-link:hover { text-decoration: underline; }
+
+  /* Finalized per issue #48: corner badge on the thumbnail replaces the
+     inline bird emoji, using the licensed list/notebook icon (on eBird =
+     badge, guess-only = no badge) -- same on-eBird meaning as before,
+     new icon. See notes at the bottom for why the camera icon isn't
+     used on this particular screen. */
+  .badge-corner {
+    position: absolute;
+    bottom: -5px;
+    right: -5px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+  }
+  .badge-corner img { width: 100%; height: 100%; object-fit: contain; }
+
+  /* "No photos on Flickr" -- a species entry, not a photo card, so it's
+     deliberately a different shape (DESIGN.md §10.3), in its own list
+     under its own heading rather than mixed into the photo grid. */
+  .no-photo-list { list-style: none; margin: 0; padding: 0; }
+  .no-photo-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); margin-bottom: var(--space-2); }
+  .no-photo-item .label { font-size: var(--text-sm); font-weight: 700; }
+  .no-photo-item .sub { font-size: var(--text-xs); color: var(--text-faint); margin-top: 2px; }
+  .no-photo-item .ebird-link { font-size: var(--text-xs); color: var(--navy); text-decoration: none; display: inline-block; margin-top: var(--space-1); }
+  .no-photo-item .ebird-link:hover { text-decoration: underline; }
+  .no-photo-item.empty { color: var(--text-faint); font-style: italic; font-size: var(--text-sm); box-shadow: none; }
+
+  .notes { margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--border); font-size: var(--text-sm); color: var(--text-muted); }
+  .notes li { margin-bottom: var(--space-2); }
+  .notes strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>
+    <h1 id="outing-title">Marymoor Park — 2026-05-04</h1>
+    <p id="outing-sub">17 photos · 5 species — rough mockup, not final, see <a href="../DESIGN.md#10-visual--ux-design-decisions" style="color: var(--navy);">docs/DESIGN.md §10</a>, issue #43, and issue #48</p>
+    <div class="day-toggle">
+      <button class="toggle-btn small active" id="btn-day-a" onclick="setDay('a')">Day A — Marymoor Park (real data)</button>
+      <button class="toggle-btn small" id="btn-day-b" onclick="setDay('b')">Day B — hypothetical, sidebar much longer</button>
+    </div>
+  </div>
+  <div>
+    <button class="toggle-btn active" id="btn-before" onclick="setMode('before')">Before review</button>
+    <button class="toggle-btn" id="btn-after" onclick="setMode('after')">After review</button>
+  </div>
+</div>
+
+<div id="before-view" class="cols cols-after"></div>
+
+<div id="after-view" class="cols cols-after" style="display: none;">
+  <div>
+    <div class="col-header">
+      <span class="count-badge" id="confirmed-count-badge" style="background: var(--periwinkle-tint); color: var(--periwinkle);"></span>
+      <span class="col-title">Confirmed</span>
+    </div>
+    <div id="confirmed-stack"></div>
+  </div>
+  <div class="sidebar">
+    <details class="sidebar-section">
+      <summary class="col-header">
+        <span class="disclosure-chevron" aria-hidden="true">▸</span>
+        <span class="count-badge" id="nophoto-count-badge" style="background: var(--neutral-bg); color: var(--neutral);"></span>
+        <span class="col-title">No photos on Flickr</span>
+      </summary>
+      <ul class="no-photo-list" id="nophoto-list"></ul>
+    </details>
+    <details class="sidebar-section">
+      <summary class="col-header">
+        <span class="disclosure-chevron" aria-hidden="true">▸</span>
+        <span class="count-badge" id="notbird-count-badge" style="background: var(--neutral-bg); color: var(--neutral);"></span>
+        <span class="col-title">Not a bird</span>
+      </summary>
+      <div id="notbird-stack"></div>
+    </details>
+  </div>
+</div>
+
+<ul class="notes">
+  <li><strong>What changed from outing-grouping-mockup.html:</strong> only the icon. Grouping, layout, and behavior are all unchanged from the #43-resolved version -- this file exists to test the finalized #48 icon choice against real thumbnails, not to reopen grouping decisions.</li>
+  <li><strong>Icon finalized (#48):</strong> the inline 🐦 emoji is replaced with a corner badge on the thumbnail, using the licensed list/notebook icon (<code>list.png</code>) -- badge present = on eBird, no badge = guess-only, same meaning the emoji carried before. Corner-badge placement (over inline-prefix) per Jen's choice.</li>
+  <li><strong>Camera badge (<code>Camera2.png</code>) deliberately not used on this screen:</strong> every card in "To review" / "Confirmed" is already a Flickr photo by definition -- that's why it has a thumbnail at all -- so a "has a Flickr photo" badge would be on 100% of cards here and wouldn't distinguish anything. It stays reserved for a view where photo-presence isn't already implied by the card itself (e.g. a per-species summary row that can exist with or without a photo).</li>
+  <li><strong>Colors:</strong> Jen is revisiting <code>list.png</code>/<code>Camera2.png</code>'s colors against the confirmed brand direction (DESIGN.md §10.4) separately -- current icon colors here are whatever's in the source PNGs as of this mockup, not a color decision.</li>
+</ul>
+
+<script>
+// Same Day A / Day B data as outing-grouping-mockup.html (issue #43) --
+// unchanged, reused here to keep the icon test against real thumbnails
+// rather than synthetic ones.
+const days = {
+  a: {
+    title: "Marymoor Park — 2026-05-04",
+    sub: "17 photos · 5 species — rough mockup, not final, see <a href=\"../DESIGN.md#10-visual--ux-design-decisions\" style=\"color: var(--navy);\">docs/DESIGN.md §10</a>, issue #43, and issue #48",
+    ebird: [
+      {t:"Common Yellowthroat", code: "comyel", s:"May 4 Marymoor Common Yellowthroat", u:"https://live.staticflickr.com/65535/55249783869_9418fa2a1d.jpg"},
+      {t:"Common Yellowthroat", code: "comyel", s:"May 4 Marymoor Common Yellowthroat", u:"https://live.staticflickr.com/65535/55249783914_3bbca02c95.jpg"},
+      {t:"Bald Eagle", code: "baleag", s:"May 4 Juvenile Bald Eagle", u:"https://live.staticflickr.com/65535/55249543011_cbfe7c1d80.jpg"},
+      {t:"Tree Swallow", code: "treswa", s:"May 4 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55249784009_b3530bcff4.jpg"}
+    ],
+    guess: [
+      {t:"Great Blue Heron", code: "grbher3", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249946885_2e00e2fb58.jpg"},
+      {t:"Great Blue Heron", code: "grbher3", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249784094_8a97efe80a.jpg"},
+      {t:"Great Blue Heron", code: "grbher3", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55248645297_5fe275710f.jpg"},
+      {t:"Great Blue Heron", code: "grbher3", s:"May 4 Marymoor Heron Nest", u:"https://live.staticflickr.com/65535/55249784154_4cb85d9ce7.jpg"},
+      {t:"Great Blue Heron", code: "grbher3", s:"May 4 Marymoor Heron Flying", u:"https://live.staticflickr.com/65535/55249543071_553d9eaaef.jpg"}
+    ],
+    unknown: [
+      {t:null, s:"May 4-14 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55248645142_2f18771dc0.jpg"},
+      {t:null, s:"May 4 Martins", u:"https://live.staticflickr.com/65535/55249946850_6224815070.jpg"},
+      {t:null, s:"May 4 Marymoor Swallow", u:"https://live.staticflickr.com/65535/55249784024_c51f0521b3.jpg"},
+      {t:null, s:"May 4 Marymoor Song Sparrow", u:"https://live.staticflickr.com/65535/55249543091_800090f81e.jpg"},
+      {t:null, s:"May 4 Marymoor Duck Family", u:"https://live.staticflickr.com/65535/55249691263_0d21cda5a4.jpg"},
+      {t:null, s:"May 4 Marymoor Gadwall", u:"https://live.staticflickr.com/65535/55248645242_30282bda25.jpg"},
+      {t:null, s:"May 4 Marymoor Pathway", u:"https://live.staticflickr.com/65535/55249691513_0d0b376b29.jpg"},
+      {t:null, s:"May 4 Marymoor Cowbird", u:"https://live.staticflickr.com/65535/55249946815_9a20135e96.jpg"}
+    ],
+    noPhoto: [
+      {name: "Brown-headed Cowbird", code: "bnhcow"}
+    ]
+  },
+  b: {
+    title: "Hypothetical Day B — not real data",
+    sub: "17 photos · a day where hardly anything auto-matched, to prove the fixed To-review/Needs-Claude layout still holds up when the sidebar is far longer than the primary column -- see outing-grouping-mockup.html notes",
+    ebird: [
+      {t:"Common Yellowthroat", code: "comyel", s:"Day B test photo 1", u:"https://live.staticflickr.com/65535/55249783869_9418fa2a1d.jpg"},
+      {t:"Common Yellowthroat", code: "comyel", s:"Day B test photo 2", u:"https://live.staticflickr.com/65535/55249783914_3bbca02c95.jpg"}
+    ],
+    guess: [
+      {t:"Great Blue Heron", code: "grbher3", s:"Day B test photo 3", u:"https://live.staticflickr.com/65535/55249543011_cbfe7c1d80.jpg"}
+    ],
+    unknown: [
+      {t:null, s:"Day B test photo 4", u:"https://live.staticflickr.com/65535/55249784009_b3530bcff4.jpg"},
+      {t:null, s:"Day B test photo 5", u:"https://live.staticflickr.com/65535/55249946885_2e00e2fb58.jpg"},
+      {t:null, s:"Day B test photo 6", u:"https://live.staticflickr.com/65535/55249784094_8a97efe80a.jpg"},
+      {t:null, s:"Day B test photo 7", u:"https://live.staticflickr.com/65535/55248645297_5fe275710f.jpg"},
+      {t:null, s:"Day B test photo 8", u:"https://live.staticflickr.com/65535/55249784154_4cb85d9ce7.jpg"},
+      {t:null, s:"Day B test photo 9", u:"https://live.staticflickr.com/65535/55249543071_553d9eaaef.jpg"},
+      {t:null, s:"Day B test photo 10", u:"https://live.staticflickr.com/65535/55248645142_2f18771dc0.jpg"},
+      {t:null, s:"Day B test photo 11", u:"https://live.staticflickr.com/65535/55249946850_6224815070.jpg"},
+      {t:null, s:"Day B test photo 12", u:"https://live.staticflickr.com/65535/55249784024_c51f0521b3.jpg"},
+      {t:null, s:"Day B test photo 13", u:"https://live.staticflickr.com/65535/55249543091_800090f81e.jpg"},
+      {t:null, s:"Day B test photo 14", u:"https://live.staticflickr.com/65535/55249691263_0d21cda5a4.jpg"},
+      {t:null, s:"Day B test photo 15", u:"https://live.staticflickr.com/65535/55248645242_30282bda25.jpg"},
+      {t:null, s:"Day B test photo 16", u:"https://live.staticflickr.com/65535/55249691513_0d0b376b29.jpg"},
+      {t:null, s:"Day B test photo 17", u:"https://live.staticflickr.com/65535/55249946815_9a20135e96.jpg"}
+    ],
+    noPhoto: []
+  }
+};
+
+let currentDay = "a";
+
+// showEbirdBadge controls the corner badge (list.png), same on-eBird
+// meaning the old bird-icon emoji carried.
+function card(p, showEbirdBadge, showEbirdLink, emptyLabel) {
+  var labelHtml = p.t
+    ? '<div class="label">' + p.t + '</div>'
+    : '<div class="label unid">' + (emptyLabel || 'Unidentified') + '</div>';
+  var linkHtml = (showEbirdLink && p.code)
+    ? '<a class="ebird-link" href="https://ebird.org/species/' + p.code + '" target="_blank" rel="noreferrer">Learn more on eBird ↗</a>'
+    : '';
+  var badgeHtml = showEbirdBadge
+    ? '<div class="badge-corner"><img src="list.png" alt="Logged on eBird"></div>'
+    : '';
+  return '<div class="photo-card"><div class="thumb"><img class="photo" src="' + p.u + '" alt="">' + badgeHtml + '</div>' +
+    '<div>' + labelHtml + '<div class="sub">' + p.s + '</div>' + linkHtml + '</div></div>';
+}
+
+function colHtml(sectionTag, title, badgeBg, badgeColor, count, innerHtml) {
+  var openTag = sectionTag === "details" ? '<details class="sidebar-section">'
+    : sectionTag === "sidebar" ? '<div class="sidebar-section">'
+    : "<div>";
+  var closeTag = sectionTag === "details" ? "</details>" : "</div>";
+  var headerTag = sectionTag === "details" ? "summary" : "div";
+  var chevron = sectionTag === "details" ? '<span class="disclosure-chevron" aria-hidden="true">▸</span>' : "";
+  return openTag +
+    '<' + headerTag + ' class="col-header">' + chevron +
+    '<span class="count-badge" style="background: ' + badgeBg + '; color: ' + badgeColor + ';">' + count + '</span>' +
+    '<span class="col-title">' + title + '</span></' + headerTag + '>' +
+    '<div>' + innerHtml + '</div>' +
+    closeTag;
+}
+
+function renderBefore(day) {
+  var data = days[day];
+  var toReview = data.ebird.map(function (p) { return Object.assign({ onEbird: true }, p); })
+    .concat(data.guess.map(function (p) { return Object.assign({ onEbird: false }, p); }));
+  var toReviewHtml = toReview.map(function (p) { return card(p, p.onEbird, p.onEbird, "Unidentified"); }).join("");
+  var unknownHtml = data.unknown.map(function (p) { return card(p, false, false, "Unidentified"); }).join("");
+  document.getElementById("before-view").innerHTML =
+    colHtml("col", "To review", "var(--periwinkle-tint)", "var(--periwinkle)", toReview.length, toReviewHtml) +
+    '<div class="sidebar">' +
+    colHtml("sidebar", "Needs Claude", "var(--neutral-bg)", "var(--neutral)", data.unknown.length, unknownHtml) +
+    '</div>';
+}
+
+function renderAfter(day) {
+  var data = days[day];
+  var confirmed = data.ebird.map(function (p) { return Object.assign({ onEbird: true }, p); })
+    .concat(data.guess.map(function (p) { return Object.assign({ onEbird: false }, p); }));
+  var notbird = data.unknown;
+  var noPhoto = data.noPhoto;
+
+  document.getElementById("confirmed-count-badge").textContent = confirmed.length;
+  document.getElementById("confirmed-stack").innerHTML = confirmed.map(function (p) {
+    return card(p, p.onEbird, p.onEbird, "Unidentified");
+  }).join("");
+
+  document.getElementById("notbird-count-badge").textContent = notbird.length;
+  document.getElementById("notbird-stack").innerHTML = notbird.map(function (p) {
+    return card(p, false, false, "Not a bird");
+  }).join("");
+
+  document.getElementById("nophoto-count-badge").textContent = noPhoto.length;
+  document.getElementById("nophoto-list").innerHTML = noPhoto.length
+    ? noPhoto.map(function (item) {
+        return '<li class="no-photo-item"><div class="label">' + item.name + '</div>' +
+          '<div class="sub">Reported, no photo yet</div>' +
+          '<a class="ebird-link" href="https://ebird.org/species/' + item.code + '" target="_blank" rel="noreferrer">Learn more on eBird ↗</a></li>';
+      }).join("")
+    : '<li class="no-photo-item empty">None today</li>';
+}
+
+function setDay(day) {
+  currentDay = day;
+  document.getElementById("outing-title").textContent = days[day].title;
+  document.getElementById("outing-sub").innerHTML = days[day].sub;
+  document.getElementById("btn-day-a").classList.toggle("active", day === "a");
+  document.getElementById("btn-day-b").classList.toggle("active", day === "b");
+  renderBefore(day);
+  renderAfter(day);
+}
+
+function setMode(mode) {
+  document.getElementById("before-view").style.display = mode === "before" ? "grid" : "none";
+  document.getElementById("after-view").style.display = mode === "after" ? "grid" : "none";
+  document.getElementById("btn-before").classList.toggle("active", mode === "before");
+  document.getElementById("btn-after").classList.toggle("active", mode === "after");
+}
+
+setDay("a");
+setMode("before");
+</script>
+</body>
+</html>

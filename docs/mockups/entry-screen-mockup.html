@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BirdTrip — Entry screen mockup (issue #4 / DESIGN.md §10.1)</title>
+
+<!-- Preview-only: loads Public Sans from Google Fonts so this mockup renders
+     correctly without a build step. The real app should self-host it (e.g.
+     the @fontsource/public-sans npm package) rather than depend on a
+     third-party CDN at runtime. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+<style>
+  /* Proposed replacement tokens for frontend/src/theme.css, per DESIGN.md
+     §10.4's confirmed brand direction (navy-dominant, white background,
+     Public Sans). Not yet merged into the live theme.css -- this file is
+     the proposal for review, kept self-contained so it doesn't touch the
+     app's real styling until the direction is approved. */
+  :root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --border: #e2e2e5;
+    --border-strong: #cfcfd4;
+
+    --text: #1a1a1e;
+    --text-muted: #63636b;
+    --text-faint: #8b8b93;
+
+    /* Dominant brand color (DESIGN.md §10.4) */
+    --navy: #3C689A;
+    --navy-hover: #2c4d75;
+    --navy-tint: #eaf0f7;
+
+    /* Secondary accents -- used sparingly, never as the sole differentiator */
+    --mauve: #AB7F99;
+    --sage: #A3B899;
+    --sage-tint: #eef3ea;
+    --periwinkle: #728CFF;
+    --rose: #E38A99;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    --text-xs: 0.75rem;
+    --text-sm: 0.85rem;
+    --text-base: 1rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.75rem;
+
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    margin: 0;
+  }
+
+  .app-shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 var(--space-5) var(--space-6);
+  }
+
+  /* Two-column page layout, per Jen: the single centered 640px column
+     left a lot of unused space on the right at normal desktop widths.
+     Main content keeps its original 640px measure (unchanged below);
+     the new right rail is a rough placeholder for account/download-type
+     links, not a decided feature -- see notes. */
+  .page-grid {
+    display: grid;
+    grid-template-columns: 640px 1fr;
+    gap: var(--space-6);
+    align-items: start;
+  }
+  .page-main { min-width: 0; }
+  .page-rail {
+    padding-top: var(--space-5);
+  }
+  .rail-heading {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    margin-bottom: var(--space-3);
+  }
+  .rail-links { display: flex; flex-direction: column; gap: var(--space-2); }
+  .rail-links a {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: var(--space-1) 0;
+  }
+  .rail-links a:hover { color: var(--navy); text-decoration: underline; }
+
+  /* Page title -- per Jen, the entry screen needs an actual heading
+     identifying what this screen is, not just the app wordmark. */
+  .page-title {
+    font-size: var(--text-xl);
+    font-weight: 700;
+    margin: 0 0 var(--space-4);
+  }
+
+  /* ---- Header / logo ---- */
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-5) 0 var(--space-4);
+  }
+  .logo-mark { flex-shrink: 0; }
+  .app-header .wordmark {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.01em;
+  }
+
+  /* ---- Greeting card ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+  }
+  .greeting h1 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-xl);
+  }
+  .greeting p {
+    margin: 0 0 var(--space-4);
+    color: var(--text-muted);
+    font-size: var(--text-base);
+    line-height: 1.5;
+  }
+  .greeting-actions { display: flex; gap: var(--space-3); }
+
+  .btn {
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    line-height: 1.2;
+  }
+  .btn:hover { border-color: var(--text-faint); }
+  .btn-primary {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--navy-hover); border-color: var(--navy-hover); }
+
+  /* Persistent "needs review" state, shown after "Not now" */
+  .needs-review {
+    display: none;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+  .needs-review .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--rose);
+    flex-shrink: 0;
+  }
+  .needs-review strong { font-weight: 700; }
+  .needs-review a { color: var(--navy); font-weight: 600; margin-left: auto; }
+
+  /* ---- Last 3 trips: promoted to the hero section (see notes) ---- */
+  .section-heading {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin: 0 0 var(--space-3);
+  }
+  .trip-list { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
+
+  /* App-wide card layout per DESIGN.md §10.3: thumbnail-left, text-right,
+     replacing the old photo-on-top/label-below stack everywhere. Sized up
+     here since this is now the primary content on the entry screen, not a
+     secondary list. */
+  .trip-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-4);
+    text-decoration: none;
+    color: var(--text);
+  }
+  .trip-card:hover { border-color: var(--border-strong); }
+  .trip-card:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+  .trip-thumb {
+    width: 72px; height: 72px;
+    border-radius: var(--radius-md);
+    flex-shrink: 0;
+    object-fit: cover;
+    display: block;
+  }
+  .trip-thumb.placeholder {
+    background: var(--navy-tint);
+    color: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .trip-info .name { font-weight: 700; font-size: var(--text-base); }
+  .trip-info .meta { font-size: var(--text-sm); color: var(--text-faint); margin-top: 2px; }
+  .trip-info .status {
+    display: flex; align-items: center; gap: 4px;
+    font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2);
+  }
+
+  /* ---- Calendar: demoted to a compact, secondary widget (see notes) ---- */
+  .calendar-compact {
+    max-width: 360px;
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-4);
+    margin-bottom: var(--space-5);
+  }
+  .cal-eyebrow {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+    margin-bottom: 2px;
+  }
+  .cal-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-2);
+  }
+  .cal-heading h2 { margin: 0; font-size: var(--text-sm); font-weight: 600; color: var(--text-muted); }
+  .cal-nav { display: flex; gap: var(--space-1); }
+  .cal-nav button {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    width: 22px; height: 22px;
+    font-size: var(--text-xs);
+    color: var(--text-faint);
+    cursor: not-allowed; /* placeholder in this pass, see notes */
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+  }
+  .cal-weekday {
+    text-align: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-faint);
+    padding-bottom: 2px;
+  }
+  .cal-day {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    font-size: 0.7rem;
+    color: var(--text);
+    position: relative;
+  }
+  .cal-day.is-empty { visibility: hidden; }
+
+  .cal-day.is-trip {
+    background: var(--sage-tint);
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid transparent;
+  }
+  .cal-day.is-trip .trip-dot {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--sage); margin-top: 1px;
+  }
+  a.cal-day.is-trip { cursor: pointer; }
+  a.cal-day.is-trip:hover { border-color: var(--sage); }
+  a.cal-day.is-trip:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+
+  .cal-day.is-today {
+    background: var(--navy-tint);
+    font-weight: 700;
+    outline: 1px solid var(--navy);
+  }
+  .cal-day.is-today.is-trip {
+    /* Today + a trip on the same day: today's background wins (today is
+       the fixed reference point), trip presence still shown via the dot
+       and the link/underline, not a third competing background color. */
+    background: var(--navy-tint);
+  }
+  .cal-day.is-today.is-trip .trip-dot { background: var(--sage); }
+
+  .cal-legend {
+    display: flex;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-top: var(--space-2);
+    font-size: 0.7rem;
+    color: var(--text-faint);
+  }
+  .cal-legend-item { display: flex; align-items: center; gap: 4px; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .swatch.today { background: var(--navy-tint); outline: 1px solid var(--navy); }
+  .swatch.trip { background: var(--sage-tint); }
+  .swatch.none { background: var(--surface); border: 1px solid var(--border); }
+
+  /* ---- Mobile layout (DESIGN.md §10.2) ---- */
+  @media (max-width: 640px) {
+    .app-shell { padding: 0 var(--space-4) var(--space-5); }
+    .page-grid { grid-template-columns: 1fr; }
+    .page-rail { padding-top: 0; border-top: 1px solid var(--border); margin-top: var(--space-5); }
+    .card { padding: var(--space-4); }
+    .greeting-actions { flex-direction: column; }
+    .greeting-actions .btn { width: 100%; text-align: center; }
+    .needs-review { flex-wrap: wrap; }
+    .needs-review a { margin-left: 0; }
+    .trip-thumb { width: 56px; height: 56px; }
+    .calendar-compact { max-width: none; }
+  }
+
+  .notes {
+    margin-top: var(--space-6);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+  .notes li { margin-bottom: var(--space-2); }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <header class="app-header">
+    <!-- Placeholder approximation of the Brand Book's simplified/secondary
+         logo (single mauve circle, peach outline ring, white checkmark),
+         per DESIGN.md §10.4. Swap for the real exported asset. -->
+    <svg class="logo-mark" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+      <circle cx="18" cy="18" r="16" fill="#AB7F99" stroke="#FFC7A7" stroke-width="2"/>
+      <path d="M11 18.5l4.5 4.5L25 13" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span class="wordmark">BirdTrip</span>
+  </header>
+
+  <h1 class="page-title">Browse Trips</h1>
+
+  <div class="page-grid">
+  <div class="page-main">
+
+  <!-- 1. Greeting + new-activity prompt (DESIGN.md §10.1, step 1) -->
+  <section class="card greeting">
+    <div id="prompt-state">
+      <h1>Hello, Jen!</h1>
+      <p>
+        You have <strong>2 new trips</strong> in eBird and <strong>1 new trip</strong>
+        in Flickr. Do you want to review them now?
+        <br><span style="font-size: var(--text-xs); color: var(--text-faint);">(illustrative counts -- see notes)</span>
+      </p>
+      <div class="greeting-actions">
+        <button class="btn btn-primary" onclick="dismissPrompt()">Review now</button>
+        <button class="btn" onclick="deferPrompt()">Not now</button>
+      </div>
+    </div>
+    <div id="needs-review-state" class="needs-review">
+      <span class="dot" aria-hidden="true"></span>
+      <span><strong>Needs review</strong> — 2 eBird trips, 1 Flickr trip</span>
+      <a href="#" onclick="event.preventDefault(); showPrompt();">Review now</a>
+    </div>
+  </section>
+
+  <!-- 2. Last 3 trips -- promoted to the hero section. This is the actual
+       point of the app (what you saw + what you shot), so it now leads
+       instead of the calendar. See notes for the reasoning. -->
+  <section>
+    <h2 class="section-heading">Last 3 trips</h2>
+    <div class="trip-list">
+      <a class="trip-card" href="#">
+        <img class="trip-thumb" src="https://live.staticflickr.com/65535/55249543011_cbfe7c1d80.jpg" alt="">
+        <span class="trip-info">
+          <span class="name">Marymoor Park</span>
+          <span class="meta">May 4, 2026</span>
+          <span class="status">🐦 eBird + Flickr matched</span>
+        </span>
+      </a>
+      <a class="trip-card" href="#">
+        <span class="trip-thumb placeholder" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </span>
+        <span class="trip-info">
+          <span class="name">Tolt-MacDonald</span>
+          <span class="meta">June 20, 2026</span>
+          <span class="status">🐦 eBird + Flickr matched</span>
+        </span>
+      </a>
+      <a class="trip-card" href="#">
+        <span class="trip-thumb placeholder" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        </span>
+        <span class="trip-info">
+          <span class="name">Juanita Bay Park</span>
+          <span class="meta">June 20, 2026</span>
+          <span class="status">🐦 eBird + Flickr matched</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- 3. Calendar -- demoted to a compact, secondary widget: no card
+       shadow/border, smaller cells, muted heading. Still answers "is
+       there something new," just no longer the dominant element. -->
+  <section class="calendar-compact">
+    <div class="cal-eyebrow">Trip activity</div>
+    <div class="cal-heading">
+      <h2>August 2026</h2>
+      <div class="cal-nav">
+        <button disabled aria-label="Previous month">&lsaquo;</button>
+        <button disabled aria-label="Next month">&rsaquo;</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-legend">
+      <span class="cal-legend-item"><span class="swatch today"></span> Today</span>
+      <span class="cal-legend-item"><span class="swatch trip"></span> Trip (linked)</span>
+      <span class="cal-legend-item"><span class="swatch none"></span> No trip</span>
+    </div>
+  </section>
+
+  </div>
+  <!-- Right rail -- rough placeholder only, not a decided feature (see
+       notes). Jen's idea: the empty space next to the 640px main column
+       at normal desktop widths could hold account/download-type links
+       instead of going unused. Nothing here is wired to anything real. -->
+  <aside class="page-rail">
+    <div class="rail-heading">Account</div>
+    <div class="rail-links">
+      <a href="#">eBird account</a>
+      <a href="#">Flickr account</a>
+      <a href="#">Download my data</a>
+      <a href="#">Settings</a>
+    </div>
+  </aside>
+  </div>
+
+  <ul class="notes">
+    <li><strong>Revised from the first pass:</strong> the calendar was visually dominant (a 6-row grid) while the trips themselves -- the actual point of the app -- were a plain list at the bottom. Swapped the order and weighting: trips are now the hero section with larger cards and a real photo, and the calendar is a compact secondary widget below it.</li>
+    <li><strong>Revised again, this pass:</strong> two changes per Jen, reviewing the calendar-placement question fresh in light of the outing-review sidebar's own "everything could be long" problem. (1) Added an actual page title, "Browse Trips" -- the screen previously had only the app wordmark, no heading identifying what this specific screen is. (2) Widened the shell from a single centered 640px column to a two-column layout (640px main + a right rail) -- the centered column left the right side of the screen empty at normal desktop widths. The main column's content/width is otherwise unchanged from the prior pass.</li>
+    <li><strong>Right rail is a rough placeholder, not a decided feature</strong> -- Jen's idea was that the newly-freed space could hold account/download-type links instead of sitting empty, but which links and whether this is the right place for them is still open. The four links shown (eBird account, Flickr account, Download my data, Settings) are illustrative guesses at plausible content, not a scoped list. On mobile the rail stacks below the main content rather than disappearing, so nothing in it becomes unreachable -- untested against any real content, just a reasonable default.</li>
+    <li><strong>Calendar placement itself is still not resolved</strong> -- this pass only addressed the page shell around it (title + two columns); the calendar's own compact-widget treatment from the prior pass is otherwise unchanged here, still the open question this session's review was trying to get to.</li>
+    <li>Rough mockup, not final -- see <a href="../DESIGN.md#10-visual--ux-design-decisions">docs/DESIGN.md §10</a> and issue #4.</li>
+    <li>Greeting counts (2 eBird / 1 Flickr) are illustrative placeholder text, not live data.</li>
+    <li>Marymoor Park uses a real photo from the project's Flickr data as an example of what a trip-card thumbnail could look like; Tolt-MacDonald and Juanita Bay Park use a generic placeholder since this mockup doesn't have a representative photo wired up for them.</li>
+    <li>The "eBird + Flickr matched" status line reuses the bird-icon convention from §10.3 -- illustrative on all three cards here, not computed from real match data.</li>
+    <li>August 20 is shown with the trip-day style as an illustrative example only -- there's no real August outing in the data yet; real trip days would come from synced eBird/Flickr activity.</li>
+    <li>Calendar prev/next arrows are non-functional in this pass (visual placement only).</li>
+    <li>Resize the window to check the mobile layout -- breakpoint is 640px: greeting buttons stack full-width, trip thumbnails shrink, calendar goes full-width but keeps its compact cell sizing.</li>
+    <li>Font loaded from Google Fonts for preview convenience only; the real app should self-host Public Sans rather than depend on a CDN at runtime.</li>
+  </ul>
+
+</div>
+
+<script>
+function dismissPrompt() {
+  // Placeholder: in the real app this navigates into the review/matching UI.
+  alert('Would load the review/matching UI here.');
+}
+function deferPrompt() {
+  document.getElementById('prompt-state').style.display = 'none';
+  document.getElementById('needs-review-state').style.display = 'flex';
+}
+function showPrompt() {
+  document.getElementById('prompt-state').style.display = 'block';
+  document.getElementById('needs-review-state').style.display = 'none';
+}
+
+// August 2026, Sunday-first week. Day 20 used as the sole illustrative
+// "trip day" example (see notes above) -- not real data.
+(function renderCalendar() {
+  var weeks = [
+    [0, 0, 0, 0, 0, 0, 1],
+    [2, 3, 4, 5, 6, 7, 8],
+    [9, 10, 11, 12, 13, 14, 15],
+    [16, 17, 18, 19, 20, 21, 22],
+    [23, 24, 25, 26, 27, 28, 29],
+    [30, 31, 0, 0, 0, 0, 0]
+  ];
+  var today = 6;
+  var tripDays = [20];
+  var weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  var grid = document.getElementById('cal-grid');
+  var html = weekdayLabels.map(function (d) {
+    return '<div class="cal-weekday">' + d + '</div>';
+  }).join('');
+
+  weeks.forEach(function (week) {
+    week.forEach(function (day) {
+      if (day === 0) {
+        html += '<div class="cal-day is-empty"></div>';
+        return;
+      }
+      var isToday = day === today;
+      var isTrip = tripDays.indexOf(day) !== -1;
+      var classes = 'cal-day' + (isToday ? ' is-today' : '') + (isTrip ? ' is-trip' : '');
+      var tag = isTrip ? 'a' : 'div';
+      var href = isTrip ? ' href="#"' : '';
+      var label = isTrip
+        ? ' aria-label="August ' + day + ', 2026 — trip day, view outing"'
+        : (isToday ? ' aria-label="August ' + day + ', 2026 — today"' : '');
+      html += '<' + tag + ' class="' + classes + '"' + href + label + '>' +
+        day + (isTrip ? '<span class="trip-dot" aria-hidden="true"></span>' : '') +
+        '</' + tag + '>';
+    });
+  });
+
+  grid.innerHTML = html;
+})();
+</script>
+</body>
+</html>

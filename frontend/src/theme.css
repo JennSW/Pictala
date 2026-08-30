@@ -1,12 +1,13 @@
-/* BirdTrip design tokens -- a first pass at a real design system, in
-   place of the ad hoc inline styles the app grew feature-by-feature.
-   Scoped to visual hierarchy/consistency only: this does NOT address
-   the mobile layout (a separate, still-open gap) or a deeper
-   accessibility pass -- both are their own workstreams. */
+/* BirdTrip design tokens -- confirmed brand direction, DESIGN.md §10.4
+   (issue #48): white background (the earlier cream was a placeholder,
+   not a decision), navy-dominant palette reprioritized from the Brand
+   Book, Public Sans. Scoped to visual hierarchy/consistency only: this
+   does NOT address the mobile layout (a separate, still-open gap) or a
+   deeper accessibility pass -- both are their own workstreams. */
 
 :root {
   /* Neutral surface scale */
-  --bg: #faf5d7;
+  --bg: #ffffff;
   --surface: #ffffff;
   --border: #e2e2e5;
   --border-strong: #cfcfd4;
@@ -19,12 +20,24 @@
   /* Brand accent -- interactive elements (links, primary actions).
      Deliberately distinct from the semantic colors below so "this is
      clickable" and "this is a confirmed match" never collide. */
-  --primary: #2f5fa8;
-  --primary-hover: #244a85;
+  --primary: #3C689A;
+  --primary-hover: #2c4d75;
+  --navy-tint: #eaf0f7;
+
+  /* Secondary brand accents (DESIGN.md §10.4) -- not wired into any
+     component yet, available for future use (e.g. count badges). */
+  --mauve: #AB7F99;
+  --sage: #A3B899;
+  --sage-tint: #eef3ea;
+  --periwinkle: #728CFF;
+  --periwinkle-tint: #edf0ff;
+  --rose: #E38A99;
 
   /* Semantic state colors -- what a match actually IS, not just what's
      clickable. Each pairs a soft background with a stronger foreground
-     for badges, and the foreground alone for inline text/borders. */
+     for badges, and the foreground alone for inline text/borders.
+     Unrelated to the #48 brand-color table above -- these predate it and
+     aren't part of that reprioritization. */
   --success: #1a7f37;
   --success-bg: #e6f4ea;
   --warning: #a15c00;
@@ -57,7 +70,7 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-family: "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   margin: 0;
 }
 
@@ -74,9 +87,9 @@ body {
   padding: var(--space-6) var(--space-5);
   margin-bottom: var(--space-5);
 }
-.app-header h1 {
-  margin: 0;
+.app-header .wordmark {
   font-size: var(--text-xl);
+  font-weight: 700;
   letter-spacing: 0.02em;
 }
 .app-header p {
@@ -202,6 +215,172 @@ a:hover {
   background: var(--neutral-bg);
 }
 
+/* Top-level browse (calendar/trips/sync) | outing-detail layout. Plain
+   side-by-side flex with no breakpoint used to overflow horizontally on
+   a real phone (issue #55) -- the detail column tried to sit beside the
+   sidebar instead of stacking below it once index.html actually had a
+   viewport meta tag (also #55; without one, mobile browsers rendered
+   the whole app at a virtual 980px canvas and zoomed out, so this never
+   showed up until that was fixed). Breakpoint matches the entry-screen
+   mockup's existing 640px convention. */
+.browse-shell {
+  display: flex;
+  gap: var(--space-6);
+}
+@media (max-width: 640px) {
+  .browse-shell {
+    flex-direction: column;
+  }
+}
+
+/* Outing review grouping (issue #43, DESIGN.md §10.3) -- wide primary
+   column (To review / Confirmed) + a narrow sidebar (Needs Claude / No
+   photos on Flickr), instead of one flat undifferentiated grid. */
+.outing-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .outing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.outing-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.outing-col-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.outing-count-badge {
+  font-size: var(--text-xs);
+  padding: 2px 10px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  background: var(--periwinkle-tint);
+  /* --periwinkle itself (#728CFF) on --periwinkle-tint measures 2.68:1 --
+     fails WCAG AA's 4.5:1 for text this size. Darkened for this specific
+     text use (not used anywhere else, so no shared-variable fallout) --
+     4152B8 on periwinkle-tint measures 5.93:1. */
+  color: #4152B8;
+}
+/* Section titles ("Confirmed", "Needs Claude", "No photos on Flickr",
+   "All Trips") render as h3 elements now, not styled spans -- a screen
+   reader's heading-navigation previously skipped them entirely. Reset
+   the h3 defaults so promoting the element doesn't change how it looks. */
+.outing-col-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  margin: 0;
+  display: inline;
+}
+.outing-sidebar-section summary.outing-col-header {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.outing-sidebar-section summary.outing-col-header::-webkit-details-marker {
+  display: none;
+}
+.outing-sidebar-section[open] summary.outing-col-header {
+  margin-bottom: var(--space-3);
+}
+.outing-match-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+/* Match card header -- app-wide thumbnail-left/text-right convention
+   (DESIGN.md §10.3). The rest of a match's content (status badges,
+   warnings, action buttons/panels) stays full-width below this row --
+   unlike the plain grouping mockups, real match cards carry a lot more
+   per-photo content than a two-line label. */
+.match-card {
+  width: 260px;
+}
+.match-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.match-card .thumb {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+}
+.match-card .thumb > .thumb-button,
+.match-card .thumb > .photo-placeholder {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-sm);
+  display: block;
+  cursor: pointer;
+}
+.match-card .thumb .photo-placeholder {
+  background: var(--neutral-bg);
+}
+/* object-fit only applies to the img itself, not the button wrapping it. */
+.match-card .thumb .thumb-button img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  display: block;
+}
+
+/* Unstyled <button> wrapper around a photo thumbnail -- previously a bare
+   <img onClick>, meaning a keyboard/screen-reader user had no way to open
+   the lightbox at all. Chrome reset only -- deliberately doesn't size the
+   img itself, so the existing context-specific sizing (.match-card .thumb
+   > .thumb-button above, .photo-card img below) keeps working exactly as
+   before through the new wrapper. */
+.thumb-button {
+  border: none;
+  background: none;
+  padding: 0;
+  display: block;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.thumb-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* eBird-match icon (issue #48) -- the licensed list/notebook icon, next
+   to the scientific name; present = on eBird (a real reported
+   observation), absent = Flickr guess only. Originally a corner badge
+   on the thumbnail (DESIGN.md §10.8), moved off the photo entirely per
+   Jen: an icon overlapping the photo interferes with the core "see the
+   photo" experience, even at a size that reads fine in isolation. */
+.ebird-match-icon {
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.no-photo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.no-photo-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
 .panel {
   font-size: var(--text-xs);
   padding: var(--space-3);
@@ -233,4 +412,112 @@ a:hover {
 .panel input[type="text"] {
   width: 100%;
   margin-bottom: var(--space-2);
+}
+
+/* Entry-screen layout (DESIGN.md §10.1, resolved) -- hero "Last 3 trips"
+   promoted above a compact calendar widget, instead of the calendar
+   being the dominant left-side element. Ported from
+   docs/mockups/entry-screen-mockup.html; the mockup's separate
+   two-column page-shell/right-rail experiment is a newer, explicitly
+   undecided idea (not part of the resolved §10.1 decision) and isn't
+   included here. */
+.page-title {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  margin: 0 0 var(--space-4);
+}
+
+.trip-list { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-5); }
+
+/* App-wide card layout per DESIGN.md §10.3: thumbnail-left, text-right.
+   Sized up from .list-item-btn since this is the promoted hero content,
+   not a secondary list. */
+.trip-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-4);
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.trip-card:hover { border-color: var(--border-strong); }
+.trip-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.trip-thumb {
+  width: 64px; height: 64px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  object-fit: cover;
+  display: block;
+}
+.trip-thumb.placeholder {
+  background: var(--navy-tint);
+  color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+}
+.trip-info { min-width: 0; }
+.trip-info .name { font-weight: 700; font-size: var(--text-base); }
+.trip-info .meta { font-size: var(--text-sm); color: var(--text-faint); margin-top: 2px; }
+.trip-info .status {
+  display: flex; align-items: center; gap: 4px;
+  font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-2);
+}
+
+/* Calendar -- demoted to a compact, secondary widget: muted eyebrow
+   label, no card border/shadow, and react-day-picker's own CSS custom
+   properties overridden to shrink the cells rather than restyling its
+   internals directly. Functionality (date select, disabled/unavailable
+   dates) is untouched -- this is a visual wrapper only. */
+.calendar-compact {
+  max-width: 320px;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-4);
+  margin-bottom: var(--space-4);
+  --rdp-day-height: 32px;
+  --rdp-day-width: 32px;
+  --rdp-day_button-height: 30px;
+  --rdp-day_button-width: 30px;
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: var(--navy-tint);
+  font-size: var(--text-sm);
+}
+.cal-eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+  margin-bottom: var(--space-2);
+}
+
+/* Loading indicator (issue #56) -- the familiar pulsing three-dot
+   pattern, used anywhere a sync/upload is in flight. Button text alone
+   ("Syncing…") wasn't enough affordance for something that can take
+   several real seconds -- this reads as active work, not frozen. */
+.loading-dots {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+.loading-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.3;
+  animation: loading-dot-pulse 1.2s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes loading-dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
+  40% { opacity: 1; transform: scale(1); }
 }

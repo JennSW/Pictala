@@ -14,6 +14,14 @@ the pure, deterministic, no-network layer (Strategy A) that's trivial to
 unit test. This file is the opposite -- it makes a real network call to a
 hosted vision model -- so the two are easy to point at separately in a code
 review as "here's the rule-based part" vs. "here's the AI part."
+
+The three guess_* functions below (constrained, unconstrained, unconstrained
+batch) each need a different tool schema and prompt, but the actual
+mechanics of calling Anthropic -- build the payload, POST, handle transport
+errors, pull the tool_use block out of the response -- were identical three
+times over. `_call_anthropic_tool` is that shared mechanic; each function
+still owns its own prompt and its own interpretation of the result, since
+that's the part that's actually different between them.
 """
 import base64
 
@@ -39,6 +47,14 @@ class SpeciesClassifierError(Exception):
     returns something the code doesn't know how to parse."""
 
 
+def _require_configured() -> None:
+    if not settings.anthropic_api_key:
+        raise SpeciesClassifierNotConfigured(
+            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
+            "see .env.example for how to add it."
+        )
+
+
 def _guess_media_type(content_type: str | None, url: str) -> str:
     if content_type:
         primary = content_type.split(";")[0].strip().lower()
@@ -60,6 +76,42 @@ def _fetch_image_as_base64(url: str) -> tuple[str, str]:
     resp.raise_for_status()
     media_type = _guess_media_type(resp.headers.get("Content-Type"), url)
     return base64.b64encode(resp.content).decode("ascii"), media_type
+
+
+def _call_anthropic_tool(tool: dict, content: list[dict], max_tokens: int = 512) -> dict:
+    """Shared by every guess_* function: build the request, call
+    Anthropic, and return the tool_use block's raw `input` dict.
+    Validating/extracting fields from that dict stays with each caller
+    (different tools have different shapes) -- this only owns the HTTP
+    mechanics that used to be copy-pasted three times."""
+    payload = {
+        "model": settings.anthropic_model,
+        "max_tokens": max_tokens,
+        "tools": [tool],
+        "tool_choice": {"type": "tool", "name": tool["name"]},
+        "messages": [{"role": "user", "content": content}],
+    }
+    headers = {
+        "x-api-key": settings.anthropic_api_key,
+        "anthropic-version": ANTHROPIC_API_VERSION,
+        "content-type": "application/json",
+    }
+
+    try:
+        resp = requests.post(
+            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except requests.RequestException as exc:
+        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
+
+    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
+    if not tool_use_blocks:
+        raise SpeciesClassifierError(
+            f"Expected a tool_use block in the response, got: {data}"
+        )
+    return tool_use_blocks[0].get("input", {})
 
 
 SUGGEST_TOOL = {
@@ -109,12 +161,7 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
     the constraint is that we only ever act on one of the checklist's own
     species, never an open-ended guess).
     """
-    if not settings.anthropic_api_key:
-        raise SpeciesClassifierNotConfigured(
-            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
-            "see .env.example for how to add it."
-        )
-
+    _require_configured()
     image_b64, media_type = _fetch_image_as_base64(photo_url)
 
     candidate_list = "\n".join(f"- {name}" for name in candidate_common_names)
@@ -128,51 +175,15 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
         "there's no bird clearly visible), report \"none\". Then call the "
         "report_species_guess tool with your answer."
     )
+    content = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+        },
+        {"type": "text", "text": prompt},
+    ]
 
-    payload = {
-        "model": settings.anthropic_model,
-        "max_tokens": 512,
-        "tools": [SUGGEST_TOOL],
-        "tool_choice": {"type": "tool", "name": "report_species_guess"},
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_b64,
-                        },
-                    },
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-    }
-    headers = {
-        "x-api-key": settings.anthropic_api_key,
-        "anthropic-version": ANTHROPIC_API_VERSION,
-        "content-type": "application/json",
-    }
-
-    try:
-        resp = requests.post(
-            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
-
-    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
-    if not tool_use_blocks:
-        raise SpeciesClassifierError(
-            f"Expected a tool_use block in the response, got: {data}"
-        )
-
-    result = tool_use_blocks[0].get("input", {})
+    result = _call_anthropic_tool(SUGGEST_TOOL, content)
     common_name = result.get("common_name")
     if not common_name or common_name.strip().lower() == "none":
         common_name = None
@@ -238,12 +249,7 @@ def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | N
     `common_name` against eBird's taxonomy (app/services/ebird_taxonomy)
     -- this function only reports what the model thinks it sees.
     """
-    if not settings.anthropic_api_key:
-        raise SpeciesClassifierNotConfigured(
-            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
-            "see .env.example for how to add it."
-        )
-
+    _require_configured()
     image_b64, media_type = _fetch_image_as_base64(photo_url)
 
     hints = " / ".join(h for h in (title, tags) if h)
@@ -257,50 +263,18 @@ def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | N
         "what it is rather than reporting nothing." + hint_line + "\n\nThen call the "
         "report_species_guess tool with your answer."
     )
+    content = [
+        {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": image_b64},
+        },
+        {"type": "text", "text": prompt},
+    ]
 
-    payload = {
-        "model": settings.anthropic_model,
-        "max_tokens": 512,
-        "tools": [FALLBACK_TOOL],
-        "tool_choice": {"type": "tool", "name": "report_species_guess"},
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {"type": "base64", "media_type": media_type, "data": image_b64},
-                    },
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-    }
-    headers = {
-        "x-api-key": settings.anthropic_api_key,
-        "anthropic-version": ANTHROPIC_API_VERSION,
-        "content-type": "application/json",
-    }
-
-    try:
-        resp = requests.post(
-            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
-
-    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
-    if not tool_use_blocks:
-        raise SpeciesClassifierError(f"Expected a tool_use block in the response, got: {data}")
-
-    result = tool_use_blocks[0].get("input", {})
-    common_name = result.get("common_name") or None
-
+    result = _call_anthropic_tool(FALLBACK_TOOL, content)
     return {
         "is_bird": bool(result.get("is_bird", False)),
-        "common_name": common_name,
+        "common_name": result.get("common_name") or None,
         "confidence": float(result.get("confidence", 0.0)),
         "reasoning": result.get("reasoning", ""),
     }
@@ -369,11 +343,7 @@ def guess_species_unconstrained_batch(photos: list[dict]) -> list[dict]:
     skip one), so callers should key off the returned photo_id rather
     than assume positional alignment.
     """
-    if not settings.anthropic_api_key:
-        raise SpeciesClassifierNotConfigured(
-            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
-            "see .env.example for how to add it."
-        )
+    _require_configured()
     if not photos:
         return []
     if len(photos) > MAX_BATCH_SIZE:
@@ -402,33 +372,8 @@ def guess_species_unconstrained_batch(photos: list[dict]) -> list[dict]:
     )
     content.append({"type": "text", "text": prompt})
 
-    payload = {
-        "model": settings.anthropic_model,
-        "max_tokens": 256 * len(photos) + 256,
-        "tools": [BATCH_FALLBACK_TOOL],
-        "tool_choice": {"type": "tool", "name": "report_species_guesses"},
-        "messages": [{"role": "user", "content": content}],
-    }
-    headers = {
-        "x-api-key": settings.anthropic_api_key,
-        "anthropic-version": ANTHROPIC_API_VERSION,
-        "content-type": "application/json",
-    }
-
-    try:
-        resp = requests.post(
-            ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except requests.RequestException as exc:
-        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
-
-    tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
-    if not tool_use_blocks:
-        raise SpeciesClassifierError(f"Expected a tool_use block in the response, got: {data}")
-
-    guesses = tool_use_blocks[0].get("input", {}).get("guesses", [])
+    result = _call_anthropic_tool(BATCH_FALLBACK_TOOL, content, max_tokens=256 * len(photos) + 256)
+    guesses = result.get("guesses", [])
     results = []
     for g in guesses:
         idx = g.get("photo_number")

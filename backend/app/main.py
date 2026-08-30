@@ -1,10 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db import Base, engine
+from app.db import Base, engine, add_missing_columns
 from app.routers import outings, sync, match, search, unassigned
 
 Base.metadata.create_all(bind=engine)
+add_missing_columns()
 
 app = FastAPI(
     title="BirdTrip API",
@@ -14,7 +15,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    # Both hostnames point at the same Vite dev server, but browsers treat
+    # them as different origins for CORS purposes -- localhost vs 127.0.0.1
+    # is a common source of a browser-blocked (not server-side) fetch
+    # failure depending on which one ends up in the address bar.
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
