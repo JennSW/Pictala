@@ -2,11 +2,22 @@
 
 ## 1. Problem Statement
 
-Birders who photograph what they see end up with two disconnected records
-of the same outing: an eBird checklist (species, time, location) and a
-Flickr album (photos, loosely timestamped). Neither system links to the
-other — reconstructing "what did I photograph on this walk" means
-manually cross-referencing both by hand. BirdTrip automates that match.
+Bird photographers juggle three disconnected apps to make sense of a
+single outing: an eBird checklist (species, time, location), a photo host
+like Flickr (photos, loosely timestamped), and Merlin (Cornell's ID app,
+used separately to identify a bird from a photo, or a call from an audio
+recording). None of the three links to another — reconstructing "what did
+I photograph on this walk" means manually cross-referencing all three by
+hand.
+
+BirdTrip bridges the photo host and the eBird checklist for the same day,
+so a single app shows your own photos next to what bird is actually in
+each one — common name and scientific name. Its AI-assisted matching
+search (Strategy B / "Ask Claude," see `DESIGN.md`) already does visual
+species identification directly from the photo, standing in for the
+photo-ID half of that separate trip to Merlin. Merlin's audio-recording
+ID is a distinct, still out-of-scope case, tracked separately (Section 4,
+"Merlin recordings").
 
 Separately, this project exists as a demonstration piece: a small,
 well-scoped problem that surfaces real system-design decisions — two APIs
@@ -60,9 +71,18 @@ specific UX decisions were made (this is what the wireframes goal in
 Section 2 is for — being able to walk through the customer experience and
 defend the reasoning behind it, not just the code).
 
-**2. Select group of birders.** Some technical savvy, but low tolerance
-for effort — they want it to work, not to debug it. This group is shared
-with deliberately narrowly (not general public) and shouldn't need
+**2. Select group of birders.** Bird photographers who also keep an eBird
+checklist — the same person wants both the rigor of a data-driven list
+and the reward of a great shot. Data-lover and creative at once:
+analytical enough to log a checklist, moved enough by a good sighting to
+stop and photograph it. They already publish to a photo host and enjoy
+showing photos to other photographers/birders in the field — the
+motivating case behind the "Sharing a photo in the field" scenario and
+Search by species story in Section 5, not a separate unscoped ask.
+
+Some technical savvy, but low tolerance for effort — they want it to
+work, not to debug it. This group is shared with deliberately narrowly
+(not general public) and shouldn't need
 ongoing support from me to use it. This is the audience the V2 "share
 with the birding community" goal (Section 2) and the V2 multi-user
 support idea (`BRAINSTORMING.md`) are ultimately for — though for v1,
