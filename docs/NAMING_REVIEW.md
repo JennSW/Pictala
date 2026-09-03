@@ -91,6 +91,88 @@ guarantee.
 | Lentura | lens/lentis + soft suffix | Available, unchecked | Never actually checked | Yes, unchecked |
 | Lentavi | lens/lentis + avis | Available, checked | Accidentally a real Latin word (*lentāvī*, "I have bent/flexed," an unrelated verb); lentavi.com is a live Japanese data-consulting company. USPTO clean. | Yes, but not clean enough to be a strong pick |
 
+## Grouped by decision
+
+Same rows as the table above, pivoted so everything with the same
+decision sits together. Use this view to answer "what's still on the
+table" at a glance; use the table above when you want a name's full
+history in context.
+
+### Available, checked — passed a real check, no conflict found
+
+| Name | Origin | Still in consideration? |
+|---|---|---|
+| Sparrowmark | Sparrow + "mark" | Yes |
+| Juncolist | Junco + list | Yes |
+| Perchlist | Perch + list | Yes, deprioritized ("list" reads as a checklist app) |
+| Murmuration | Real word, collective noun | Yes, deprioritized (hard to say) |
+| Exaltation | Real word, collective noun | Yes, deprioritized (pronounceability) |
+| Nye | Real word, collective noun | Yes, deprioritized (meaning won't land) |
+| Avilume | avis + lumen | Yes |
+| Perchlore | Perch + lore | Yes, deprioritized ("-lore" register) |
+| **Perchoto** | Perch + [ph]oto | **Yes — strongest surviving candidate** (Perch-competitor risk still open) |
+| Avimago | avis + imago | No — superseded by the "-ago" family rejection below |
+| Pictavis | pictura + avis | Yes, but not a blank slate (real Poitiers/brewery meaning) |
+| Cantago | cantus + imago | No — superseded by the "-ago" family rejection below |
+| Lentavi | lens/lentis + avis | Yes, but not clean (accidental real Latin verb + live Japanese company) |
+
+### Available, unchecked — proposed, never actually tested
+
+| Name | Origin |
+|---|---|
+| FieldMatch, SightSync, FeatherFrame, Snapchecklist, Roostlog, WingFrame, ChirpFrame | Round-1 literal compounds |
+| Walklist, Ramblelist, Outing Ledger, Fieldframe, Snaplist, Sightframe, Perchbook, Fieldnotes | Round-2 literal compounds |
+| Perchpix, Perchsnap, Perchclick, Perchgallery, Perchalbum | Round-3 Perch+photo compounds |
+| Checklist & Shutter, Perch & Shutter, Perch & Frame | Two-word variants |
+| Canopy Press, Grove Folio, Sanctuary Frame, Reed & Lens, Habitat Plate, Steward's Lens, Thicket Frame, Migrant Press, Tidewing | Guidance-word compounds |
+| Ternova, Nidora, Wrenlume, Avistride, Glennova, Fenlume | Coined blends |
+| Perchnote, Perchlume, Perchoria, Perchvale, Perchden, Perchwyn, Perchira | Perch- + various suffixes |
+| Volucrata | volucris + taxonomic "-ata" |
+| Lumavis | lumen + avis |
+| Vimago, Pennago, Nidago, Pipago, Voxago | -ago family, never individually checked (also superseded by the family rejection) |
+| Pennula, Pellenna | penna + pellicula |
+| Lentura | lens/lentis + soft suffix |
+
+### Rejected: conflict — a real domain/trademark/live-product conflict
+
+| Name | Reason |
+|---|---|
+| BirdTrip | Existing bird-trip-planning app of the same name |
+| Finchlog | "Finch" — well-known mood-tracking app |
+| Larkbook | "Lark" — ByteDance's Lark Suite |
+| Vireolog | "Vireo" — several established live products |
+| Perchview | Domain in commercial use by 2 unrelated businesses |
+| BirdSync | Near-identical open-source tool, plus a commercial "BirdSync Pro" |
+| BirdMatch | Registered ® trademark |
+| Afield | Collides with "Sports Afield" outdoor-media brand family |
+| Fieldmark | Live trademarked field-data-collection app, same category |
+| Kestrel | "Project Kestrel" — nearly identical positioning |
+| Plumage | Announced bird-photography app of the same name |
+| Muster, Charm, Rafter, Kettle, Bevy, Wisp, Shimmer, Gulp, Wedge, Wren, Chickadee, Bunting, Swallow, Robin, Finch, Kinglet, Junco, Waxwing, Vireo, Nuthatch, Goldfinch, Wrenlist | Each collides with a real funded company, well-known tool, or live app |
+| Wingfolio | Live AI portfolio platform + a Reiko phone-case product line |
+| Wing & Lens | Live, active travel/photography blog |
+| Feather & Lens | Reversed-order live blog + a registered parked domain with a birding tagline |
+| Feathered Lens | Live nature-photography social brand (Instagram + YouTube) |
+| Avimo | Registered USPTO trademark + a real optics manufacturer + 2 more live businesses |
+| Volago | Live Polish travel app + a real fashion brand + a Roblox-airline community |
+
+### Rejected: sound/vibe — no conflict, ruled out on register or brand-feel
+
+| Name | Reason |
+|---|---|
+| Vignette, Waypoint, Sojourn, Cairn, Aperture | Ruled out pre-emptively as still-too-common real words |
+| The whole "-ago" family (Avimago, Avimo, Vimago, Pennago, Volago, Cantago, Nidago, Pipago, Voxago) | "-go" ending reads like Fandango/Trivago/Duolingo — overused consumer-app pattern |
+
+### Withdrawn pre-check — ruled out before spending a check on it
+
+| Name | Reason |
+|---|---|
+| Perchfolio | "-folio" suffix saturated (Wfolio, Interfolio, WizFolio, Bizfolio, etc.) |
+| Perchpic | Too literal, same shape as abandoned Perch+photo compounds |
+| Avilux | "Lux" reads like luxury branding |
+| Plumago | Near-homophone of the real word "plumbago" |
+| Pennicula | Reads too close to "penicillin" out loud |
+
 ## Where things stand (as of 2026-09-02)
 
 **Strongest surviving candidate: Perchoto** — the only recent-round name
