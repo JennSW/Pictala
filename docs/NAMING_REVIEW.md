@@ -103,6 +103,10 @@ guarantee.
 | Melofera | Melo + *-fera* ("-bearing") | Withdrawn pre-check | One letter off from *Apis mellifera*, the honeybee's actual scientific name | No |
 | Melumen | Melo + *lumen*, untrimmed | Rejected: conflict | Domain registered by a real Spanish automotive metal-fabrication company (melumen.es) | No |
 | Meloris | Melo + *iris*, untrimmed | Rejected: conflict | Live **pending** USPTO trademark application (Class 014, jewelry, filed by a China-based company); also a surname, a music artist, a fashion studio | No |
+| **2026-09-02 — small-bird/flycatcher round** | | | | |
+| Empid | *Empidonax*, real birder slang for a genus of small flycatchers | Rejected: conflict | Already a real dictionary word (a fly family, Empididae); also a live B2B workforce-software product ("EMPID Workforce Operating System") on the exact .com | No |
+| Pitta | A real family (Pittidae) of small, colorful tropical birds | Rejected: conflict | Heavily crowded — 22 USPTO filings for "PITTA," several **live and registered** (driven by the Ayurvedic "Pitta dosha" concept, unrelated to birds); pitta.com listed for sale as a premium domain; a live shopping app already named "Pitta World" | No |
+| **Pewee** | *Contopus virens*, Eastern Wood-Pewee — genus *Contopus* (Greek "pole-foot"), species *virens* (Latin "green"); the common name itself is onomatopoeic, imitating the bird's call | Rejected: sound/vibe | Passed every formal check (USPTO: only 2 long-dead marks; domain: .io/.app open; no live competing product) — but pronounced "PEE-wee," which collides with the extremely common English word "peewee"/"pee-wee" (Pee-wee Herman, pee-wee sports leagues, generic word for "small"). User: "that's what I was afraid of... a strike against it." Not disqualified outright — user's own idea: usable as **raw material for a further coined blend** rather than as a bare word. | No, as a bare word — open as a root for coining |
 
 ## Grouped by decision
 
@@ -176,6 +180,8 @@ history in context.
 | Melura | Domain redirects to a live Shopify fashion store; also a supplement brand and a candle brand |
 | Melumen | Domain registered by a real Spanish automotive metal-fabrication company |
 | Meloris | Live pending USPTO trademark application (jewelry); also a surname, musician, and fashion studio |
+| Empid | Already a real dictionary word (a fly family); live B2B workforce-software product on the exact .com |
+| Pitta | 22 USPTO filings, several live/registered (Ayurveda "dosha" association); premium domain listing; a live shopping app |
 
 ### Rejected: sound/vibe — no conflict, ruled out on register or brand-feel
 
@@ -194,15 +200,30 @@ history in context.
 | Plumago | Near-homophone of the real word "plumbago" |
 | Pennicula | Reads too close to "penicillin" out loud |
 | Melofera | One letter off from *Apis mellifera*, the honeybee's actual scientific name |
+| Pewee | Passed every formal availability check clean — withdrawn as a *bare word* specifically because "peewee" is an extremely common existing English word/pop-culture term (Pee-wee Herman, pee-wee sports leagues), not because of any conflict check |
 
-## Where things stand (as of 2026-09-02, after the Passer/Melo round)
+## Where things stand (as of 2026-09-02, end of session)
 
 **Strongest surviving candidate: Perchoto** — still the only name that's
 both availability-checked clean *and* not caught by a sound-fatigue
 rejection. Its own open risk (the live "Perch" competitor) is still
-unresolved. The entire Passer/Melo taxonomy round that followed found
-no new clean winner — six of its eleven names hit a real conflict, and
-none passed clean.
+unresolved. The Passer/Melo taxonomy round found no new clean winner —
+six of its eleven names hit a real conflict, and none passed clean.
+
+**Pewee tried as a fresh top option, then self-disqualified — but not a
+dead end.** Following a genuine gut-feel pattern review (see the
+gut-feel list captured in the naming-conflict memory), the user pulled
+"small bird, cute sound" as a new direction and landed on **Pewee**
+(Eastern Wood-Pewee, *Contopus virens*) — the cleanest availability
+check of the whole session (no live trademark, no live competitor). It
+was set as the new top option, then withdrawn once pronunciation was
+checked: "pewee" is said "PEE-wee," colliding with the very common
+existing word "peewee" (Pee-wee Herman, pee-wee sports leagues). Not a
+conflict-check failure — a register/recognition problem, same category
+as the "-lore" and "-go" rejections. **The user's own idea, worth
+picking up next time:** use "Pewee" as raw *material* for a further
+coined blend (the way Perch, Passer, and Melo were each used as roots)
+rather than as a bare word.
 
 **Genuinely clean but currently unwanted:** Cantago (killed by the "-go"
 pattern) and Perchlore (killed by the "-lore" register issue) — both
