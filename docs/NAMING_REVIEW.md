@@ -133,7 +133,7 @@ guarantee.
 | **Alanota** | *ala* + *nota* ("wing-mark") | Available, checked | — | **Yes** — genuinely accurate, not just decorative: wing bars/wing patches are a real field mark birders use to ID species |
 | Notala | *nota* + *ala*, reversed | Available, checked | Same roots/result as Alanota, softer ending | Yes |
 | Alagran | *ala* + *granum* ("wing-grain") | Available, checked | Wing+seed pairing is decorative, not meaningful the way Alanota is | Yes |
-| **Pictala** | *pictura* + *ala* ("picture-wing") | Available, checked | No active trademark or live app on .com/.app/.io. `pictala.com` is a premium domain listed for sale on BrandBucket ("attractive... for photo and image creation apps") — available only in the sense of no conflict, not free-to-register on .com | Yes |
+| **Pictala** | *pictura* + *ala* ("picture-wing") | Available, checked | No active trademark or live app on .com/.app/.io. `pictala.com` is a premium domain listed for sale on BrandBucket ("attractive... for photo and image creation apps") — user confirmed the asking price is too high; `.app`/`.io` both look open at normal registration price. Plan: register `.app` or `.io` instead of `.com`. For a single-user portfolio tool (freeware if ever shared per the PRD's V2 vision), not owning the `.com` is a minor risk, not a blocker. | Yes |
 
 ## Grouped by decision
 
