@@ -14,9 +14,16 @@ user confirm/reject... never silently trusting it":
                                                        photo matching nothing
                                                        reported on this outing
   POST /match/{checklist_id}/accept-fallback/{photo_id}  -- keep a fallback guess
+  POST /match/{checklist_id}/reject/{photo_id}    -- say no to a constrained
+                                                       AI suggestion
 
-There's no "/reject" endpoint on purpose: rejecting a suggestion just means
-not calling accept -- nothing was ever written, so there's nothing to undo.
+Accepting/rejecting a *constrained* suggestion never changes what's kept
+about it -- accept always keeps Claude's own suggested species, reject
+never writes a Match at all (nothing to undo, per the original design
+here). What accept/reject/accept-fallback all now do is also log the
+suggestion + outcome to AiSuggestionLog (2026-09-03), independent of the
+Match row, so AI accuracy can be measured later -- see that model's
+docstring and GET /stats/ai-accuracy in stats.py.
 """
 from datetime import datetime, timedelta
 
@@ -25,13 +32,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Checklist, Photo, Match
+from app.models import Checklist, Photo, Match, AiSuggestionLog
 from app.schemas import (
     SpeciesSuggestion,
     AcceptSuggestionRequest,
     AssignSpeciesRequest,
     FallbackSuggestion,
     AcceptFallbackRequest,
+    RejectSuggestionRequest,
     MatchOut,
     photo_out,
     ebird_checklist_url,
@@ -49,6 +57,34 @@ from app.services.timezone_check import check_mismatch
 from app.services.matcher import run_rule_based_matching
 
 router = APIRouter(prefix="/match", tags=["match"])
+
+
+def _log_ai_suggestion(
+    db: Session,
+    *,
+    photo_id: int,
+    checklist_id: int | None,
+    kind: str,
+    suggested_common_name: str | None,
+    confidence: float,
+    outcome: str,
+    final_common_name: str | None = None,
+) -> None:
+    """See AiSuggestionLog's docstring. Always logs when called -- callers
+    decide whether a given save is worth logging at all (e.g. a
+    from-scratch typed note, with no AI guess behind it, skips this
+    entirely rather than calling in with an empty suggestion)."""
+    db.add(
+        AiSuggestionLog(
+            photo_id=photo_id,
+            checklist_id=checklist_id,
+            kind=kind,
+            suggested_common_name=suggested_common_name,
+            confidence=confidence,
+            outcome=outcome,
+            final_common_name=final_common_name,
+        )
+    )
 
 
 def _get_or_create_match(db: Session, checklist_id: int, photo_id: int) -> Match:
@@ -143,6 +179,18 @@ def accept_suggestion(
     match.confidence = body.confidence
     match.method = "ai_suggested"
     match.reviewed_at = datetime.utcnow()
+
+    if body.suggested_common_name is not None:
+        _log_ai_suggestion(
+            db,
+            photo_id=photo_id,
+            checklist_id=checklist_id,
+            kind="constrained",
+            suggested_common_name=body.suggested_common_name,
+            confidence=body.confidence,
+            outcome="accepted",
+        )
+
     db.commit()
     db.refresh(match)
 
@@ -165,6 +213,34 @@ def accept_suggestion(
         "ebird_checklist_url": ebird_checklist_url(checklist),
         "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }
+
+
+@router.post("/{checklist_id}/reject/{photo_id}")
+def reject_suggestion(
+    checklist_id: int,
+    photo_id: int,
+    body: RejectSuggestionRequest,
+    db: Session = Depends(get_db),
+):
+    """The user looked at a constrained SpeciesSuggestion and said no.
+    Still writes nothing to Match -- there's nothing to undo, same as
+    before this endpoint existed -- but now logs the rejection itself for
+    AI accuracy tracking (see AiSuggestionLog)."""
+    checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
+    if checklist is None:
+        raise HTTPException(status_code=404, detail="Checklist not found")
+
+    _log_ai_suggestion(
+        db,
+        photo_id=photo_id,
+        checklist_id=checklist_id,
+        kind="constrained",
+        suggested_common_name=body.suggested_common_name,
+        confidence=body.confidence,
+        outcome="rejected",
+    )
+    db.commit()
+    return {"status": "logged"}
 
 
 @router.post("/{checklist_id}/assign/{photo_id}", response_model=MatchOut)
@@ -366,6 +442,24 @@ def accept_fallback(
         match.method = "ai_fallback"
 
     match.reviewed_at = datetime.utcnow()
+
+    if body.ai_suggested_common_name is not None:
+        final_common_name = on_checklist.common_name if on_checklist is not None else match.fallback_common_name
+        matches_suggestion = (
+            final_common_name is not None
+            and final_common_name.strip().lower() == body.ai_suggested_common_name.strip().lower()
+        )
+        _log_ai_suggestion(
+            db,
+            photo_id=photo_id,
+            checklist_id=checklist_id,
+            kind="unconstrained",
+            suggested_common_name=body.ai_suggested_common_name,
+            confidence=body.confidence,
+            outcome="accepted" if matches_suggestion else "corrected",
+            final_common_name=None if matches_suggestion else final_common_name,
+        )
+
     db.commit()
     db.refresh(match)
 

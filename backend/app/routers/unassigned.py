@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Match, Photo
+from app.models import Match, Photo, AiSuggestionLog
 from app.schemas import ClusterSummary, ClusterDetail, MatchOut, FallbackSuggestion, photo_out
 from app.services.photo_clusters import compute_clusters, get_cluster
 from app.services.ebird_taxonomy import find_species, resolve_guess
@@ -173,6 +173,10 @@ def suggest_batch(cluster_id: str, body: SuggestBatchRequest, db: Session = Depe
 class IdentifyRequest(BaseModel):
     common_name: str
     confidence: float = 1.0
+    ai_suggested_common_name: str | None = None
+    """Set only when this save follows the unconstrained guess above --
+    see match.py's accept_fallback and AiSuggestionLog's docstring; same
+    accepted/corrected logging, just for the checklist-less path."""
 
 
 @router.post("/{cluster_id}/identify/{photo_id}", response_model=MatchOut)
@@ -210,6 +214,21 @@ def identify_photo(cluster_id: str, photo_id: int, body: IdentifyRequest, db: Se
     match.confidence = body.confidence
     match.method = "ai_fallback"
     match.reviewed_at = datetime.utcnow()
+
+    if body.ai_suggested_common_name is not None:
+        matches_suggestion = match.fallback_common_name.strip().lower() == body.ai_suggested_common_name.strip().lower()
+        db.add(
+            AiSuggestionLog(
+                photo_id=photo_id,
+                checklist_id=None,
+                kind="unconstrained",
+                suggested_common_name=body.ai_suggested_common_name,
+                confidence=body.confidence,
+                outcome="accepted" if matches_suggestion else "corrected",
+                final_common_name=None if matches_suggestion else match.fallback_common_name,
+            )
+        )
+
     db.commit()
     db.refresh(match)
 

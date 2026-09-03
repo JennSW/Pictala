@@ -6,6 +6,7 @@ import {
   unmarkOutingReviewed,
   suggestSpecies,
   acceptSuggestion,
+  rejectSuggestion,
   assignSpecies,
   suggestFallback,
   suggestFallbackBatch,
@@ -168,6 +169,12 @@ export default function App() {
   const [clusterDateFilter, setClusterDateFilter] = useState<string | null>(null);
   const [clusterIdentifyText, setClusterIdentifyText] = useState<Record<number, string>>({});
   const [clusterSuggesting, setClusterSuggesting] = useState<Record<number, boolean>>({});
+  // The AI's own guess, remembered separately from the editable
+  // clusterIdentifyText above so a save can tell "accepted this AI
+  // suggestion as-is" from "typed something from scratch" for AI
+  // accuracy tracking (raised 2026-09-03) -- cleared once saved or once
+  // the user starts over without ever asking Claude.
+  const [clusterAiGuess, setClusterAiGuess] = useState<Record<number, string>>({});
   const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
 
   // Batch "Ask Claude" (issue #5) -- a checkbox per unmatched/checklist-
@@ -299,6 +306,7 @@ export default function App() {
     try {
       const result = await suggestUnassignedFallback(selectedCluster.id, photoId);
       setClusterIdentifyText((prev) => ({ ...prev, [photoId]: result.common_name ?? "" }));
+      setClusterAiGuess((prev) => ({ ...prev, [photoId]: result.common_name ?? "" }));
     } catch (e) {
       setError(String(e));
     } finally {
@@ -322,6 +330,11 @@ export default function App() {
         for (const r of results) next[r.photo_id] = r.common_name ?? "";
         return next;
       });
+      setClusterAiGuess((prev) => {
+        const next = { ...prev };
+        for (const r of results) next[r.photo_id] = r.common_name ?? "";
+        return next;
+      });
       setCheckedPhotos((prev) => {
         const next = { ...prev };
         for (const id of photoIds) delete next[id];
@@ -340,8 +353,13 @@ export default function App() {
     if (!text) return;
     setClusterSaving((prev) => ({ ...prev, [photoId]: true }));
     try {
-      await identifyUnassignedPhoto(selectedCluster.id, photoId, text);
+      await identifyUnassignedPhoto(selectedCluster.id, photoId, text, undefined, clusterAiGuess[photoId]);
       setSelectedCluster(await fetchUnassignedCluster(selectedCluster.id));
+      setClusterAiGuess((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
     } catch (e) {
       setError(String(e));
     } finally {
@@ -419,10 +437,16 @@ export default function App() {
     }
   }
 
-  async function handleAccept(checklistId: number, photoId: number, observationId: number, confidence: number) {
+  async function handleAccept(
+    checklistId: number,
+    photoId: number,
+    observationId: number,
+    confidence: number,
+    suggestedCommonName?: string | null
+  ) {
     setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
     try {
-      await acceptSuggestion(checklistId, photoId, observationId, confidence);
+      await acceptSuggestion(checklistId, photoId, observationId, confidence, suggestedCommonName);
       setSelected(await fetchOuting(checklistId));
       setSuggestions((prev) => {
         const next = { ...prev };
@@ -437,13 +461,24 @@ export default function App() {
     }
   }
 
-  function handleReject(photoId: number) {
-    // Nothing was ever saved. Previously this just cleared the guess
-    // entirely; now it hands off to the same follow-up panel as "no
-    // confident match" (manual dropdown, broader ID, a plain note),
-    // since a wrong suggestion and no suggestion both mean "this
-    // proposed answer isn't right."
+  async function handleReject(checklistId: number, photoId: number) {
+    // Still writes nothing to the match itself -- rejecting just means
+    // not calling accept, same as always -- but now logs the rejection
+    // for AI accuracy tracking (raised 2026-09-03) before handing off to
+    // the same follow-up panel as "no confident match" (manual dropdown,
+    // broader ID, a plain note), since a wrong suggestion and no
+    // suggestion both mean "this proposed answer isn't right."
+    const current = suggestions[photoId];
+    const data = current?.status === "ready" ? current.data : null;
     setSuggestions((prev) => ({ ...prev, [photoId]: { status: "rejected" } }));
+    try {
+      await rejectSuggestion(checklistId, photoId, data?.suggested_common_name ?? null, data?.confidence ?? 0);
+    } catch (e) {
+      // Logging failure shouldn't block the user from moving on to the
+      // follow-up panel they were already sent to above -- surface it as
+      // a global banner instead of reverting their rejection.
+      setError(String(e));
+    }
   }
 
   function handleDismissRejected(photoId: number) {
@@ -656,7 +691,7 @@ export default function App() {
     if (!text) return;
     setFallbacks((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
     try {
-      await acceptFallback(checklistId, photoId, text, suggestion.confidence);
+      await acceptFallback(checklistId, photoId, text, suggestion.confidence, suggestion.common_name);
       setSelected(await fetchOuting(checklistId));
       setFallbacks((prev) => {
         const next = { ...prev };
@@ -1043,13 +1078,14 @@ export default function App() {
                         outing.id,
                         m.photo.id,
                         suggestion.data.suggested_observation_id as number,
-                        suggestion.data.confidence
+                        suggestion.data.confidence,
+                        suggestion.data.suggested_common_name
                       )
                     }
                   >
                     Accept
                   </button>
-                  <button className="btn btn-danger" onClick={() => handleReject(m.photo.id)}>
+                  <button className="btn btn-danger" onClick={() => handleReject(outing.id, m.photo.id)}>
                     Reject
                   </button>
                 </div>

@@ -181,6 +181,11 @@ class AcceptSuggestionRequest(BaseModel):
 
     observation_id: int
     confidence: float
+    suggested_common_name: str | None = None
+    """The suggestion's own common_name, passed through unchanged for AI
+    accuracy logging (see AiSuggestionLog) -- accept always keeps
+    Claude's suggested species as-is, so this is only ever an "accepted"
+    outcome, never "corrected"."""
 
 
 class AssignSpeciesRequest(BaseModel):
@@ -231,3 +236,43 @@ class AcceptFallbackRequest(BaseModel):
 
     common_name: str
     confidence: float = 1.0
+    ai_suggested_common_name: str | None = None
+    """Set only when this save follows an AI fallback guess (single or
+    batched) -- the frontend passes through the original suggestion's
+    common_name unchanged, so the backend can log whether the final
+    answer matches it (accepted) or differs (corrected). Omitted when
+    the text was typed from scratch, with no AI guess behind it at all
+    -- that case isn't an AI accuracy data point and shouldn't be
+    logged as one."""
+
+
+class RejectSuggestionRequest(BaseModel):
+    """Body for POST /match/{checklist_id}/reject/{photo_id} -- the user
+    looked at a constrained SpeciesSuggestion and said no. Nothing about
+    the Match row changes (there was nothing to undo, per match.py), but
+    the rejection itself is worth recording for AI accuracy tracking."""
+
+    suggested_common_name: str | None
+    confidence: float
+
+
+class AiAccuracyBucket(BaseModel):
+    """One accuracy count/percentage breakdown -- either overall, or for
+    a single suggestion kind. See AiAccuracyStats.by_kind."""
+
+    total: int
+    accepted: int
+    corrected: int
+    rejected: int
+    accuracy: float | None
+    """accepted / total, or null if total is 0 -- avoids a division by
+    zero reading as a real 0% for a project with no data logged yet."""
+
+
+class AiAccuracyStats(AiAccuracyBucket):
+    """Response for GET /stats/ai-accuracy. Extends the overall bucket
+    with the same breakdown per suggestion kind ("constrained" /
+    "unconstrained") -- see AiSuggestionLog's docstring for why these
+    shouldn't be blended into just the top-level number."""
+
+    by_kind: dict[str, AiAccuracyBucket]

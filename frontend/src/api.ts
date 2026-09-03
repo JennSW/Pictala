@@ -156,14 +156,34 @@ export function suggestSpecies(checklistId: number, photoId: number): Promise<Sp
 }
 
 // The user looked at a SpeciesSuggestion and chose to keep it.
+// suggestedCommonName is passed through unchanged for AI accuracy
+// logging (issue raised 2026-09-03) -- accept always keeps Claude's own
+// suggested species, so this always logs as an "accepted" outcome.
 export function acceptSuggestion(
   checklistId: number,
   photoId: number,
   observationId: number,
-  confidence: number
+  confidence: number,
+  suggestedCommonName?: string | null
 ): Promise<MatchEntry> {
   return postJson(`/match/${checklistId}/accept/${photoId}`, {
     observation_id: observationId,
+    confidence,
+    suggested_common_name: suggestedCommonName ?? null,
+  });
+}
+
+// The user looked at a SpeciesSuggestion and said no. Writes nothing to
+// the match itself (nothing to undo), but logs the rejection for AI
+// accuracy tracking.
+export function rejectSuggestion(
+  checklistId: number,
+  photoId: number,
+  suggestedCommonName: string | null,
+  confidence: number
+): Promise<void> {
+  return postJson(`/match/${checklistId}/reject/${photoId}`, {
+    suggested_common_name: suggestedCommonName,
     confidence,
   });
 }
@@ -216,15 +236,22 @@ export function suggestFallbackBatch(
 // text itself plus an optional confidence carried over from an AI guess
 // being accepted as-is (a human typing a name has no confidence to
 // report, so it's omitted and defaults to certain on the backend).
+// aiSuggestedCommonName is set only when this save follows an AI
+// fallback guess (single or batched) -- passed through unchanged so the
+// backend can log whether the final answer matches it (accepted) or was
+// edited (corrected) for AI accuracy tracking. Omitted for a from-scratch
+// typed note, which isn't an AI accuracy data point.
 export function acceptFallback(
   checklistId: number,
   photoId: number,
   commonName: string,
-  confidence?: number
+  confidence?: number,
+  aiSuggestedCommonName?: string | null
 ): Promise<MatchEntry> {
   return postJson(`/match/${checklistId}/accept-fallback/${photoId}`, {
     common_name: commonName,
     ...(confidence !== undefined ? { confidence } : {}),
+    ...(aiSuggestedCommonName ? { ai_suggested_common_name: aiSuggestedCommonName } : {}),
   });
 }
 
@@ -315,15 +342,21 @@ export function suggestUnassignedFallbackBatch(
   return postJson(`/unassigned/${clusterId}/suggest-batch`, { photo_ids: photoIds });
 }
 
+// aiSuggestedCommonName mirrors acceptFallback's -- set only when this
+// save follows the unconstrained guess, so the backend can log
+// accepted/corrected for AI accuracy tracking; omitted for a
+// from-scratch typed note.
 export function identifyUnassignedPhoto(
   clusterId: string,
   photoId: number,
   commonName: string,
-  confidence?: number
+  confidence?: number,
+  aiSuggestedCommonName?: string | null
 ): Promise<MatchEntry> {
   return postJson(`/unassigned/${clusterId}/identify/${photoId}`, {
     common_name: commonName,
     ...(confidence !== undefined ? { confidence } : {}),
+    ...(aiSuggestedCommonName ? { ai_suggested_common_name: aiSuggestedCommonName } : {}),
   });
 }
 

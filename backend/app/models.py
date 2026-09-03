@@ -177,3 +177,44 @@ class SyncLog(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     triggered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+
+class AiSuggestionLog(Base):
+    """One row per AI species suggestion, independent of whatever the
+    Match row it relates to ends up holding -- Match only ever stores the
+    *current* state (see its own docstring), so a suggestion that got
+    rejected or edited before saving leaves no trace there at all. This
+    table exists purely to answer "how often is Claude actually right,"
+    e.g. for a real accuracy number (2026-09-03, raised as a portfolio/
+    interview talking point after a real misidentification -- a photo
+    Claude guessed wrong that Jen corrected to Wood Duck).
+
+    `kind` distinguishes the two suggestion flows (see match.py):
+    "constrained" (guess_species, picking from the outing's own reported
+    species) and "unconstrained" (guess_species_unconstrained, the
+    broader "Ask Claude" fallback guess). Accuracy is meaningfully
+    different between them and shouldn't be blended into one number
+    without the ability to split it back out.
+
+    `outcome`: "accepted" (kept exactly as suggested), "corrected" (kept,
+    but the user's final answer differs from what Claude suggested --
+    unconstrained flow only, since the constrained flow's Accept has no
+    edit step), or "rejected" (constrained-flow Reject; the unconstrained
+    flow has no reject action, since editable-then-save collapses reject
+    and correct into one action already covered by "corrected").
+    """
+
+    __tablename__ = "ai_suggestion_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    photo_id: Mapped[int] = mapped_column(ForeignKey("photos.id"))
+    checklist_id: Mapped[int | None] = mapped_column(ForeignKey("checklists.id"), nullable=True)
+    kind: Mapped[str] = mapped_column(String)
+    suggested_common_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    confidence: Mapped[float] = mapped_column(Float)
+    outcome: Mapped[str] = mapped_column(String)
+    final_common_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    """Only set when outcome == "corrected" -- what the user's answer
+    actually was, for context alongside the suggested_common_name that
+    turned out wrong."""
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

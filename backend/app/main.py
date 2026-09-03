@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import Base, engine, add_missing_columns
-from app.routers import outings, sync, match, search, unassigned
+from app.routers import outings, sync, match, search, unassigned, stats
 
 Base.metadata.create_all(bind=engine)
 add_missing_columns()
@@ -29,6 +29,7 @@ app.include_router(sync.router)
 app.include_router(match.router)
 app.include_router(search.router)
 app.include_router(unassigned.router)
+app.include_router(stats.router)
 
 
 @app.get("/health")
