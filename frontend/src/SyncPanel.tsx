@@ -144,7 +144,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
           exactly like a freeze or a failure. */}
       {showEbirdHint && (
         <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>
-          BirdTrip works best with your eBird data. Get your checklist CSV
+          Pictala works best with your eBird data. Get your checklist CSV
           and upload it below to get started.
         </p>
       )}

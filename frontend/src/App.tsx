@@ -1289,7 +1289,7 @@ export default function App() {
   return (
     <div>
       <header className="app-header">
-        <span className="wordmark">BirdTrip</span>
+        <span className="wordmark">Pictala</span>
         <p>Your eBird outings, matched with your Flickr photos.</p>
       </header>
 

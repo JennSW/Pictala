@@ -8,7 +8,7 @@ Base.metadata.create_all(bind=engine)
 add_missing_columns()
 
 app = FastAPI(
-    title="BirdTrip API",
+    title="Pictala API",
     description="Matches your eBird checklists to your Flickr photos, per outing.",
     version="0.1.0",
 )
