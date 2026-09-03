@@ -177,6 +177,11 @@ export default function App() {
   // disables before a request that would just get rejected.
   const [checkedPhotos, setCheckedPhotos] = useState<Record<number, boolean>>({});
   const [batchSuggesting, setBatchSuggesting] = useState(false);
+  // Batch approve/confirm (issue #50) -- same checkedPhotos map, but for
+  // "Needs review" matches (already have an observation, just never
+  // confirmed) rather than Unmatched ones. A photo can only be in one of
+  // those two states at once, so sharing the map is safe.
+  const [batchConfirming, setBatchConfirming] = useState(false);
   const MAX_BATCH_PHOTOS = 10;
 
   // Inline photo lightbox (issue #44) -- a modal, not a new-tab
@@ -475,6 +480,40 @@ export default function App() {
     }
   }
 
+  // Batch version of handleConfirmMatch (issue #50) -- confirms every
+  // checked "Needs review" match in one action instead of one click each.
+  // No dedicated batch endpoint on the backend; assignSpecies is a plain
+  // DB write (no AI call behind it, unlike batch Ask Claude), so firing
+  // one request per photo in parallel is fine.
+  async function handleConfirmBatch(checklistId: number) {
+    if (!selected) return;
+    const needsReviewIds = selected.matches
+      .filter((m) => Boolean(m.observation) && !m.reviewed_at)
+      .map((m) => m.photo.id);
+    const photoIds = checkedPhotoIdsIn(needsReviewIds);
+    if (photoIds.length === 0) return;
+    setBatchConfirming(true);
+    try {
+      await Promise.all(
+        photoIds.map((photoId) => {
+          const match = selected.matches.find((m) => m.photo.id === photoId);
+          const observationId = match?.observation?.id;
+          return observationId ? assignSpecies(checklistId, photoId, observationId) : Promise.resolve();
+        })
+      );
+      setSelected(await fetchOuting(checklistId));
+      setCheckedPhotos((prev) => {
+        const next = { ...prev };
+        for (const id of photoIds) delete next[id];
+        return next;
+      });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBatchConfirming(false);
+    }
+  }
+
   // A name was entered for this photo -- typed by hand, reached either
   // from the Unmatched dropdown's "Other" text box or the rejected-
   // suggestion follow-up panel. The backend now resolves it (checklist's
@@ -543,7 +582,14 @@ export default function App() {
 
   async function handleSuggestFallbackBatch(checklistId: number) {
     if (!selected) return;
-    const photoIds = checkedPhotoIdsIn(selected.matches.map((m) => m.photo.id));
+    // Scoped to actually-unmatched photos only -- checkedPhotos is a
+    // shared map with the batch-confirm checkboxes (issue #50), so an
+    // unscoped read here could sweep in checked "Needs review" photo ids
+    // too if both were checked at once.
+    const unmatchedIds = selected.matches
+      .filter((m) => !m.observation && !m.fallback_common_name)
+      .map((m) => m.photo.id);
+    const photoIds = checkedPhotoIdsIn(unmatchedIds);
     if (photoIds.length === 0) return;
     setBatchSuggesting(true);
     try {
@@ -691,6 +737,18 @@ export default function App() {
                         {m.observation.scientific_name && <span style={{ fontStyle: "italic" }}>{m.observation.scientific_name}</span>}
                         {onEbird && <img src={ebirdMatchIcon} alt="Logged on eBird" className="ebird-match-icon" />}
                       </div>
+                      <label style={{ marginTop: "var(--space-1)", display: "block", fontSize: "var(--text-xs)" }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(checkedPhotos[m.photo.id])}
+                          disabled={
+                            !checkedPhotos[m.photo.id] &&
+                            checkedPhotoIdsIn(outing.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
+                          }
+                          onChange={(e) => setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))}
+                        />{" "}
+                        Select for batch
+                      </label>
                     </div>
                   </>
                 ) : (
@@ -1592,7 +1650,21 @@ export default function App() {
               );
               const reviewed = Boolean(selected.reviewed_at);
               const primaryTitle = reviewed ? "Confirmed" : "To review";
-              const checkedInPrimary = checkedPhotoIdsIn(toReviewOrConfirmed.map((m) => m.photo.id));
+              // Split by type -- a checkbox in this column now covers two
+              // different eligible states (issue #50: needs-review matches
+              // for batch confirm, alongside the existing unmatched photos
+              // for batch Ask Claude), so "checked" alone is ambiguous.
+              const needsReviewInPrimary = checkedPhotoIdsIn(
+                toReviewOrConfirmed.filter((m) => Boolean(m.observation) && !m.reviewed_at).map((m) => m.photo.id)
+              );
+              // Unmatched (needs_claude) photos can never appear in
+              // ebird_and_flickr/flickr_best_guess -- outing_review.py's
+              // compute_photo_groups puts a photo in exactly one bucket,
+              // and needs_claude is specifically "no observation, no
+              // fallback." Their checkboxes render in needsClaudeMatches
+              // (the sidebar), so the checked count has to come from
+              // there too, not from toReviewOrConfirmed.
+              const checkedNeedsClaude = checkedPhotoIdsIn(needsClaudeMatches.map((m) => m.photo.id));
 
               return (
                 <div className="outing-grid">
@@ -1601,14 +1673,14 @@ export default function App() {
                       <span className="outing-count-badge">{toReviewOrConfirmed.length}</span>
                       <h3 className="outing-col-title">{primaryTitle}</h3>
                     </div>
-                    {checkedInPrimary.length > 0 && (
+                    {needsReviewInPrimary.length > 0 && (
                       <button
                         className="btn btn-primary"
-                        style={{ marginBottom: "var(--space-3)" }}
-                        onClick={() => handleSuggestFallbackBatch(selected.id)}
-                        disabled={batchSuggesting}
+                        style={{ marginBottom: "var(--space-2)", marginRight: "var(--space-2)" }}
+                        onClick={() => handleConfirmBatch(selected.id)}
+                        disabled={batchConfirming}
                       >
-                        {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedInPrimary.length} selected`}
+                        {batchConfirming ? "Confirming…" : `Confirm ${needsReviewInPrimary.length} selected`}
                       </button>
                     )}
                     <div className="outing-match-grid">
@@ -1626,6 +1698,16 @@ export default function App() {
                           </span>
                           <h3 className="outing-col-title">Needs Claude</h3>
                         </div>
+                        {checkedNeedsClaude.length > 0 && (
+                          <button
+                            className="btn btn-primary"
+                            style={{ marginBottom: "var(--space-3)" }}
+                            onClick={() => handleSuggestFallbackBatch(selected.id)}
+                            disabled={batchSuggesting}
+                          >
+                            {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedNeedsClaude.length} selected`}
+                          </button>
+                        )}
                         <div className="outing-match-grid">
                           {needsClaudeMatches.map((m) => renderMatchCard(selected, m))}
                         </div>
