@@ -1,85 +1,113 @@
 # BirdTrip — Naming Review
 
-Tracking rename candidates since discovering a naming conflict with an
-existing bird-trip-planning product called BirdTrip (2026-09-01). See
-`PRD.md` Section 1 and issue #61 ("Rename of app") for context. **Parked
-2026-09-01** — no name decided yet; picking back up is tracked on the
-project board at Investigating status.
+Full consolidated tracker, replacing the earlier partial version.
+Covers both the 2026-09-01 session (initial conflict discovery + first
+six brainstorm rounds) and the much longer 2026-09-02 session (guidance
+words → coined words → Latin roots). See issue #61 ("Rename of app")
+and the naming-conflict memory for full narrative context — this doc is
+the scannable reference table.
 
-Checks below are web-search-based (app stores, obvious trademark hits,
-known funded companies) — not a formal USPTO or domain-registrar search.
-"Available" means nothing conflicting turned up, not a legal guarantee.
+Checks are web-search-based (app stores, obvious trademark hits, known
+funded companies) plus, for 2026-09-02 candidates, a live USPTO
+trademark search and direct domain/DNS checks — not a formal legal
+clearance. "Available" means nothing disqualifying turned up, not a
+guarantee.
 
 ## Status key
 
-- **Available** — checked, no existing app/trademark/product conflict
-  found.
-- **Investigate** — either not checked yet, or checked with an ambiguous
-  or residual-risk result (e.g. the exact name is clear but a very
-  similar or root word belongs to a well-known existing product).
-- **Can't use** — a real, direct conflict: a live app, a registered
-  trademark, or a well-known/well-funded product in the same or a
-  confusable space.
+- **Available, checked** — passed a real availability check (domain
+  and/or USPTO and/or web search), no disqualifying conflict found.
+- **Available, unchecked** — proposed but never actually checked.
+- **Rejected: conflict** — a real domain/trademark/live-product
+  conflict found.
+- **Rejected: sound/vibe** — no conflict, ruled out on pronounceability,
+  register, or brand-feel grounds instead (e.g. "-lore" reads as
+  gaming, "-go" reads like Fandango/Trivago).
+- **Withdrawn pre-check** — the user or assistant ruled it out before
+  spending a check on it (e.g. too literal, too close to an
+  already-rejected pattern).
 
-## Leading candidates (Available, lowest residual risk)
+## Table
 
-| Name | Notes |
-|---|---|
-| **Sparrowmark** | Compound of Sparrow + "mark" (real birding term, field mark). No exact-match conflict. Root word "Sparrow" has some history (Sparrow email client, discontinued 2012; a couple of niche fintech/dev apps) but nothing current/dominant. |
-| **Juncolist** | Compound of Junco + list (checklist nod). No exact-match conflict. Root word "Junco" only turns up small/niche products (a newsletter-to-podcast app, a fashion ordering app). Least crowded root checked. |
+| Name | Origin | Decision | Reason if rejected | Still in consideration? |
+|---|---|---|---|---|
+| BirdTrip | Original name | Rejected: conflict | Existing bird-trip-planning app of the same name (the whole reason this review exists) | No |
+| **2026-09-01 session** | | | | |
+| Sparrowmark | Sparrow + "mark" (birding field-mark term) | Available, checked | — | Yes |
+| Juncolist | Junco + list | Available, checked | — | Yes |
+| Perchlist | Perch + list | Available, checked | User feedback: "list" reads as another eBird-style checklist app, doesn't signal photos | Yes, but deprioritized by user feedback |
+| Murmuration | Real word, starling-flock collective noun | Available, checked | User feedback: hard to say out loud | Yes, but deprioritized |
+| Exaltation | Real word, collective noun for larks | Available, checked | Same pronounceability issue as Murmuration | Yes, but deprioritized |
+| Nye | Real word, collective noun for pheasants | Available, checked | Meaning won't land without explanation | Yes, but deprioritized |
+| Finchlog | Finch + log | Rejected: conflict | "Finch" is a well-known mood-tracking app | No |
+| Larkbook | Lark + book | Rejected: conflict | "Lark" is ByteDance's Lark Suite (enterprise collab) | No |
+| Vireolog | Vireo + log | Rejected: conflict | "Vireo" has several established live products | No |
+| Perchview | Perch + view | Rejected: conflict | Domain in commercial use by 2 unrelated small businesses | No |
+| BirdSync | Bird + sync | Rejected: conflict | Real open-source `Sajmani/birdsync` does the near-identical job; also a commercial "BirdSync Pro" | No |
+| BirdMatch | Bird + match | Rejected: conflict | Registered ® trademark, "BirdMatch® Memory Game" | No |
+| Afield | Real word | Rejected: conflict | Collides with "Sports Afield" outdoor-media brand family | No |
+| Fieldmark | Field + mark | Rejected: conflict | Live trademarked field-data-collection app, same category | No |
+| Kestrel | Real word | Rejected: conflict | "Project Kestrel" — open-source bird-photo organizer, nearly identical positioning (see also 09-02 competitive landscape finding re: Perch) | No |
+| Plumage | Real word | Rejected: conflict | Announced bird-photography app of the same name on BirdForum | No |
+| Muster, Charm, Rafter, Kettle, Bevy, Wisp, Shimmer, Gulp, Wedge, Wren, Chickadee, Bunting, Swallow, Robin, Finch, Kinglet, Junco, Waxwing, Vireo, Nuthatch, Goldfinch, Wrenlist | Various single real words / collective nouns | Rejected: conflict | Each collided with a real funded company, well-known tool, or live app — full detail in the naming-conflict memory | No |
+| FieldMatch, SightSync, FeatherFrame, Snapchecklist, Roostlog, WingFrame, ChirpFrame | Round-1 literal compounds | Available, unchecked | — | Yes, unchecked |
+| Walklist, Ramblelist, Outing Ledger, Fieldframe, Snaplist, Sightframe, Perchbook, Fieldnotes | Round-2 literal compounds | Available, unchecked | — | Yes, unchecked |
+| Perchpix, Perchsnap, Perchclick, Perchgallery, Perchalbum | Round-3 Perch+photo compounds | Available, unchecked | — | Yes, unchecked |
+| Checklist & Shutter, Perch & Shutter, Perch & Frame | Two-word variants | Available, unchecked | — | Yes, unchecked |
+| **2026-09-02 — guidance-word round** | | | | |
+| Wingfolio | Wing + folio | Rejected: conflict | wingfolio.com is a live AI portfolio-management platform; also a Reiko phone-case product line | No |
+| Wing & Lens | Wing + lens | Rejected: conflict | wingandlens.com is a live, active travel/photography blog | No |
+| Feather & Lens | Feather + lens | Rejected: conflict | Reversed order "Lens & Feather" is a live photo/travel blog; featherandlens.com is a registered parked domain with a birding tagline | No |
+| Feathered Lens | Feather + lens | Rejected: conflict | Live nature-photography social brand (Instagram + YouTube), same niche | No |
+| Canopy Press, Grove Folio, Sanctuary Frame, Reed & Lens, Habitat Plate, Steward's Lens, Thicket Frame, Migrant Press, Tidewing | Guidance-word compounds | Available, unchecked | User moved to coined words before checking these | Yes, unchecked |
+| Vignette, Waypoint, Sojourn, Cairn, Aperture | Common abstract real words | Rejected: sound/vibe | Ruled out pre-emptively as still-too-common real words, no individual check run | No |
+| **2026-09-02 — coined-word round** | | | | |
+| Avilume | avis + lumen | Available, checked | — | Yes |
+| Perchlore | Perch + lore | Available, checked | User feedback: "lore" reads as gaming/fandom, wrong register | Yes, but deprioritized |
+| Ternova, Nidora, Wrenlume, Avistride, Glennova, Fenlume | Various coined blends | Available, unchecked | — | Yes, unchecked |
+| Perchnote, Perchlume, Perchoria, Perchvale, Perchden, Perchwyn, Perchira | Perch- + various suffixes | Available, unchecked | — | Yes, unchecked |
+| Perchfolio | Perch + folio | Withdrawn pre-check | "-folio" suffix saturated (Wfolio, Interfolio, WizFolio, Bizfolio, Landingfolio, PinFolio) | No |
+| Perchpic | Perch + pic | Withdrawn pre-check | Too literal, same shape as abandoned Round-3 Perch+photo compounds | No |
+| **Perchoto** | Perch + [ph]oto | Available, checked | Domain/USPTO/web clean, **but** a live, closely-positioned competitor app is named "Perch" (projectkestrel.org/perch) — flagged risk, not a hard conflict | **Yes — current strongest surviving candidate** |
+| **2026-09-02 — Latin-root round** | | | | |
+| Avimago | avis + imago | Available, checked | User flagged 4 syllables as hard to say aloud; later also caught in the "-ago" sound-fatigue rejection below | No (superseded by -ago rejection) |
+| Volucrata | volucris + taxonomic "-ata" | Available, unchecked | — | Yes, unchecked |
+| Pictavis | pictura + avis | Available, checked | USPTO clean, but the word already means something — historical Latin name for Poitiers, France, plus a small French brewery uses it | Yes, but not a blank slate |
+| Avilux | avis + lux | Withdrawn pre-check | User flagged "lux" as reading like luxury branding | No |
+| Lumavis | lumen + avis | Available, unchecked | Same lux/lumen concern likely applies, never individually tested | Yes, unchecked |
+| Avimo | avis + imago, trimmed | Rejected: conflict | **Registered USPTO trademark** (Reg. 8371685, pet funerary goods); also a real optics/lens manufacturer (Avimo Group Ltd) plus 2 more live unrelated businesses | No |
+| Vimago | avis + imago, trimmed other end | Available, unchecked | Never actually checked | No (same -ago family issue as Avimago) |
+| Pennago | penna + imago | Available, unchecked | User said "keep as an option," never availability-checked; later caught in the "-ago" rejection | No (superseded by -ago rejection) |
+| Plumago | pluma + imago | Withdrawn pre-check | Near-homophone of the real word "plumbago" (mineral/garden plant) | No |
+| Volago | volare + imago | Rejected: conflict | volago.com is a live, active Polish travel/tourism-guide app; also a real French fashion brand and a "Volago" Roblox-airline community | No |
+| Cantago | cantus + imago | Available, checked | Domain unregistered, USPTO clean, no real-world use found — cleanest single check of the whole session, **but** caught in the "-ago" sound-fatigue rejection below | No (superseded by -ago rejection) |
+| Nidago | nidus + imago | Available, unchecked | Never checked | No (-ago family) |
+| Pipago | pipio + imago | Available, unchecked | Never checked; flagged as reading like "pip install" to a technical audience | No (-ago family) |
+| Voxago | vox + imago | Available, unchecked | Never checked; "vox" itself flagged as an already-crowded root (Vox Media, etc.) | No (-ago family) |
+| **The whole "-ago" family** (Avimago, Avimo, Vimago, Pennago, Volago, Cantago, Nidago, Pipago, Voxago) | All built on the *imago* root | Rejected: sound/vibe | User identified the "-go" ending as an overused consumer-app pattern (Fandango, Trivago; also true of Duolingo, Indiegogo, Letgo) — applies to the whole family, not just the name it was first noticed on | No, as a family |
+| Pennula | penna + pellicula (diminutive) | Available, unchecked | User flagged as too long/heavy (double consonants), not a real conflict | Yes, but deprioritized |
+| Pellenna | penna + pellicula, reordered | Available, unchecked | Same length/heaviness feedback as Pennula | Yes, but deprioritized |
+| Pennicula | penna + pellicula | Withdrawn pre-check | Reads too close to "penicillin" out loud | No |
+| Lentura | lens/lentis + soft suffix | Available, unchecked | Never actually checked | Yes, unchecked |
+| Lentavi | lens/lentis + avis | Available, checked | Accidentally a real Latin word (*lentāvī*, "I have bent/flexed," an unrelated verb); lentavi.com is a live Japanese data-consulting company. USPTO clean. | Yes, but not clean enough to be a strong pick |
 
-## Available (checked, no conflict found)
+## Where things stand (as of 2026-09-02)
 
-| Name | Notes |
-|---|---|
-| Perchlist | No app/trademark hit across two separate checks. User feedback: root "list" reads as another checklist app (eBird-alike), doesn't signal photos — this was the reason the naming direction moved on from it, not a conflict. |
-| Murmuration | No software/app conflicts (existing uses: a civic-engagement nonprofit, a design studio, a marketing agency — unrelated industries). User feedback: hard to say out loud. |
-| Exaltation | Real collective noun for larks. Zero conflicts found. Same pronounceability issue as Murmuration (4+ syllables). |
-| Nye | Real (if obscure) collective noun for pheasants. Zero conflicts found. Short and easy to say, but the "group of birds" meaning won't land without explanation — most people, birders included, won't recognize it. |
+**Strongest surviving candidate: Perchoto** — the only recent-round name
+that's both availability-checked clean *and* not caught by the "-go"
+sound-fatigue rejection. Its own open risk (the live "Perch" competitor)
+is still unresolved.
 
-## Investigate (unresolved — not checked, or checked with residual risk)
+**Genuinely clean but currently unwanted:** Cantago (killed by the "-go"
+pattern, not by any real conflict) and Perchlore (killed by the "-lore"
+register issue, not by any real conflict) — both would still pass a
+fresh check today if the user's taste on either issue shifts.
 
-| Name | Notes |
-|---|---|
-| Finchlog | Compound itself is clear, but root "Finch" is a very well-known self-care/mood-tracking app — real confusion risk even in a new combo. |
-| Larkbook | Compound itself is clear, but root "Lark" is ByteDance's large enterprise collaboration suite (Lark Suite) and a known digital health company — high name-recognition risk. |
-| Vireolog | Compound itself is clear, but root "Vireo" already has several established live products (a security/investigation management company with its own site, a food-scanner app, a habit tracker). |
-| Perchview | Domain (perchview.com) is parked/for sale, no birding or photo-app conflict — but the exact name is already in commercial use by two small unrelated businesses (a drone-photography account, a TN real-estate LLC). Not disqualifying, not fully clean. |
-| FieldMatch, SightSync, FeatherFrame, Snapchecklist, Roostlog, WingFrame, ChirpFrame | Round-1 brainstorm, never checked. |
-| Walklist, Ramblelist, Outing Ledger, Fieldframe, Snaplist, Sightframe, Perchbook, Fieldnotes | Round-2 brainstorm, never checked. |
-| Perchpix, Perchsnap, Perchclick, Perchgallery, Perchalbum | Round-3 brainstorm (Perch + photo compounds), never checked. |
-| Checklist & Shutter, Perch & Shutter, Perch & Frame | Two-word variants, never checked. |
+**Untested but not eliminated:** a long tail of names across every round
+that were proposed and never actually availability-checked (see
+"Available, unchecked" rows above) — these remain fair game if the
+session returns to them.
 
-## Can't use (real conflict found)
-
-| Name | Conflict |
-|---|---|
-| BirdTrip | The original name — conflicts with an existing bird-trip-planning app (starting point for this whole review). |
-| BirdSync | Existing open-source `Sajmani/birdsync` tool does the near-identical job (syncs eBird observations + photos, to iNaturalist instead of Flickr). Also a live commercial "BirdSync Pro" poultry-management product, and a similarly-spelled "BirdieSync." |
-| BirdMatch | Registered ® trademark — "BirdMatch® Memory Game," an active commercial product in the adjacent birding/education space. |
-| Afield | Collides with the established "Sports Afield" outdoor-media brand family, which has its own multi-app lineup (real estate, mortgage). |
-| Fieldmark | Live, actively-maintained, trademarked field-data-collection app (iOS + Android) built by an Australian research consortium — same category (photos + GPS + structured records). Also used commercially by 4+ unrelated businesses. |
-| Kestrel | "Project Kestrel" is an existing open-source app that organizes bird photographers' photos and tags them by species — nearly identical positioning to BirdTrip. |
-| Plumage | An active, upcoming bird-photography app of the same name was announced on BirdForum — organizes bird photos into a personal field guide/life list, same target audience. Also "Plumage Trail," an unrelated birding/photography blog. |
-| Muster | Multiple real apps (advocacy software, event planning, business management platform). |
-| Charm | Crowded: a funded Y Combinator payments startup, a known dev-tools company (charm.sh), an ecommerce intelligence platform. |
-| Rafter | Multiple real construction/roofing calculator apps. |
-| Kettle | Well-known ETL/data-integration tool (Pentaho Kettle) in the data-engineering world, plus a smart-kettle IoT app. |
-| Bevy | A well-known community/event platform (Atlassian, Asana are clients) and a popular open-source game engine — high recognition risk with a technical audience. |
-| Wisp | Crowded: a real telehealth brand, a habit-tracker app, an HR SaaS. |
-| Shimmer | A well-known Android UI-effect library (built by Facebook) and a wearable-sensor platform — recognizable to a technical audience. |
-| Gulp | Gulp.js — a foundational, widely-known JavaScript build tool. High risk with any technical reviewer. |
-| Wedge | Multiple real apps (golf companion, data-collection hardware software, browser utility). |
-| Wren | A funded ($8.25M) climate/carbon-offset company, plus Wren Kitchens and other commercial users. |
-| Chickadee | Crowded: a health/fall-detection app, a social app, IoT middleware, a wallpaper app. |
-| Bunting | Bunting Software LLC (real dev company), a Bunting e-commerce personalization SaaS, Bunting Labs map digitization. |
-| Swallow | Crowded, plus an awkward secondary meaning (dysphagia/swallowing medical apps). |
-| Robin | Robin Powered — a well-funded ($60M) enterprise workplace-management platform. |
-| Finch | Finch API (Series B, $62M funding) and Finch self-care pet app — both well-known. |
-| Kinglet | A real space-rental app and a private messaging app. |
-| Junco | A recently-launched newsletter-to-podcast app, a health/safety platform, a fashion ordering app. |
-| Waxwing | A real audio-hardware companion app and an AI marketing/chatbot tool. |
-| Vireo | An established security/investigation-management software company (own site, own app suite), a food-scanner app, a habit tracker. |
-| Nuthatch | A live family financial-management app, a software development studio, a dev shop. |
-| Goldfinch | A Salesforce-native ERP product, a fitness-club app, and Goldfinch — a well-known DeFi lending protocol. |
-| Wrenlist | A real, live app — free inventory/crosslisting tool for thrift resellers (wrenlist.com). |
+**Fully dead ends:** everything marked "Rejected: conflict" above —
+each has a specific, real, cited reason and shouldn't be re-proposed
+without new information.
