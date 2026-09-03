@@ -1,11 +1,13 @@
 # BirdTrip — Naming Review
 
 Full consolidated tracker, replacing the earlier partial version.
-Covers both the 2026-09-01 session (initial conflict discovery + first
-six brainstorm rounds) and the much longer 2026-09-02 session (guidance
-words → coined words → Latin roots). See issue #61 ("Rename of app")
-and the naming-conflict memory for full narrative context — this doc is
-the scannable reference table.
+Covers the 2026-09-01 session (initial conflict discovery + first six
+brainstorm rounds), the much longer 2026-09-02 session (guidance words →
+coined words → Latin roots), and the 2026-09-03 session (Perch-
+saturation confirmed via 3 more conflicts, a slang round, and a fresh
+Latin-root round that surfaced the new leading candidate, Nomavis). See
+issue #61 ("Rename of app") and the naming-conflict memory for full
+narrative context — this doc is the scannable reference table.
 
 Checks are web-search-based (app stores, obvious trademark hits, known
 funded companies) plus, for 2026-09-02 candidates, a live USPTO
@@ -107,6 +109,31 @@ guarantee.
 | Empid | *Empidonax*, real birder slang for a genus of small flycatchers | Rejected: conflict | Already a real dictionary word (a fly family, Empididae); also a live B2B workforce-software product ("EMPID Workforce Operating System") on the exact .com | No |
 | Pitta | A real family (Pittidae) of small, colorful tropical birds | Rejected: conflict | Heavily crowded — 22 USPTO filings for "PITTA," several **live and registered** (driven by the Ayurvedic "Pitta dosha" concept, unrelated to birds); pitta.com listed for sale as a premium domain; a live shopping app already named "Pitta World" | No |
 | **Pewee** | *Contopus virens*, Eastern Wood-Pewee — genus *Contopus* (Greek "pole-foot"), species *virens* (Latin "green"); the common name itself is onomatopoeic, imitating the bird's call | Rejected: sound/vibe | Passed every formal check (USPTO: only 2 long-dead marks; domain: .io/.app open; no live competing product) — but pronounced "PEE-wee," which collides with the extremely common English word "peewee"/"pee-wee" (Pee-wee Herman, pee-wee sports leagues, generic word for "small"). User: "that's what I was afraid of... a strike against it." Not disqualified outright — user's own idea: usable as **raw material for a further coined blend** rather than as a bare word. | No, as a bare word — open as a root for coining |
+| **2026-09-03 — Perch-saturation confirmation round** | | | | |
+| Perchwise | Perch + "-wise" | Available, unchecked | Only a light single-query check, no direct hit found — but deprioritized given how saturated the Perch root has proven to be | Yes, unchecked, deprioritized |
+| Perchlens | Perch + lens | Rejected: conflict | Live AI bird-identification camera/feeder app by Pocket Inc (50,000+ downloads, App Store + Google Play) on the exact name; also a separate "PerchLens" AI-analytics platform (perchlens.com) | No |
+| Perchme | Perch + "me" | Rejected: conflict | Registered ® trademark — live smart AI bird-feeder-camera brand, "Every Perch Tells a Story," with its own app for capturing/sharing bird photos (perchme.com) | No |
+| *(also: user independently found `github.com/google-research/perch`, a real Google Research bioacoustic bird-species-classification project — a fourth, separate Perch conflict, this one from a highly technical/recognizable source)* | | | | |
+| **2026-09-03 — birding/photography slang round** | | | | |
+| Lifer | Birding slang — a species seen for the first time, a life-list milestone | Rejected: conflict | "LiferWatch Birding" (App Store) and "Lifer – Bird ID & Birding" (Google Play, described as turning "birding into a daily collecting game") already live in the exact niche | No |
+| Keeper | Photography slang — a shot worth keeping | Rejected: conflict | Keeper Security — a major, well-known password-manager company; also Keeper.app, a YC-backed bookkeeping SaaS | No |
+| Patch | Birding slang — a birder's regular local spot | Rejected: conflict | Patch.com — a well-known hyperlocal news brand; Patch My PC — enterprise IT patch-management software, 10,400+ customers | No |
+| Tick | Birding slang — marking a species as seen | Rejected: conflict | "Bird Tick List" app is specifically a life-list/patch-list checklist app; Birda's own UI already uses "Tickable Species" | No |
+| Lifershot | Lifer + photography "shot" | Rejected: sound/vibe | No exact-name conflict, but sits in a crowded cluster of near-identical spellings (Life-Shots, LiveShot, Lifeshots, Lifeshot — a health app, a photo-flashmob app, more) | No |
+| **2026-09-03 — fresh Latin-root round (nomen/nota/cerno/captura/oculus)** | | | | |
+| **Nomavis** | *nomen* (name) + *avis* (bird) | Available, checked | — | **Yes — new strongest candidate**, surpassing Perchoto (see below) |
+| Notavis | *nota* (mark/note) + *avis* | Rejected: conflict | notavis.com is a real, established German company (NOTAVIS GmbH, Karlsruhe) — industrial machine-vision/AI software, exact domain plus overlapping AI/vision category | No |
+| Cernavis | *cerno* (to discern/perceive) + *avis* | Available, checked | Clean, but "cerno" is a more obscure root than nomen/nota — reads less intuitively even to Latin-adjacent ears | Yes, but weaker conceptual fit than Nomavis |
+| Captavis | *captura* (capture) + *avis* | Rejected: conflict | captavis.com is a real, active pharmaceutical company (Captavis Biocare, India) — different industry, but the exact domain is taken and commercially active | No |
+| Oculavis | *oculus* (eye) + *avis* | Rejected: conflict | Registered 2021 USPTO trademark; a real German company (oculavis GmbH, a Fraunhofer Institute/RWTH Aachen spin-off) serving 200+ industrial clients including Bosch and thyssenkrupp | No |
+| Avinota | *avi-* + *nota*, reordered from the disqualified Notavis | Available, checked | — | Yes |
+| **2026-09-03 — *ala* (wing) prefix/suffix round** | | | | |
+| Alula | *ala* + diminutive *-ula* ("little wing") — a real, existing ornithological word (the small tuft of feathers on a bird's wing) | Rejected: conflict | Registered trademark, real security-systems company (alarms, mobile app, dealer portal); also separate trademark filings by UPL Europe and a Penhaligon's perfume line | No |
+| Alavis | *ala* + *avis* | Rejected: conflict | Registered trademark, live e-commerce company (Alavis Limited, Toronto), active domain | No |
+| **Alanota** | *ala* + *nota* ("wing-mark") | Available, checked | — | **Yes** — genuinely accurate, not just decorative: wing bars/wing patches are a real field mark birders use to ID species |
+| Notala | *nota* + *ala*, reversed | Available, checked | Same roots/result as Alanota, softer ending | Yes |
+| Alagran | *ala* + *granum* ("wing-grain") | Available, checked | Wing+seed pairing is decorative, not meaningful the way Alanota is | Yes |
+| **Pictala** | *pictura* + *ala* ("picture-wing") | Available, checked | No active trademark or live app on .com/.app/.io. `pictala.com` is a premium domain listed for sale on BrandBucket ("attractive... for photo and image creation apps") — available only in the sense of no conflict, not free-to-register on .com | Yes |
 
 ## Grouped by decision
 
@@ -127,11 +154,18 @@ history in context.
 | Nye | Real word, collective noun | Yes, deprioritized (meaning won't land) |
 | Avilume | avis + lumen | Yes |
 | Perchlore | Perch + lore | Yes, deprioritized ("-lore" register) |
-| **Perchoto** | Perch + [ph]oto | **Yes — strongest surviving candidate** (Perch-competitor risk still open) |
+| Perchoto | Perch + [ph]oto | Yes, but demoted from "strongest candidate" — as of 2026-09-03 the Perch root has *four* separate conflicts (Project Kestrel's own "Perch" product, PerchLens, PerchMe, and Google Research's `perch` bioacoustics project), not just one. Risk is now serious, not a footnote. |
+| **Nomavis** | nomen + avis | **Yes — new strongest candidate** (2026-09-03) — clean on every check, and the only survivor that actually names the app's ID feature rather than just "bird" generically |
 | Avimago | avis + imago | No — superseded by the "-ago" family rejection below |
 | Pictavis | pictura + avis | Yes, but not a blank slate (real Poitiers/brewery meaning) |
 | Cantago | cantus + imago | No — superseded by the "-ago" family rejection below |
 | Lentavi | lens/lentis + avis | Yes, but not clean (accidental real Latin verb + live Japanese company) |
+| Cernavis | cerno + avis | Yes, but weaker conceptual fit than Nomavis |
+| Avinota | avi- + nota (reordered from Notavis) | Yes |
+| Alanota | ala + nota ("wing-mark") | Yes — genuinely accurate (wing bars are a real field mark) |
+| Notala | nota + ala, reversed | Yes |
+| Alagran | ala + granum ("wing-grain") | Yes, but decorative rather than meaningful |
+| Pictala | pictura + ala ("picture-wing") | Yes, but .com is a paid premium-domain listing, not free to register |
 
 ### Available, unchecked — proposed, never actually tested
 
@@ -182,6 +216,17 @@ history in context.
 | Meloris | Live pending USPTO trademark application (jewelry); also a surname, musician, and fashion studio |
 | Empid | Already a real dictionary word (a fly family); live B2B workforce-software product on the exact .com |
 | Pitta | 22 USPTO filings, several live/registered (Ayurveda "dosha" association); premium domain listing; a live shopping app |
+| Perchlens | Live AI bird-ID camera/feeder app (50,000+ downloads) on the exact name; also a separate AI-analytics platform |
+| Perchme | Registered ® trademark — live smart AI bird-feeder-camera brand with its own photo-capture app |
+| Lifer | "LiferWatch Birding" and "Lifer – Bird ID & Birding" apps already live in the exact niche |
+| Keeper | Keeper Security (major password-manager company); Keeper.app (YC-backed bookkeeping SaaS) |
+| Patch | Patch.com (well-known hyperlocal news brand); Patch My PC (enterprise IT, 10,400+ customers) |
+| Tick | "Bird Tick List" app is specifically a life-list/patch-list checklist app; Birda's UI already uses "Tickable Species" |
+| Notavis | Real German company (NOTAVIS GmbH) — exact domain, overlapping AI/machine-vision category |
+| Captavis | Real, active pharmaceutical company (Captavis Biocare) on the exact domain |
+| Oculavis | Registered 2021 USPTO trademark; real German company (Fraunhofer/RWTH spin-off), 200+ industrial clients |
+| Alula | Registered trademark, real security-systems company; also UPL Europe and a Penhaligon's perfume trademark |
+| Alavis | Registered trademark, live e-commerce company (Alavis Limited), active domain |
 
 ### Rejected: sound/vibe — no conflict, ruled out on register or brand-feel
 
@@ -189,6 +234,7 @@ history in context.
 |---|---|
 | Vignette, Waypoint, Sojourn, Cairn, Aperture | Ruled out pre-emptively as still-too-common real words |
 | The whole "-ago" family (Avimago, Avimo, Vimago, Pennago, Volago, Cantago, Nidago, Pipago, Voxago) | "-go" ending reads like Fandango/Trivago/Duolingo — overused consumer-app pattern |
+| Lifershot | No exact conflict, but a crowded cluster of near-identical spellings (Life-Shots, LiveShot, Lifeshots, Lifeshot) made it feel too close to call clean |
 
 ### Withdrawn pre-check — ruled out before spending a check on it
 
@@ -202,13 +248,53 @@ history in context.
 | Melofera | One letter off from *Apis mellifera*, the honeybee's actual scientific name |
 | Pewee | Passed every formal availability check clean — withdrawn as a *bare word* specifically because "peewee" is an extremely common existing English word/pop-culture term (Pee-wee Herman, pee-wee sports leagues), not because of any conflict check |
 
-## Where things stand (as of 2026-09-02, end of session)
+## Where things stand (updated 2026-09-03)
 
-**Strongest surviving candidate: Perchoto** — still the only name that's
-both availability-checked clean *and* not caught by a sound-fatigue
-rejection. Its own open risk (the live "Perch" competitor) is still
-unresolved. The Passer/Melo taxonomy round found no new clean winner —
-six of its eleven names hit a real conflict, and none passed clean.
+**User's stated favorite so far: Pictala** (*pictura* + *ala*,
+"picture-wing"). Clean on every check (app stores, trademark signals,
+.com/.app/.io domains) — the only asterisk is that pictala.com itself is
+a paid premium-domain listing (BrandBucket), not free to register, though
+.app/.io both look open. Emerged from the *ala* (wing) prefix/suffix
+round, which also produced **Alanota** (*ala* + *nota*, "wing-mark") —
+clean, and the most conceptually accurate name of the whole review, since
+wing bars/patches are literally a real field mark birders use to ID
+species.
+
+**Strongest candidate on availability + conceptual fit: Nomavis**
+(*nomen* + *avis*, "bird-name") — still clean on every check, and the
+only survivor that names the app's core differentiator (providing the
+common *and* scientific name) rather than gesturing at "bird app"
+generically. Runners-up from that round: **Avinota** (avi- + nota,
+"bird-mark") and **Cernavis** (cerno + avis, "bird-discern" — weaker
+conceptual fit, more obscure root).
+
+**Three live options as of this session, all clean, no ranking forced
+between them yet: Pictala (favorite by preference), Nomavis (favorite by
+conceptual fit to the app's actual feature set), Alanota (favorite by
+conceptual fit to real birding practice).**
+
+**Perchoto demoted, not eliminated.** Its one known risk (a live "Perch"
+competitor) escalated sharply this session — three more Perch conflicts
+surfaced (PerchLens, a live AI bird-ID camera app; PerchMe, a registered-
+trademark smart bird-feeder brand; and Google Research's own `perch`
+bioacoustics project on GitHub), on top of the original Project Kestrel
+finding. Four independent conflicts on one root is no longer a footnote
+risk — treat the whole Perch- root as effectively closed unless the user
+decides otherwise. (This also retroactively hardens the original Kestrel
+rejection and every other still-open Perch- compound in the "unchecked"
+list above — none of those should be pursued further without flagging
+this.)
+
+**Slang didn't help.** A round exploring birding/photography slang
+(Lifer, Keeper, Patch, Tick, Lifershot) hit real conflicts on every
+single-word entry — the pattern holds even outside bird-species names and
+Latin coinages: any short, evocative, on-the-nose English word in this
+space tends to already be claimed. Compounds and coined blends continue
+to have the best survival rate of any strategy tried.
+
+**Older finding, still holds: the Passer/Melo taxonomy round found no new
+clean winner** — six of its eleven names hit a real conflict, and none
+passed clean.
 
 **Pewee tried as a fresh top option, then self-disqualified — but not a
 dead end.** Following a genuine gut-feel pattern review (see the
