@@ -182,6 +182,12 @@ export default function App() {
   // confirmed) rather than Unmatched ones. A photo can only be in one of
   // those two states at once, so sharing the map is safe.
   const [batchConfirming, setBatchConfirming] = useState(false);
+  // Batch assign to an already-reported species (issue #71) -- same
+  // checkedPhotos map again, scoped to Unmatched/needs_claude photos like
+  // batch Ask Claude. One species picked for the whole batch at once,
+  // rather than per-photo.
+  const [batchAssignPick, setBatchAssignPick] = useState("");
+  const [batchAssigning, setBatchAssigning] = useState(false);
   const MAX_BATCH_PHOTOS = 10;
 
   // Inline photo lightbox (issue #44) -- a modal, not a new-tab
@@ -511,6 +517,35 @@ export default function App() {
       setError(String(e));
     } finally {
       setBatchConfirming(false);
+    }
+  }
+
+  // Batch assign one already-reported species to every checked Unmatched
+  // photo at once (issue #71) -- same assignSpecies call handleAssign
+  // makes per-photo, just fired in parallel across the whole selection.
+  async function handleAssignBatch(checklistId: number) {
+    if (!selected) return;
+    const observationId = Number(batchAssignPick);
+    if (!observationId) return;
+    const unmatchedIds = selected.matches
+      .filter((m) => !m.observation && !m.fallback_common_name)
+      .map((m) => m.photo.id);
+    const photoIds = checkedPhotoIdsIn(unmatchedIds);
+    if (photoIds.length === 0) return;
+    setBatchAssigning(true);
+    try {
+      await Promise.all(photoIds.map((photoId) => assignSpecies(checklistId, photoId, observationId)));
+      setSelected(await fetchOuting(checklistId));
+      setCheckedPhotos((prev) => {
+        const next = { ...prev };
+        for (const id of photoIds) delete next[id];
+        return next;
+      });
+      setBatchAssignPick("");
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBatchAssigning(false);
     }
   }
 
@@ -1699,14 +1734,37 @@ export default function App() {
                           <h3 className="outing-col-title">Needs Claude</h3>
                         </div>
                         {checkedNeedsClaude.length > 0 && (
-                          <button
-                            className="btn btn-primary"
-                            style={{ marginBottom: "var(--space-3)" }}
-                            onClick={() => handleSuggestFallbackBatch(selected.id)}
-                            disabled={batchSuggesting}
-                          >
-                            {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedNeedsClaude.length} selected`}
-                          </button>
+                          <div style={{ marginBottom: "var(--space-3)" }}>
+                            <button
+                              className="btn btn-primary"
+                              style={{ marginBottom: "var(--space-2)" }}
+                              onClick={() => handleSuggestFallbackBatch(selected.id)}
+                              disabled={batchSuggesting}
+                            >
+                              {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedNeedsClaude.length} selected`}
+                            </button>
+                            <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                              <select
+                                value={batchAssignPick}
+                                onChange={(e) => setBatchAssignPick(e.target.value)}
+                                style={{ flex: 1, minWidth: 0 }}
+                              >
+                                <option value="">It's actually…</option>
+                                {selected.observations.map((obs) => (
+                                  <option key={obs.id} value={obs.id}>
+                                    {obs.common_name}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                className="btn btn-primary"
+                                disabled={!batchAssignPick || batchAssigning}
+                                onClick={() => handleAssignBatch(selected.id)}
+                              >
+                                {batchAssigning ? "Assigning…" : `Assign ${checkedNeedsClaude.length} selected`}
+                              </button>
+                            </div>
+                          </div>
                         )}
                         <div className="outing-match-grid">
                           {needsClaudeMatches.map((m) => renderMatchCard(selected, m))}
