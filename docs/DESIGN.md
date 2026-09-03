@@ -109,9 +109,29 @@ ML for the residual, never the reverse.
               │   SQLite (local file, checked in  │
               │   schema, gitignored data)         │
               │  checklists, observations, photos,  │
-              │  matches                             │
+              │  matches, sync_log, ai_suggestion_log│
               └───────────────────────────────────┘
 ```
+
+### 5a. Data model
+
+Full entity-relationship diagram: [`diagrams/data-model.svg`](diagrams/data-model.svg).
+
+Six tables. `Checklist` and `Observation` come from eBird; `Photo` comes
+from Flickr. `Match` is the central join table — one row per photo,
+linking it to a `Checklist` and optionally an `Observation`, with
+`method`/`confidence` recording how the link was made (rule-based,
+AI-suggested, manual, or AI-fallback) and a `fallback_*` label for
+species identified off the outing's own checklist. It only ever holds
+the *current* state of that link.
+
+`AiSuggestionLog` (added 2026-09-03, for AI accuracy tracking — see
+`GET /stats/ai-accuracy`) is deliberately **not** a foreign key off
+`Match` — it logs every AI suggestion and its outcome
+(accepted/corrected/rejected) independently, so a rejected or
+overwritten suggestion isn't lost the way it would be if `Match` were
+the only record. `SyncLog` is unrelated to the rest — just a row per
+manual sync, enforcing the daily limit.
 
 Everything runs locally (`uvicorn` + `vite dev`) — no deployment needed for a
 screen-share demo, which keeps auth simple: store your own API keys and
