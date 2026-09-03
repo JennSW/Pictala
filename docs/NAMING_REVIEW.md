@@ -91,6 +91,19 @@ guarantee.
 | Lentura | lens/lentis + soft suffix | Available, unchecked | Never actually checked | Yes, unchecked |
 | Lentavi | lens/lentis + avis | Available, checked | Accidentally a real Latin word (*lentāvī*, "I have bent/flexed," an unrelated verb); lentavi.com is a live Japanese data-consulting company. USPTO clean. | Yes, but not clean enough to be a strong pick |
 
+| **2026-09-02 — bird taxonomy round (Passer & Melo)** | | | | |
+| Passira | *Passer* (House Sparrow's genus) + *iris* | Rejected: conflict | Real, active municipality in Pernambuco, Brazil — live government site + social media on the exact domain | No |
+| Passura | Passer + soft "-ura" ending | Available, unchecked | User felt it was drifting from the intended sound; deprioritized before a check was run | Yes, unchecked |
+| Passigna | Passer + *signum* (mark/sign) | Available, unchecked | Never reacted to — superseded by the pivot to Melo | Yes, unchecked |
+| Passendo | Passer + gerund "-endo" ending | Available, unchecked | Never reacted to — superseded by the pivot to Melo | Yes, unchecked |
+| Melume | *Melo-* (Song Sparrow's genus root) + *lumen*, trimmed | Rejected: conflict | Registered USPTO trademark "MELUMÉ SKINSCIENCE" (Class 003) + live skincare brand | No |
+| Melira | Melo + *iris*, elided | Rejected: conflict | Registered USPTO trademark "MELIRA" (Class 003) + live site + a well-known Magic: The Gathering card name | No |
+| Melura | Melo + soft ending | Rejected: conflict | Domain redirects to a live Shopify fashion store; also an Italian supplement brand and a candle brand | No |
+| Melora | Melo + "-ora" ending | Available, unchecked | Flagged as an existing (uncommon) first name before a check was run | Yes, unchecked |
+| Melofera | Melo + *-fera* ("-bearing") | Withdrawn pre-check | One letter off from *Apis mellifera*, the honeybee's actual scientific name | No |
+| Melumen | Melo + *lumen*, untrimmed | Rejected: conflict | Domain registered by a real Spanish automotive metal-fabrication company (melumen.es) | No |
+| Meloris | Melo + *iris*, untrimmed | Rejected: conflict | Live **pending** USPTO trademark application (Class 014, jewelry, filed by a China-based company); also a surname, a music artist, a fashion studio | No |
+
 ## Grouped by decision
 
 Same rows as the table above, pivoted so everything with the same
@@ -132,6 +145,8 @@ history in context.
 | Vimago, Pennago, Nidago, Pipago, Voxago | -ago family, never individually checked (also superseded by the family rejection) |
 | Pennula, Pellenna | penna + pellicula |
 | Lentura | lens/lentis + soft suffix |
+| Passura, Passigna, Passendo | Passer + various endings, superseded by the pivot to Melo |
+| Melora | Melo + "-ora" ending |
 
 ### Rejected: conflict — a real domain/trademark/live-product conflict
 
@@ -155,6 +170,12 @@ history in context.
 | Feathered Lens | Live nature-photography social brand (Instagram + YouTube) |
 | Avimo | Registered USPTO trademark + a real optics manufacturer + 2 more live businesses |
 | Volago | Live Polish travel app + a real fashion brand + a Roblox-airline community |
+| Passira | Real, active Brazilian municipality — live government site + social media on the exact domain |
+| Melume | Registered USPTO trademark ("MELUMÉ SKINSCIENCE") + live skincare brand |
+| Melira | Registered USPTO trademark + live site + a well-known Magic: The Gathering card |
+| Melura | Domain redirects to a live Shopify fashion store; also a supplement brand and a candle brand |
+| Melumen | Domain registered by a real Spanish automotive metal-fabrication company |
+| Meloris | Live pending USPTO trademark application (jewelry); also a surname, musician, and fashion studio |
 
 ### Rejected: sound/vibe — no conflict, ruled out on register or brand-feel
 
@@ -172,18 +193,30 @@ history in context.
 | Avilux | "Lux" reads like luxury branding |
 | Plumago | Near-homophone of the real word "plumbago" |
 | Pennicula | Reads too close to "penicillin" out loud |
+| Melofera | One letter off from *Apis mellifera*, the honeybee's actual scientific name |
 
-## Where things stand (as of 2026-09-02)
+## Where things stand (as of 2026-09-02, after the Passer/Melo round)
 
-**Strongest surviving candidate: Perchoto** — the only recent-round name
-that's both availability-checked clean *and* not caught by the "-go"
-sound-fatigue rejection. Its own open risk (the live "Perch" competitor)
-is still unresolved.
+**Strongest surviving candidate: Perchoto** — still the only name that's
+both availability-checked clean *and* not caught by a sound-fatigue
+rejection. Its own open risk (the live "Perch" competitor) is still
+unresolved. The entire Passer/Melo taxonomy round that followed found
+no new clean winner — six of its eleven names hit a real conflict, and
+none passed clean.
 
 **Genuinely clean but currently unwanted:** Cantago (killed by the "-go"
-pattern, not by any real conflict) and Perchlore (killed by the "-lore"
-register issue, not by any real conflict) — both would still pass a
-fresh check today if the user's taste on either issue shifts.
+pattern) and Perchlore (killed by the "-lore" register issue) — both
+would still pass a fresh check today if the user's taste on either issue
+shifts.
+
+**A recurring pattern worth noting explicitly:** short, soft,
+easy-to-say 2-3 syllable coined words in this general sound-space keep
+landing on real conflicts — and a disproportionate number of them are
+**beauty/wellness/cosmetics brands** specifically (Melumé Skinscience,
+Melira essential oils, Avimo's real optics company is the exception
+proving the rule). That's not bad luck; it's that this exact phonetic
+territory (soft consonants, vowel-adjacent endings) is exactly what
+beauty branding mines. Worth factoring into where to search next.
 
 **Untested but not eliminated:** a long tail of names across every round
 that were proposed and never actually availability-checked (see
