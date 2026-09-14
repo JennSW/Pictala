@@ -101,44 +101,6 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
 
   return (
     <div className="card" style={{ marginBottom: "var(--space-4)", padding: "var(--space-3)" }}>
-      {syncStatus && (
-        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginBottom: "var(--space-2)" }}>
-          {syncStatus.remaining > 0
-            ? `${syncStatus.remaining} of ${syncStatus.limit} syncs left today`
-            : "No syncs left today — resets at midnight"}
-          {syncStatus.last_synced_at && (
-            <>
-              <br />
-              Last synced{" "}
-              {new Date(syncStatus.last_synced_at).toLocaleString([], {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
-            </>
-          )}
-        </div>
-      )}
-      {confirmLastSync ? (
-        <div>
-          <p style={{ fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
-            This is your last sync available today. Wait for more Flickr uploads first?
-          </p>
-          <button className="btn btn-primary" onClick={performSync} disabled={syncing}>
-            {syncing ? (<>Syncing<LoadingDots /></>) : "Sync anyway"}
-          </button>{" "}
-          <button className="btn" onClick={() => setConfirmLastSync(false)}>
-            Wait
-          </button>
-        </div>
-      ) : (
-        <button
-          className="btn"
-          onClick={handleSyncClick}
-          disabled={syncing || syncStatus?.remaining === 0}
-        >
-          {syncing ? (<>Syncing<LoadingDots /></>) : "Sync now"}
-        </button>
-      )}
       {/* A Flickr-only sync with no eBird data yet succeeds but produces
           zero visible change (issue #57) -- without this, that reads
           exactly like a freeze or a failure. */}
@@ -188,6 +150,51 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
           </div>
         )}
       </div>
+      {/* Moved below the CSV upload section (2026-09-14 layout tweak) --
+          the remaining-syncs count/last-synced timestamp is informational,
+          not the primary action, so it no longer leads the panel. */}
+      {syncStatus && (
+        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: "var(--space-3)", paddingTop: "var(--space-3)", borderTop: "1px solid var(--border)" }}>
+          {syncStatus.remaining > 0
+            ? `${syncStatus.remaining} of ${syncStatus.limit} syncs left today`
+            : "No syncs left today — resets at midnight"}
+          {syncStatus.last_synced_at && (
+            <>
+              <br />
+              Last synced{" "}
+              {new Date(syncStatus.last_synced_at).toLocaleString([], {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })}
+            </>
+          )}
+        </div>
+      )}
+      {/* Sync now / confirm-last-sync -- moved below the remaining-syncs
+          count (2026-09-14 layout tweak) so the count is read before the
+          action that spends one. */}
+      {confirmLastSync ? (
+        <div style={{ marginTop: "var(--space-3)" }}>
+          <p style={{ fontSize: "var(--text-sm)", marginBottom: "var(--space-2)" }}>
+            This is your last sync available today. Wait for more Flickr uploads first?
+          </p>
+          <button className="btn btn-primary" onClick={performSync} disabled={syncing}>
+            {syncing ? (<>Syncing<LoadingDots /></>) : "Sync anyway"}
+          </button>{" "}
+          <button className="btn" onClick={() => setConfirmLastSync(false)}>
+            Wait
+          </button>
+        </div>
+      ) : (
+        <button
+          className="btn"
+          onClick={handleSyncClick}
+          disabled={syncing || syncStatus?.remaining === 0}
+          style={{ marginTop: "var(--space-3)" }}
+        >
+          {syncing ? (<>Syncing<LoadingDots /></>) : "Sync now"}
+        </button>
+      )}
     </div>
   );
 }

@@ -1441,22 +1441,16 @@ export default function App() {
             </button>
           )}
 
-          <SyncPanel
-            syncStatus={syncStatus}
-            onSynced={(status, freshOutings) => {
-              setSyncStatus(status);
-              setOutings(freshOutings);
-            }}
-            onError={(message) => setError(message)}
-          />
-
           {/* Collapsed by default (issue: "layout is difficult to read") --
               the full outings list can get very long (dozens of entries)
               and was previously always fully expanded, dominating the
               page. Reuses the same collapsible pattern as the outing-
               detail sidebar sections below for visual consistency. Stays
               open once a date is picked -- that's a short, actively-
-              relevant list, not the long unfiltered one. */}
+              relevant list, not the long unfiltered one. Placed right
+              below the calendar (DESIGN.md follow-up, 2026-09-14) so
+              picking a date shows its outings without scrolling past the
+              sync panel first. */}
           <details className="outing-sidebar-section" open={Boolean(selectedDate)}>
             <summary className="outing-col-header">
               <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
@@ -1491,6 +1485,15 @@ export default function App() {
               </button>
             )}
           </details>
+
+          <SyncPanel
+            syncStatus={syncStatus}
+            onSynced={(status, freshOutings) => {
+              setSyncStatus(status);
+              setOutings(freshOutings);
+            }}
+            onError={(message) => setError(message)}
+          />
 
           <button className="btn" onClick={loadUnassigned} style={{ marginTop: "var(--space-3)" }}>
             Show all photos not on eBird

@@ -1,5 +1,5 @@
 <svg width="1070" height="700" viewBox="0 0 1070 700" xmlns="http://www.w3.org/2000/svg" role="img">
-<title>BirdTrip data model</title>
+<title>Pictala data model</title>
 <desc>Six SQLite tables. Checklist and Observation come from eBird; Photo comes from Flickr. Match is the central join table linking a Photo to a Checklist and optionally an Observation, recording how and how confidently that link was made. AiSuggestionLog records every AI species suggestion and its outcome (accepted, corrected, or rejected) independently of Match, so a rejected or edited suggestion is never lost even though the Match row itself only ever holds the current state. SyncLog is a standalone table with no foreign keys, used only to enforce the daily manual-sync limit.</desc>
 <style>
   text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
@@ -28,7 +28,7 @@
 </defs>
 
 <rect x="0" y="0" width="1070" height="700" fill="#ffffff"/>
-<text class="th" x="30" y="30" style="font-size:16px">BirdTrip — data model</text>
+<text class="th" x="30" y="30" style="font-size:16px">Pictala — data model</text>
 
 <text class="group-label" x="30" y="50">EBIRD IMPORT</text>
 <text class="group-label" x="780" y="50">FLICKR SYNC</text>
