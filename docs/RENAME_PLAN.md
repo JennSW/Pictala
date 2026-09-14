@@ -26,9 +26,9 @@ today and shouldn't wait on a final app name.
 
 | Item | What needs to happen | Status |
 |---|---|---|
-| theswiftbrain.com pages (`/birdtrip`, `/birdtrip-kickoff`, `/program-toolkit`) | Swap "BirdTrip" references to a neutral placeholder term, or pause linking new outreach to these slugs, until a final name lands | Independent |
-| Published Claude Artifacts ("BirdTrip Program Toolkit," "BirdTrip Kickoff") | Same as above — retitle or hold off sharing until renamed | Independent |
-| LinkedIn / outreach content referencing BirdTrip by name | Audit and update wording if/when found | Independent |
+| theswiftbrain.com pages (`/birdtrip`, `/birdtrip-kickoff`, `/program-toolkit`) | Swap "BirdTrip" references to a neutral placeholder term, or pause linking new outreach to these slugs, until a final name lands | **Done 2026-09-14**: nav renamed to "Pictala" (`/pictala` slug), Kickoff page's on-page heading fixed by Jen (was showing "BIRDTRIP KICKOFF" despite the tab title already saying Pictala). `/program-toolkit` embeds the Program Toolkit artifact, which is retitled below — not independently re-verified live. |
+| Published Claude Artifacts ("BirdTrip Program Toolkit," "BirdTrip Kickoff") | Same as above — retitle or hold off sharing until renamed | **Done 2026-09-14**: all 5 portfolio artifacts checked. Program Toolkit and Kickoff retitled (title + h1). Two more found during the sweep — The Swift Brain (main portfolio page) and Kickoff Playbook — each had a link card still labeled "BirdTrip Kickoff" pointing at the renamed Kickoff artifact; both updated to "Pictala Kickoff." Narrative prose describing historical work (e.g. "BirdTrip's 5 database tables," "built BirdTrip") left as-is intentionally — accurate description of what happened before the rename, not a label. |
+| LinkedIn / outreach content referencing BirdTrip by name | Audit and update wording if/when found | **Partially done**: Jen updated the LinkedIn article (added "formerly BirdTrip" + new Pictala screenshots) and the profile post text (same), but the profile post's *image* can't be edited after publishing — known LinkedIn limitation, not fixable. **Still unverified**: the rest of the LinkedIn profile itself (About/Experience/Featured/Projects) — blocked twice, the sandboxed browser isn't logged in and Claude in Chrome wasn't connected when tried. Needs either a manual check or a retry with Claude in Chrome connected. |
 
 **Why this is separate:** this is live, public, and tied to active job
 outreach — the only genuine trademark-adjacent exposure that exists
@@ -49,8 +49,7 @@ contained find-and-replace, not a structural change.
 | `frontend/src/SyncPanel.tsx:147` | "BirdTrip works best with your eBird data…" | User-facing help copy |
 | `backend/app/main.py:11` | `title="BirdTrip API"` | Title shown on the auto-generated `/docs` Swagger page once the API is deployed/reachable |
 
-Status: **Blocked on name decision** (or at minimum, safe to batch into
-one PR once a name is chosen — small, mechanical, low risk).
+Status: **Done** (commit `3bc5ac7`, 2026-09-03). Verified live in browser tab, in-app header, and Swagger UI title.
 
 ---
 
