@@ -82,7 +82,7 @@ forgotten when the rename actually happens.
 
 | Item | Open question | Status |
 |---|---|---|
-| GitHub repo `JennSW/BirdTrip` (private) | None — renaming is a simple settings change; GitHub auto-redirects the old clone URL, so the local `git remote` won't break | Low risk, execute whenever |
+| GitHub repo `JennSW/BirdTrip` (private) | None — renaming is a simple settings change; GitHub auto-redirects the old clone URL, so the local `git remote` won't break | **Done 2026-09-14**: renamed to `JennSW/Pictala`. Confirmed the old URL redirects (`git ls-remote`, `gh api` both resolved), then pointed the local `origin` remote at the new canonical URL. The GitHub Project board was also renamed, "Jen Swift BirdTrip" → "Jen Swift Pictala" (same project ID, no items affected). |
 | eBird API key | None — tied to the account rather than a public "app name" | Low risk, no action needed |
 | Flickr API app (registered in Flickr's App Garden) | ~~Unconfirmed: is renaming a simple dashboard edit, or does it require re-registering with new keys/secrets?~~ **Resolved 2026-09-14**: Jen renamed the app to "Pictala" in the App Garden dashboard; confirmed via a live `flickr.test.login` call afterward that `FLICKR_API_KEY`/`FLICKR_API_SECRET`/OAuth token in `.env` still authenticate unchanged. It was a simple dashboard edit — no re-registration, no new keys. | **Done** |
 
