@@ -102,6 +102,34 @@ def _get_or_create_match(db: Session, checklist_id: int, photo_id: int) -> Match
     return match
 
 
+def _clear_fallback(match: Match) -> None:
+    """Clear a prior fallback label -- e.g. fixing a match that was
+    previously an "Other"/off-checklist guess to a real reported species
+    shouldn't leave the stale fallback fields behind."""
+    match.fallback_common_name = None
+    match.fallback_scientific_name = None
+    match.fallback_species_code = None
+
+
+def _match_out(checklist: Checklist, match: Match, observation) -> dict:
+    """Shared response shape (issue #84) -- accept_suggestion,
+    assign_species, and accept_fallback each independently rebuilt this
+    identical dict. No behavior change: the two fallback fields default
+    to None in MatchOut, same as when accept_suggestion/assign_species
+    omitted them entirely."""
+    return {
+        "checklist_id": checklist.id,
+        "photo": photo_out(match.photo),
+        "observation": observation,
+        "method": match.method,
+        "confidence": match.confidence,
+        "fallback_common_name": match.fallback_common_name,
+        "fallback_scientific_name": match.fallback_scientific_name,
+        "ebird_checklist_url": ebird_checklist_url(checklist),
+        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
+    }
+
+
 @router.post("/{checklist_id}/suggest/{photo_id}", response_model=SpeciesSuggestion)
 def suggest_species(checklist_id: int, photo_id: int, db: Session = Depends(get_db)):
     checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
@@ -171,11 +199,27 @@ def accept_suggestion(
     if checklist is None:
         raise HTTPException(status_code=404, detail="Checklist not found")
 
+    # Match has no direct ORM relationship to Observation (only the
+    # observation_id column) -- resolve it the same way outings.py does.
+    # The accepted observation may belong to a sibling checklist in this
+    # outing's group, not `checklist` itself, since suggest_species above
+    # offers candidates from the whole group -- look it up there too.
+    # Validated up front (issue #82), mirroring assign_species's own
+    # check: nothing upstream actually constrains body.observation_id to
+    # this outing's group, so without this a malformed id would silently
+    # create a Match pointing outside it instead of being rejected.
+    group = get_checklist_group(db, checklist)
+    observation = next(
+        (o for c in group for o in c.observations if o.id == body.observation_id), None
+    )
+    if observation is None:
+        raise HTTPException(
+            status_code=400, detail="That species isn't reported on this outing"
+        )
+
     match = _get_or_create_match(db, checklist_id, photo_id)
     match.observation_id = body.observation_id
-    match.fallback_common_name = None
-    match.fallback_scientific_name = None
-    match.fallback_species_code = None
+    _clear_fallback(match)
     match.confidence = body.confidence
     match.method = "ai_suggested"
     match.reviewed_at = datetime.utcnow()
@@ -194,25 +238,7 @@ def accept_suggestion(
     db.commit()
     db.refresh(match)
 
-    # Match has no direct ORM relationship to Observation (only the
-    # observation_id column) -- resolve it the same way outings.py does.
-    # The accepted observation may belong to a sibling checklist in this
-    # outing's group, not `checklist` itself, since suggest_species above
-    # offers candidates from the whole group -- look it up there too.
-    group = get_checklist_group(db, checklist)
-    observation = next(
-        (o for c in group for o in c.observations if o.id == match.observation_id), None
-    )
-
-    return {
-        "checklist_id": checklist_id,
-        "photo": photo_out(match.photo),
-        "observation": observation,
-        "method": match.method,
-        "confidence": match.confidence,
-        "ebird_checklist_url": ebird_checklist_url(checklist),
-        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
-    }
+    return _match_out(checklist, match, observation)
 
 
 @router.post("/{checklist_id}/reject/{photo_id}")
@@ -269,29 +295,48 @@ def assign_species(
 
     match = _get_or_create_match(db, checklist_id, photo_id)
     match.observation_id = body.observation_id
-    # Clear any prior fallback label -- e.g. fixing a match that was
-    # previously an "Other"/off-checklist guess to a real reported
-    # species shouldn't leave the stale fallback fields behind.
-    match.fallback_common_name = None
-    match.fallback_scientific_name = None
-    match.fallback_species_code = None
+    _clear_fallback(match)
     match.confidence = 1.0
     match.method = "manual"
     match.reviewed_at = datetime.utcnow()
+    db.flush()  # assigns match.id when this is a brand-new row -- needed
+    # below to exclude it from the stale-orphan cleanup by id.
+
+    # Assigning a checklist-less photo to a real checklist (issue #67)
+    # creates a new Match row here rather than updating one in place --
+    # _get_or_create_match looks up by (checklist_id, photo_id), and the
+    # photo's existing row has checklist_id=None. Drop that now-stale
+    # orphan row rather than leaving it behind as harmless-but-permanent
+    # dead data alongside the new real one.
+    db.query(Match).filter(
+        Match.photo_id == photo_id,
+        Match.checklist_id.is_(None),
+        Match.id != match.id,
+    ).delete()
+
     db.commit()
     db.refresh(match)
 
-    return {
-        "checklist_id": checklist_id,
-        "photo": photo_out(match.photo),
-        "observation": observation,
-        "method": match.method,
-        "confidence": match.confidence,
-        "ebird_checklist_url": ebird_checklist_url(checklist),
-        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
-    }
+    return _match_out(checklist, match, observation)
 
 
+@router.post("/{checklist_id}/unconfirm/{photo_id}")
+def unconfirm_match(checklist_id: int, photo_id: int, db: Session = Depends(get_db)):
+    """Undo a batch confirm (issue #69). Batch confirm only ever
+    reconfirms a "Needs review" match's own already-correct observation
+    -- there's no species pick to reverse, so undoing it just needs to
+    clear reviewed_at, moving it back to "Needs review". Scoped
+    narrowly to that case, not a general-purpose "undo any match"."""
+    match = (
+        db.query(Match)
+        .filter(Match.checklist_id == checklist_id, Match.photo_id == photo_id)
+        .one_or_none()
+    )
+    if match is None:
+        raise HTTPException(status_code=404, detail="Match not found")
+    match.reviewed_at = None
+    db.commit()
+    return {"reviewed_at": None}
 
 
 @router.post("/{checklist_id}/suggest-fallback/{photo_id}", response_model=FallbackSuggestion)
@@ -422,9 +467,7 @@ def accept_fallback(
 
     if on_checklist is not None:
         match.observation_id = on_checklist.id
-        match.fallback_common_name = None
-        match.fallback_scientific_name = None
-        match.fallback_species_code = None
+        _clear_fallback(match)
         match.confidence = 1.0
         match.method = "manual"
     else:
@@ -469,17 +512,7 @@ def accept_fallback(
             (o for c in group for o in c.observations if o.id == match.observation_id), None
         )
 
-    return {
-        "checklist_id": checklist_id,
-        "photo": photo_out(match.photo),
-        "observation": observation,
-        "method": match.method,
-        "confidence": match.confidence,
-        "fallback_common_name": match.fallback_common_name,
-        "fallback_scientific_name": match.fallback_scientific_name,
-        "ebird_checklist_url": ebird_checklist_url(checklist),
-        "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
-    }
+    return _match_out(checklist, match, observation)
 
 
 @router.post("/{checklist_id}/adjust-timezone/{photo_id}")

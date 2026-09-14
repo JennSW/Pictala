@@ -199,6 +199,13 @@ export function assignSpecies(
   return postJson(`/match/${checklistId}/assign/${photoId}`, { observation_id: observationId });
 }
 
+// Undo a batch confirm (issue #69) -- clears reviewed_at so the match
+// goes back to "Needs review" without touching which species it's
+// assigned to.
+export function unconfirmMatch(checklistId: number, photoId: number): Promise<{ reviewed_at: null }> {
+  return request(`/match/${checklistId}/unconfirm/${photoId}`, { method: "POST" });
+}
+
 export interface FallbackSuggestion {
   photo_id: number;
   checklist_id: number | null;

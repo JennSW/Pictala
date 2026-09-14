@@ -8,6 +8,7 @@ import {
   acceptSuggestion,
   rejectSuggestion,
   assignSpecies,
+  unconfirmMatch,
   suggestFallback,
   suggestFallbackBatch,
   acceptFallback,
@@ -29,6 +30,7 @@ import {
   ClusterSummary,
   ClusterDetail,
   MatchEntry,
+  Observation,
 } from "./api";
 import DatePicker from "./DatePicker";
 import PhotoLightbox, { LightboxEntry } from "./PhotoLightbox";
@@ -175,9 +177,20 @@ export default function App() {
   // accuracy tracking (raised 2026-09-03) -- cleared once saved or once
   // the user starts over without ever asking Claude.
   const [clusterAiGuess, setClusterAiGuess] = useState<Record<number, string>>({});
+  // Manually assign a checklist-less photo to a real checklist (issue
+  // #67) -- reuses the existing assignSpecies endpoint, just reachable
+  // from this cluster view. Picking a checklist fetches that checklist's
+  // own reported species for the second dropdown; the cluster's own date
+  // may be wrong (that's usually *why* the photo ended up here), so the
+  // checklist list isn't filtered to it, only sorted with nearby dates
+  // first as a convenience.
+  const [assignToChecklistPick, setAssignToChecklistPick] = useState<Record<number, string>>({});
+  const [assignToSpeciesOptions, setAssignToSpeciesOptions] = useState<Record<number, Observation[]>>({});
+  const [assignToSpeciesPick, setAssignToSpeciesPick] = useState<Record<number, string>>({});
+  const [assigningToChecklist, setAssigningToChecklist] = useState<Record<number, boolean>>({});
   const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
 
-  // Batch "Ask Claude" (issue #5) -- a checkbox per unmatched/checklist-
+  // Batch "Ask Pictala" (issue #5) -- a checkbox per unmatched/checklist-
   // less photo, keyed by photo id (globally unique, so one map covers
   // both the outing detail and cluster views). MAX_BATCH_PHOTOS mirrors
   // the backend's cap (species_classifier.MAX_BATCH_SIZE) so the button
@@ -191,11 +204,19 @@ export default function App() {
   const [batchConfirming, setBatchConfirming] = useState(false);
   // Batch assign to an already-reported species (issue #71) -- same
   // checkedPhotos map again, scoped to Unmatched/needs_claude photos like
-  // batch Ask Claude. One species picked for the whole batch at once,
+  // batch Ask Pictala. One species picked for the whole batch at once,
   // rather than per-photo.
   const [batchAssignPick, setBatchAssignPick] = useState("");
   const [batchAssigning, setBatchAssigning] = useState(false);
   const MAX_BATCH_PHOTOS = 10;
+  // One-click batch-confirm undo (issue #69) -- short-lived and scoped to
+  // the checklist it ran against, so switching outings implicitly drops
+  // any stale offer instead of undoing the wrong outing's batch.
+  const [lastBatchConfirm, setLastBatchConfirm] = useState<{ checklistId: number; photoIds: number[] } | null>(
+    null
+  );
+  const [undoingBatchConfirm, setUndoingBatchConfirm] = useState(false);
+  const BATCH_UNDO_WINDOW_MS = 10000;
 
   // Inline photo lightbox (issue #44) -- a modal, not a new-tab
   // navigation, so looking at a photo closer never loses page state
@@ -378,6 +399,66 @@ export default function App() {
     }
   }
 
+  // Picking a checklist for a checklist-less photo (issue #67) fetches
+  // that checklist's own reported species for the second dropdown --
+  // assignSpecies only accepts an observation actually on the target
+  // checklist, so the species list has to come from wherever gets picked.
+  async function handlePickAssignChecklist(photoId: number, checklistIdStr: string) {
+    setAssignToChecklistPick((prev) => ({ ...prev, [photoId]: checklistIdStr }));
+    setAssignToSpeciesPick((prev) => ({ ...prev, [photoId]: "" }));
+    if (!checklistIdStr) {
+      setAssignToSpeciesOptions((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      return;
+    }
+    try {
+      const outing = await fetchOuting(Number(checklistIdStr));
+      setAssignToSpeciesOptions((prev) => ({ ...prev, [photoId]: outing.observations }));
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
+  async function handleAssignToChecklist(photoId: number) {
+    const checklistIdStr = assignToChecklistPick[photoId];
+    const observationIdStr = assignToSpeciesPick[photoId];
+    if (!checklistIdStr || !observationIdStr || !selectedCluster) return;
+    setAssigningToChecklist((prev) => ({ ...prev, [photoId]: true }));
+    try {
+      await assignSpecies(Number(checklistIdStr), photoId, Number(observationIdStr));
+      const [freshCluster, freshClusters, freshOutings] = await Promise.all([
+        fetchUnassignedCluster(selectedCluster.id),
+        fetchUnassignedClusters(),
+        fetchOutings(),
+      ]);
+      setSelectedCluster(freshCluster);
+      setClusters(freshClusters);
+      setOutings(freshOutings);
+      setAssignToChecklistPick((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setAssignToSpeciesPick((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setAssignToSpeciesOptions((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setAssigningToChecklist((prev) => ({ ...prev, [photoId]: false }));
+    }
+  }
+
   // Union of checklist-backed outing dates and checklist-less cluster
   // dates -- a date like July 11 (real photos, no eBird checklist)
   // needs to show as available too, not look identical to a date with
@@ -524,7 +605,7 @@ export default function App() {
   // Batch version of handleConfirmMatch (issue #50) -- confirms every
   // checked "Needs review" match in one action instead of one click each.
   // No dedicated batch endpoint on the backend; assignSpecies is a plain
-  // DB write (no AI call behind it, unlike batch Ask Claude), so firing
+  // DB write (no AI call behind it, unlike batch Ask Pictala), so firing
   // one request per photo in parallel is fine.
   async function handleConfirmBatch(checklistId: number) {
     if (!selected) return;
@@ -548,10 +629,35 @@ export default function App() {
         for (const id of photoIds) delete next[id];
         return next;
       });
+      setLastBatchConfirm({ checklistId, photoIds });
+      setTimeout(() => {
+        setLastBatchConfirm((prev) =>
+          prev && prev.checklistId === checklistId && prev.photoIds === photoIds ? null : prev
+        );
+      }, BATCH_UNDO_WINDOW_MS);
     } catch (e) {
       setError(String(e));
     } finally {
       setBatchConfirming(false);
+    }
+  }
+
+  // Undo the most recent batch confirm (issue #69) -- reverses only the
+  // reviewed_at timestamp on each photo in that batch, so a wrong one
+  // lands back in "Needs review" for the existing per-photo Edit flow
+  // rather than needing its species re-picked here too.
+  async function handleUndoBatchConfirm() {
+    if (!lastBatchConfirm) return;
+    const { checklistId, photoIds } = lastBatchConfirm;
+    setUndoingBatchConfirm(true);
+    try {
+      await Promise.all(photoIds.map((photoId) => unconfirmMatch(checklistId, photoId)));
+      setSelected(await fetchOuting(checklistId));
+      setLastBatchConfirm(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setUndoingBatchConfirm(false);
     }
   }
 
@@ -735,7 +841,7 @@ export default function App() {
   }
 
   // One match card, reused across the To review/Confirmed column and the
-  // Needs Claude sidebar section -- same interactive suggest/reject/
+  // Needs Match sidebar section -- same interactive suggest/reject/
   // fallback/batch/timezone/duplicate machinery as before, just relocated
   // out of the old single flat grid so it can render in either place.
   function renderMatchCard(outing: OutingDetail, m: MatchEntry) {
@@ -813,7 +919,11 @@ export default function App() {
                           checked={Boolean(checkedPhotos[m.photo.id])}
                           disabled={
                             !checkedPhotos[m.photo.id] &&
-                            checkedPhotoIdsIn(outing.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
+                            checkedPhotoIdsIn(
+                              outing.matches
+                                .filter((mm) => Boolean(mm.observation) && !mm.reviewed_at)
+                                .map((mm) => mm.photo.id)
+                            ).length >= MAX_BATCH_PHOTOS
                           }
                           onChange={(e) => setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))}
                         />{" "}
@@ -880,7 +990,11 @@ export default function App() {
                       checked={Boolean(checkedPhotos[m.photo.id])}
                       disabled={
                         !checkedPhotos[m.photo.id] &&
-                        checkedPhotoIdsIn(outing.matches.map((mm) => mm.photo.id)).length >= MAX_BATCH_PHOTOS
+                        checkedPhotoIdsIn(
+                          outing.matches
+                            .filter((mm) => !mm.observation && !mm.fallback_common_name)
+                            .map((mm) => mm.photo.id)
+                        ).length >= MAX_BATCH_PHOTOS
                       }
                       onChange={(e) => setCheckedPhotos((prev) => ({ ...prev, [m.photo.id]: e.target.checked }))}
                     />{" "}
@@ -980,7 +1094,7 @@ export default function App() {
                 {manualPick[m.photo.id] === "other" ? (
                   <div className="panel-actions" style={{ marginTop: "var(--space-2)" }}>
                     <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
-                      Ask Claude
+                      Ask Pictala
                     </button>
                     <button
                       className="btn btn-primary"
@@ -1119,7 +1233,7 @@ export default function App() {
 
                 <div className="panel-actions">
                   <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
-                    Ask Claude
+                    Ask Pictala
                   </button>
                   <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                     Dismiss
@@ -1174,7 +1288,7 @@ export default function App() {
 
             <div className="panel-actions">
               <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
-                Ask Claude
+                Ask Pictala
               </button>
               <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                 Dismiss
@@ -1200,7 +1314,7 @@ export default function App() {
                 {savingNote[m.photo.id] ? "Saving…" : "Save"}
               </button>
               <button className="btn" onClick={() => handleSuggestFallback(outing.id, m.photo.id)}>
-                Ask Claude
+                Ask Pictala
               </button>
               <button className="btn" onClick={() => handleDismissRejected(m.photo.id)}>
                 Dismiss
@@ -1228,11 +1342,16 @@ export default function App() {
               // species -- an unconstrained guess can land on something
               // that's actually on the checklist. Check here so the
               // messaging matches what accept-fallback will actually do
-              // with it.
+              // with it. Computed from the live, editable fallbackText
+              // value (issue #78), not the original unedited guess --
+              // otherwise editing the pre-filled text before saving could
+              // leave this hint describing a name that's no longer what
+              // will actually be submitted.
+              const currentGuess = fallbackText[m.photo.id] ?? fallback.data.common_name;
               const onChecklist =
                 fallback.data.species_code != null &&
                 outing.observations.some(
-                  (obs) => obs.common_name.toLowerCase() === fallback.data.common_name?.toLowerCase()
+                  (obs) => obs.common_name.toLowerCase() === currentGuess?.toLowerCase()
                 );
               return (
                 <>
@@ -1241,9 +1360,14 @@ export default function App() {
                       <>
                         Broader guess: <strong>{fallback.data.common_name}</strong>
                       </>
-                    ) : fallback.data.is_other ? (
+                    ) : fallback.data.is_other && !fallback.data.is_bird ? (
                       <>
                         Not a bird — best guess: <strong>{fallback.data.common_name}</strong>
+                      </>
+                    ) : fallback.data.is_other && fallback.data.is_bird ? (
+                      <>
+                        Looks like a bird, but the name didn't match eBird's taxonomy:{" "}
+                        <strong>{fallback.data.common_name}</strong>
                       </>
                     ) : fallback.data.is_bird ? (
                       "Couldn't confidently identify the species."
@@ -1517,7 +1641,7 @@ export default function App() {
                   >
                     {batchSuggesting
                       ? "Asking…"
-                      : `Ask Claude for ${checkedPhotoIdsIn(selectedCluster.matches.map((m) => m.photo.id)).length} selected`}
+                      : `Ask Pictala at ${checkedPhotoIdsIn(selectedCluster.matches.map((m) => m.photo.id)).length} selected`}
                   </button>
                 )}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-4)" }}>
@@ -1591,8 +1715,63 @@ export default function App() {
                                   onClick={() => handleClusterSuggest(m.photo.id)}
                                   disabled={clusterSuggesting[m.photo.id]}
                                 >
-                                  {clusterSuggesting[m.photo.id] ? "Asking…" : "Ask Claude"}
+                                  {clusterSuggesting[m.photo.id] ? "Asking…" : "Ask Pictala"}
                                 </button>
+                              </div>
+                              <div
+                                style={{
+                                  marginTop: "var(--space-2)",
+                                  paddingTop: "var(--space-2)",
+                                  borderTop: "1px solid var(--border)",
+                                }}
+                              >
+                                <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: "var(--space-1)" }}>
+                                  Or assign to a checklist directly:
+                                </div>
+                                <select
+                                  value={assignToChecklistPick[m.photo.id] ?? ""}
+                                  onChange={(e) => handlePickAssignChecklist(m.photo.id, e.target.value)}
+                                  style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
+                                >
+                                  <option value="">Pick a checklist…</option>
+                                  {outings
+                                    .slice()
+                                    .sort(
+                                      (a, b) =>
+                                        Math.abs(new Date(a.date).getTime() - new Date(selectedCluster.date).getTime()) -
+                                        Math.abs(new Date(b.date).getTime() - new Date(selectedCluster.date).getTime())
+                                    )
+                                    .map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {o.location_name} — {o.date}
+                                      </option>
+                                    ))}
+                                </select>
+                                {assignToSpeciesOptions[m.photo.id] && (
+                                  <>
+                                    <select
+                                      value={assignToSpeciesPick[m.photo.id] ?? ""}
+                                      onChange={(e) =>
+                                        setAssignToSpeciesPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
+                                      }
+                                      style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
+                                    >
+                                      <option value="">Pick a species…</option>
+                                      {assignToSpeciesOptions[m.photo.id].map((obs) => (
+                                        <option key={obs.id} value={obs.id}>
+                                          {obs.common_name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      className="btn btn-primary"
+                                      onClick={() => handleAssignToChecklist(m.photo.id)}
+                                      disabled={!assignToSpeciesPick[m.photo.id] || assigningToChecklist[m.photo.id]}
+                                    >
+                                      {assigningToChecklist[m.photo.id] ? "Assigning…" : "Assign"}
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           )}
@@ -1727,7 +1906,7 @@ export default function App() {
               // Split by type -- a checkbox in this column now covers two
               // different eligible states (issue #50: needs-review matches
               // for batch confirm, alongside the existing unmatched photos
-              // for batch Ask Claude), so "checked" alone is ambiguous.
+              // for batch Ask Pictala), so "checked" alone is ambiguous.
               const needsReviewInPrimary = checkedPhotoIdsIn(
                 toReviewOrConfirmed.filter((m) => Boolean(m.observation) && !m.reviewed_at).map((m) => m.photo.id)
               );
@@ -1757,6 +1936,27 @@ export default function App() {
                         {batchConfirming ? "Confirming…" : `Confirm ${needsReviewInPrimary.length} selected`}
                       </button>
                     )}
+                    {lastBatchConfirm && lastBatchConfirm.checklistId === selected.id && (
+                      <div
+                        className="card"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: "var(--space-3)",
+                          padding: "var(--space-2) var(--space-3)",
+                          marginBottom: "var(--space-2)",
+                        }}
+                      >
+                        <span style={{ fontSize: "var(--text-sm)" }}>
+                          Confirmed {lastBatchConfirm.photoIds.length} photo
+                          {lastBatchConfirm.photoIds.length === 1 ? "" : "s"}.
+                        </span>
+                        <button className="btn" onClick={handleUndoBatchConfirm} disabled={undoingBatchConfirm}>
+                          {undoingBatchConfirm ? "Undoing…" : "Undo"}
+                        </button>
+                      </div>
+                    )}
                     <div className="outing-match-grid">
                       {toReviewOrConfirmed.map((m) => renderMatchCard(selected, m))}
                       {toReviewOrConfirmed.length === 0 && <p>No photos matched this outing yet.</p>}
@@ -1770,7 +1970,7 @@ export default function App() {
                           <span className="outing-count-badge" style={{ background: "var(--neutral-bg)", color: "var(--neutral)" }}>
                             {needsClaudeMatches.length}
                           </span>
-                          <h3 className="outing-col-title">Needs Claude</h3>
+                          <h3 className="outing-col-title">Needs Match</h3>
                         </div>
                         {checkedNeedsClaude.length > 0 && (
                           <div style={{ marginBottom: "var(--space-3)" }}>
@@ -1780,7 +1980,7 @@ export default function App() {
                               onClick={() => handleSuggestFallbackBatch(selected.id)}
                               disabled={batchSuggesting}
                             >
-                              {batchSuggesting ? "Asking…" : `Ask Claude for ${checkedNeedsClaude.length} selected`}
+                              {batchSuggesting ? "Asking…" : `Ask Pictala at ${checkedNeedsClaude.length} selected`}
                             </button>
                             <div style={{ display: "flex", gap: "var(--space-2)" }}>
                               <select
