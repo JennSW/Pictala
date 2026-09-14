@@ -70,7 +70,11 @@ def _checklist_window(checklist: Checklist) -> tuple[datetime, datetime] | None:
         if parsed_time is not None:
             start = start.replace(hour=parsed_time.hour, minute=parsed_time.minute)
 
-    duration = timedelta(minutes=checklist.duration_minutes or 60)
+    # `or 60` would also fire on a legitimate 0-minute duration (0.0 is
+    # falsy in Python) -- only fall back to the default when it's
+    # genuinely absent.
+    duration_minutes = checklist.duration_minutes if checklist.duration_minutes is not None else 60
+    duration = timedelta(minutes=duration_minutes)
     return (start - WINDOW_PADDING, start + duration + WINDOW_PADDING)
 
 
@@ -81,6 +85,27 @@ def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     dlambda = math.radians(lon2 - lon1)
     a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlambda / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
+
+
+def _within_distance(checklist: Checklist, photo: Photo, max_km: float) -> bool:
+    """True when either side is missing coordinates (nothing to filter
+    on -- the time-window/same-day match stands on its own) or the two
+    points are within max_km of each other. Checks `is not None`, not
+    truthiness -- 0.0 is a real, valid latitude/longitude (equator/prime
+    meridian), and Python's `and`-chained truthiness would silently treat
+    it the same as missing, skipping the distance check entirely instead
+    of correctly computing it."""
+    if (
+        checklist.latitude is None
+        or checklist.longitude is None
+        or photo.latitude is None
+        or photo.longitude is None
+    ):
+        return True
+    return (
+        _haversine_km(checklist.latitude, checklist.longitude, photo.latitude, photo.longitude)
+        <= max_km
+    )
 
 
 def _species_text_match(photo: Photo, common_name: str) -> bool:
@@ -142,17 +167,8 @@ def run_rule_based_matching(db: Session) -> dict:
             for photo, taken in parsed_photos:
                 if not (start <= taken <= end):
                     continue
-                if (
-                    checklist.latitude
-                    and checklist.longitude
-                    and photo.latitude
-                    and photo.longitude
-                ):
-                    dist = _haversine_km(
-                        checklist.latitude, checklist.longitude, photo.latitude, photo.longitude
-                    )
-                    if dist > MAX_MATCH_DISTANCE_KM:
-                        continue
+                if not _within_distance(checklist, photo, MAX_MATCH_DISTANCE_KM):
+                    continue
                 tight_candidates.append(photo)
 
         # Same-day fallback (issue #59): additive per photo, not
@@ -167,17 +183,8 @@ def run_rule_based_matching(db: Session) -> dict:
                 continue
             if taken.date() != checklist_date:
                 continue
-            if (
-                checklist.latitude
-                and checklist.longitude
-                and photo.latitude
-                and photo.longitude
-            ):
-                dist = _haversine_km(
-                    checklist.latitude, checklist.longitude, photo.latitude, photo.longitude
-                )
-                if dist > SAME_DAY_MAX_DISTANCE_KM:
-                    continue
+            if not _within_distance(checklist, photo, SAME_DAY_MAX_DISTANCE_KM):
+                continue
             same_day_candidates.append(photo)
 
         for photo, method in [(p, "rule_based") for p in tight_candidates] + [

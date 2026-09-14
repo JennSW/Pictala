@@ -32,7 +32,7 @@ class Checklist(Base):
     duration_minutes: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     observations: Mapped[list["Observation"]] = relationship(
-        back_populates="checklist", cascade="all, delete-orphan"
+        back_populates="checklist", cascade="all, delete-orphan", order_by="Observation.id"
     )
     matches: Mapped[list["Match"]] = relationship(
         back_populates="checklist", cascade="all, delete-orphan"
