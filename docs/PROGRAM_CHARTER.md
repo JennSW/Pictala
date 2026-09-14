@@ -65,7 +65,7 @@ target: **~2 weeks elapsed** (≈8 engineer-days of work, per
 1. Data model + migration (highest-risk step, done first, lived-with
    before more code lands on top)
 2. Session auth
-3. Endpoint retrofit (all 22 routes scoped to the current user)
+3. Endpoint retrofit (all 23 routes scoped to the current user)
 4. Per-user Flickr OAuth connect flow
 5. Frontend login + protected routes
 6. Two-user QA pass

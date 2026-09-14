@@ -15,10 +15,11 @@ another only when ALL of these hold:
   3. That base title also exists as its own separate real photo, on
      the same calendar day.
 
-Verified against live data on 2026-08-06: finds exactly 4 groups,
-including the two known real cases -- "July 11-02239" / "July
-11-02239-2" and "July 11-02022" / "July 11-02022 copy" -- with zero
-false positives.
+Checked on 2026-08-06 against the two known real cases -- "July
+11-02239" / "July 11-02239-2" and "July 11-02022" / "July 11-02022
+copy". No fixture or output artifact backs a specific total-group count
+across the full dataset (issue #75) -- see this module's own unit tests
+for the specific edge cases the heuristic is verified to handle.
 
 Why not simpler (v1/v2, both tried and rejected against real data):
 

@@ -22,6 +22,7 @@ for the plan to change that.
 | `unassigned` | `/unassigned` | Same matching workflow for photos with no eBird checklist |
 | `search` | `/search` | Search confirmed matches by species |
 | `sync` | `/sync` | Data ingestion: eBird CSV upload, Flickr pull, re-matching |
+| `stats` | `/stats` | AI-suggestion accuracy reporting |
 | — | `/health` | Liveness check |
 
 ---
@@ -46,15 +47,18 @@ lowest checklist id is the canonical id returned by the list endpoint.
 ## `match` — checklist-scoped photo matching
 
 Two-step by design: a `suggest*` endpoint proposes and persists nothing; an
-`accept*`/`assign` endpoint is the only thing that writes a match. There is
-deliberately no `/reject` — declining a suggestion just means never
-calling accept.
+`accept*`/`assign` endpoint is the only thing that writes a match.
+Declining a suggestion doesn't require calling anything -- `/reject` exists
+only to log the decline for AI-accuracy tracking (`AiSuggestionLog`,
+surfaced via `/stats/ai-accuracy`), not to undo a write.
 
 | Method | Path | Description |
 |---|---|---|
 | POST | `/match/{checklist_id}/suggest/{photo_id}` | AI guess constrained to this outing's own reported species. Nothing persisted. |
 | POST | `/match/{checklist_id}/accept/{photo_id}` | Persist an AI suggestion as a confirmed match |
+| POST | `/match/{checklist_id}/reject/{photo_id}` | Log a declined AI suggestion for accuracy tracking. Writes no Match -- nothing to undo. |
 | POST | `/match/{checklist_id}/assign/{photo_id}` | Manually assign one of the outing's reported species, no AI involved |
+| POST | `/match/{checklist_id}/unconfirm/{photo_id}` | Undo a batch confirm — clears reviewed_at, moving a match back to "Needs review" |
 | POST | `/match/{checklist_id}/suggest-fallback/{photo_id}` | Broader, unconstrained AI guess for a photo matching nothing on the checklist. Nothing persisted. |
 | POST | `/match/{checklist_id}/suggest-fallback-batch` | Same, batched — one AI call for a set of photos instead of one round-trip each |
 | POST | `/match/{checklist_id}/accept-fallback/{photo_id}` | Persist a fallback identification (typed or AI-suggested); resolves to on-checklist / off-checklist-but-real-species / plain-text note |
@@ -104,6 +108,18 @@ single-user/local rather than a running service.
 
 **Rate limit:** `/sync/run` returns `429` once the daily cap is reached.
 Every attempt counts toward the cap regardless of success/failure.
+
+---
+
+## `stats` — AI-suggestion accuracy
+
+Reads from `AiSuggestionLog`, populated by `match`'s `accept`/`reject`/
+`accept-fallback` endpoints -- independent of the `Match` table itself, so
+a later manual correction doesn't erase what the AI originally suggested.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/stats/ai-accuracy` | Accepted / corrected / rejected counts and rate, by suggestion kind (constrained vs. unconstrained) |
 
 ---
 

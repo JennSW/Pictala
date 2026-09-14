@@ -19,7 +19,7 @@ person's keys."*
 | Credentials | Flickr OAuth1 token pair + eBird key live as global env vars in `backend/.env`, read directly off a module-level `settings` singleton at request time (`flickr_client.py`) |
 | eBird import | CSV upload (user downloads "My Data" from eBird, uploads in-app) — **not** a live API call, so no per-user eBird credential is actually needed |
 | Flickr import | OAuth1, currently bootstrapped once via a CLI script (`flickr_oauth_setup.py`) that writes tokens straight into `.env` — no in-app connect flow exists |
-| API routes | 22 endpoints across 5 routers, all unscoped — no auth dependency anywhere |
+| API routes | 23 endpoints across 5 routers, all unscoped — no auth dependency anywhere |
 | Frontend | No login UI, no session/token handling, no protected routes |
 | Migrations | No Alembic — schema changes go through a hand-rolled `add_missing_columns()` in `db.py`. Its own docstring flags that anything beyond simple additive columns is "the signal to introduce Alembic properly" |
 

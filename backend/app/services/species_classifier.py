@@ -184,14 +184,22 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
     ]
 
     result = _call_anthropic_tool(SUGGEST_TOOL, content)
-    common_name = result.get("common_name")
-    if not common_name or common_name.strip().lower() == "none":
-        common_name = None
-    elif common_name not in candidate_common_names:
-        # Constrained classification means constrained -- if the model
-        # named something outside the candidate list, treat it as "no match"
-        # rather than silently accepting an open-set guess.
-        common_name = None
+    raw_name = result.get("common_name")
+    common_name = None
+    if raw_name and raw_name.strip().lower() != "none":
+        # Case-insensitive match against the candidate list (issue #73) --
+        # the model's free-text response isn't schema-constrained, so a
+        # casing mismatch alone shouldn't discard an otherwise-correct
+        # guess, matching every other name-matching path in the codebase
+        # (ebird_taxonomy.find_species, the fallback-accept path). Returns
+        # the candidate list's own casing, not the model's, so callers
+        # doing an exact-match lookup keyed by the original candidate
+        # names (e.g. match.py's suggest_species) still find it.
+        by_lower = {c.lower(): c for c in candidate_common_names}
+        common_name = by_lower.get(raw_name.strip().lower())
+        # None here means the model named something outside the candidate
+        # list -- constrained classification means constrained, so that's
+        # still treated as "no match" rather than an open-set guess.
 
     return {
         "common_name": common_name,
