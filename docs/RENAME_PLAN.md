@@ -84,7 +84,7 @@ forgotten when the rename actually happens.
 |---|---|---|
 | GitHub repo `JennSW/BirdTrip` (private) | None — renaming is a simple settings change; GitHub auto-redirects the old clone URL, so the local `git remote` won't break | Low risk, execute whenever |
 | eBird API key | None — tied to the account rather than a public "app name" | Low risk, no action needed |
-| Flickr API app (registered in Flickr's App Garden) | **Unconfirmed**: is renaming a simple dashboard edit, or does it require re-registering with new keys/secrets (which would mean updating `.env`/backend config)? | **Open investigation** — check the App Garden dashboard before assuming either way |
+| Flickr API app (registered in Flickr's App Garden) | ~~Unconfirmed: is renaming a simple dashboard edit, or does it require re-registering with new keys/secrets?~~ **Resolved 2026-09-14**: Jen renamed the app to "Pictala" in the App Garden dashboard; confirmed via a live `flickr.test.login` call afterward that `FLICKR_API_KEY`/`FLICKR_API_SECRET`/OAuth token in `.env` still authenticate unchanged. It was a simple dashboard edit — no re-registration, no new keys. | **Done** |
 
 Posted to issue #61 on 2026-09-02 for tracking:
 https://github.com/JennSW/BirdTrip/issues/61#issuecomment-5516888914
