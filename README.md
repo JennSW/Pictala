@@ -32,4 +32,5 @@ root directory to just this README and whatever's current.
 - [2026-09-02, 2:59 PM](docs/Read%20Me/README-2026-09-02-1459.md)
 - [2026-09-03, 1:29 PM](docs/Read%20Me/README-2026-09-03-1329.md)
 - [2026-09-04, 7:45 PM](docs/Read%20Me/README-2026-09-04-1945.md)
-- [2026-09-14, 11:07 AM](README-2026-09-14-1107.md)
+- [2026-09-14, 11:07 AM](docs/Read%20Me/README-2026-09-14-1107.md)
+- [2026-09-19, 1:28 PM](README-2026-09-19-1328.md)
