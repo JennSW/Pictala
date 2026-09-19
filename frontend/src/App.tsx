@@ -723,7 +723,7 @@ export default function App() {
     if (!observationId) return;
     setSuggestions((prev) => ({ ...prev, [photoId]: { status: "accepting" } }));
     try {
-      await assignSpecies(checklistId, photoId, observationId);
+      await assignSpecies(checklistId, photoId, observationId, noteText[photoId]);
       setSelected(await fetchOuting(checklistId));
       setSuggestions((prev) => {
         const next = { ...prev };
@@ -731,6 +731,11 @@ export default function App() {
         return next;
       });
       setManualPick((prev) => {
+        const next = { ...prev };
+        delete next[photoId];
+        return next;
+      });
+      setNoteText((prev) => {
         const next = { ...prev };
         delete next[photoId];
         return next;
@@ -913,6 +918,11 @@ export default function App() {
                         {m.observation.scientific_name && <span style={{ fontStyle: "italic" }}>{m.observation.scientific_name}</span>}
                         {onEbird && <img src={ebirdMatchIcon} alt="Logged on eBird" className="ebird-match-icon" />}
                       </div>
+                      {m.note && (
+                        <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>
+                          {m.note}
+                        </div>
+                      )}
                       <label style={{ marginTop: "var(--space-1)", display: "block", fontSize: "var(--text-xs)" }}>
                         <input
                           type="checkbox"
@@ -946,6 +956,9 @@ export default function App() {
                       {m.observation.scientific_name && <span style={{ fontStyle: "italic" }}>{m.observation.scientific_name}</span>}
                       {onEbird && <img src={ebirdMatchIcon} alt="Logged on eBird" className="ebird-match-icon" />}
                     </div>
+                    {m.note && (
+                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: 2 }}>{m.note}</div>
+                    )}
                   </div>
                 )
               ) : m.fallback_common_name ? (
@@ -1082,9 +1095,8 @@ export default function App() {
               <>
                 {/* Stays visible for a real species pick too, not just
                     Other -- general notes (e.g. "juvenile", "distant/
-                    blurry shot") are useful either way. Not yet wired to
-                    persist anything when a real species is selected --
-                    see conversation with Jen, 2026-08-04. */}
+                    blurry shot") are useful either way. Persisted via
+                    Match.note on assign (issue #79). */}
                 <input
                   type="text"
                   value={noteText[m.photo.id] ?? ""}

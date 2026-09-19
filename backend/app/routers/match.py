@@ -125,6 +125,7 @@ def _match_out(checklist: Checklist, match: Match, observation) -> dict:
         "confidence": match.confidence,
         "fallback_common_name": match.fallback_common_name,
         "fallback_scientific_name": match.fallback_scientific_name,
+        "note": match.note,
         "ebird_checklist_url": ebird_checklist_url(checklist),
         "reviewed_at": match.reviewed_at.isoformat() if match.reviewed_at else None,
     }
@@ -298,6 +299,7 @@ def assign_species(
     _clear_fallback(match)
     match.confidence = 1.0
     match.method = "manual"
+    match.note = body.note or None  # issue #79 -- empty text means no note
     match.reviewed_at = datetime.utcnow()
     db.flush()  # assigns match.id when this is a brand-new row -- needed
     # below to exclude it from the stale-orphan cleanup by id.

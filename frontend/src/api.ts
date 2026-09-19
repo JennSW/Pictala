@@ -62,6 +62,7 @@ export interface MatchEntry {
   confidence: number;
   fallback_common_name: string | null;
   fallback_scientific_name: string | null;
+  note: string | null;
   ebird_checklist_url: string | null;
   reviewed_at: string | null;
   timezone_mismatch: TimezoneMismatch | null;
@@ -194,9 +195,13 @@ export function rejectSuggestion(
 export function assignSpecies(
   checklistId: number,
   photoId: number,
-  observationId: number
+  observationId: number,
+  note?: string
 ): Promise<MatchEntry> {
-  return postJson(`/match/${checklistId}/assign/${photoId}`, { observation_id: observationId });
+  return postJson(`/match/${checklistId}/assign/${photoId}`, {
+    observation_id: observationId,
+    note: note ?? null,
+  });
 }
 
 // Undo a batch confirm (issue #69) -- clears reviewed_at so the match

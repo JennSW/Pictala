@@ -79,6 +79,7 @@ class MatchOut(BaseModel):
     confidence: float
     fallback_common_name: str | None = None
     fallback_scientific_name: str | None = None
+    note: str | None = None
     ebird_checklist_url: str | None = None
     reviewed_at: str | None = None
     timezone_mismatch: TimezoneMismatch | None = None
@@ -197,6 +198,7 @@ class AssignSpeciesRequest(BaseModel):
     than "ai_suggested"."""
 
     observation_id: int
+    note: str | None = None
 
 
 class FallbackSuggestion(BaseModel):

@@ -151,6 +151,11 @@ class Match(Base):
     fallback_common_name: Mapped[str | None] = mapped_column(String, nullable=True)
     fallback_scientific_name: Mapped[str | None] = mapped_column(String, nullable=True)
     fallback_species_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    note: Mapped[str | None] = mapped_column(String, nullable=True)
+    """Freeform text (e.g. "juvenile", "distant/blurry shot") attached
+    alongside a manually-assigned real species -- issue #79. Independent
+    of the fallback_* fields, which label a photo that isn't a real
+    match at all; this is a note on a match that IS real."""
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     """Set the moment a person actually looked at this specific match and
