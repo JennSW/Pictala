@@ -183,11 +183,21 @@ export default function App() {
   // own reported species for the second dropdown; the cluster's own date
   // may be wrong (that's usually *why* the photo ended up here), so the
   // checklist list isn't filtered to it, only sorted with nearby dates
-  // first as a convenience.
-  const [assignToChecklistPick, setAssignToChecklistPick] = useState<Record<number, string>>({});
-  const [assignToSpeciesOptions, setAssignToSpeciesOptions] = useState<Record<number, Observation[]>>({});
-  const [assignToSpeciesPick, setAssignToSpeciesPick] = useState<Record<number, string>>({});
-  const [assigningToChecklist, setAssigningToChecklist] = useState<Record<number, boolean>>({});
+  // first as a convenience. One map of a small object (issue #92) rather
+  // than four parallel Record<number, T> maps for the same interaction.
+  interface AssignToChecklistState {
+    checklistId: string;
+    speciesOptions: Observation[] | null;
+    speciesPick: string;
+    assigning: boolean;
+  }
+  const DEFAULT_ASSIGN_TO_CHECKLIST: AssignToChecklistState = {
+    checklistId: "",
+    speciesOptions: null,
+    speciesPick: "",
+    assigning: false,
+  };
+  const [assignToChecklist, setAssignToChecklist] = useState<Record<number, AssignToChecklistState>>({});
   const [clusterSaving, setClusterSaving] = useState<Record<number, boolean>>({});
 
   // Batch "Ask Pictala" (issue #5) -- a checkbox per unmatched/checklist-
@@ -404,29 +414,31 @@ export default function App() {
   // assignSpecies only accepts an observation actually on the target
   // checklist, so the species list has to come from wherever gets picked.
   async function handlePickAssignChecklist(photoId: number, checklistIdStr: string) {
-    setAssignToChecklistPick((prev) => ({ ...prev, [photoId]: checklistIdStr }));
-    setAssignToSpeciesPick((prev) => ({ ...prev, [photoId]: "" }));
-    if (!checklistIdStr) {
-      setAssignToSpeciesOptions((prev) => {
-        const next = { ...prev };
-        delete next[photoId];
-        return next;
-      });
-      return;
-    }
+    setAssignToChecklist((prev) => ({
+      ...prev,
+      [photoId]: { ...DEFAULT_ASSIGN_TO_CHECKLIST, checklistId: checklistIdStr },
+    }));
+    if (!checklistIdStr) return;
     try {
       const outing = await fetchOuting(Number(checklistIdStr));
-      setAssignToSpeciesOptions((prev) => ({ ...prev, [photoId]: outing.observations }));
+      setAssignToChecklist((prev) => ({
+        ...prev,
+        [photoId]: { ...(prev[photoId] ?? DEFAULT_ASSIGN_TO_CHECKLIST), speciesOptions: outing.observations },
+      }));
     } catch (e) {
       setError(String(e));
     }
   }
 
   async function handleAssignToChecklist(photoId: number) {
-    const checklistIdStr = assignToChecklistPick[photoId];
-    const observationIdStr = assignToSpeciesPick[photoId];
+    const entry = assignToChecklist[photoId];
+    const checklistIdStr = entry?.checklistId;
+    const observationIdStr = entry?.speciesPick;
     if (!checklistIdStr || !observationIdStr || !selectedCluster) return;
-    setAssigningToChecklist((prev) => ({ ...prev, [photoId]: true }));
+    setAssignToChecklist((prev) => ({
+      ...prev,
+      [photoId]: { ...(prev[photoId] ?? DEFAULT_ASSIGN_TO_CHECKLIST), assigning: true },
+    }));
     try {
       await assignSpecies(Number(checklistIdStr), photoId, Number(observationIdStr));
       const [freshCluster, freshClusters, freshOutings] = await Promise.all([
@@ -437,25 +449,17 @@ export default function App() {
       setSelectedCluster(freshCluster);
       setClusters(freshClusters);
       setOutings(freshOutings);
-      setAssignToChecklistPick((prev) => {
-        const next = { ...prev };
-        delete next[photoId];
-        return next;
-      });
-      setAssignToSpeciesPick((prev) => {
-        const next = { ...prev };
-        delete next[photoId];
-        return next;
-      });
-      setAssignToSpeciesOptions((prev) => {
+      setAssignToChecklist((prev) => {
         const next = { ...prev };
         delete next[photoId];
         return next;
       });
     } catch (e) {
       setError(String(e));
-    } finally {
-      setAssigningToChecklist((prev) => ({ ...prev, [photoId]: false }));
+      setAssignToChecklist((prev) => ({
+        ...prev,
+        [photoId]: { ...(prev[photoId] ?? DEFAULT_ASSIGN_TO_CHECKLIST), assigning: false },
+      }));
     }
   }
 
@@ -1740,50 +1744,63 @@ export default function App() {
                                 <div style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginBottom: "var(--space-1)" }}>
                                   Or assign to a checklist directly:
                                 </div>
-                                <select
-                                  value={assignToChecklistPick[m.photo.id] ?? ""}
-                                  onChange={(e) => handlePickAssignChecklist(m.photo.id, e.target.value)}
-                                  style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
-                                >
-                                  <option value="">Pick a checklist…</option>
-                                  {outings
-                                    .slice()
-                                    .sort(
-                                      (a, b) =>
-                                        Math.abs(new Date(a.date).getTime() - new Date(selectedCluster.date).getTime()) -
-                                        Math.abs(new Date(b.date).getTime() - new Date(selectedCluster.date).getTime())
-                                    )
-                                    .map((o) => (
-                                      <option key={o.id} value={o.id}>
-                                        {o.location_name} — {o.date}
-                                      </option>
-                                    ))}
-                                </select>
-                                {assignToSpeciesOptions[m.photo.id] && (
-                                  <>
-                                    <select
-                                      value={assignToSpeciesPick[m.photo.id] ?? ""}
-                                      onChange={(e) =>
-                                        setAssignToSpeciesPick((prev) => ({ ...prev, [m.photo.id]: e.target.value }))
-                                      }
-                                      style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
-                                    >
-                                      <option value="">Pick a species…</option>
-                                      {assignToSpeciesOptions[m.photo.id].map((obs) => (
-                                        <option key={obs.id} value={obs.id}>
-                                          {obs.common_name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      className="btn btn-primary"
-                                      onClick={() => handleAssignToChecklist(m.photo.id)}
-                                      disabled={!assignToSpeciesPick[m.photo.id] || assigningToChecklist[m.photo.id]}
-                                    >
-                                      {assigningToChecklist[m.photo.id] ? "Assigning…" : "Assign"}
-                                    </button>
-                                  </>
-                                )}
+                                {(() => {
+                                  const assignState = assignToChecklist[m.photo.id] ?? DEFAULT_ASSIGN_TO_CHECKLIST;
+                                  return (
+                                    <>
+                                      <select
+                                        value={assignState.checklistId}
+                                        onChange={(e) => handlePickAssignChecklist(m.photo.id, e.target.value)}
+                                        style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
+                                      >
+                                        <option value="">Pick a checklist…</option>
+                                        {outings
+                                          .slice()
+                                          .sort(
+                                            (a, b) =>
+                                              Math.abs(new Date(a.date).getTime() - new Date(selectedCluster.date).getTime()) -
+                                              Math.abs(new Date(b.date).getTime() - new Date(selectedCluster.date).getTime())
+                                          )
+                                          .map((o) => (
+                                            <option key={o.id} value={o.id}>
+                                              {o.location_name} — {o.date}
+                                            </option>
+                                          ))}
+                                      </select>
+                                      {assignState.speciesOptions && (
+                                        <>
+                                          <select
+                                            value={assignState.speciesPick}
+                                            onChange={(e) =>
+                                              setAssignToChecklist((prev) => ({
+                                                ...prev,
+                                                [m.photo.id]: {
+                                                  ...(prev[m.photo.id] ?? DEFAULT_ASSIGN_TO_CHECKLIST),
+                                                  speciesPick: e.target.value,
+                                                },
+                                              }))
+                                            }
+                                            style={{ width: "100%", fontSize: "var(--text-xs)", marginBottom: "var(--space-1)" }}
+                                          >
+                                            <option value="">Pick a species…</option>
+                                            {assignState.speciesOptions.map((obs) => (
+                                              <option key={obs.id} value={obs.id}>
+                                                {obs.common_name}
+                                              </option>
+                                            ))}
+                                          </select>
+                                          <button
+                                            className="btn btn-primary"
+                                            onClick={() => handleAssignToChecklist(m.photo.id)}
+                                            disabled={!assignState.speciesPick || assignState.assigning}
+                                          >
+                                            {assignState.assigning ? "Assigning…" : "Assign"}
+                                          </button>
+                                        </>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
                           )}
