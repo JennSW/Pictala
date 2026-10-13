@@ -8,8 +8,8 @@
 > duplicate, now reopened), and #81 was closed as a genuine duplicate of
 > #83 once the mislabeling was fixed.
 
-**Trigger:** two confirmed Claude hallucination incidents on 2026-09-03 (see
-[`CLAUDE_ERROR_LOG.md`](CLAUDE_ERROR_LOG.md)) prompted a broader question —
+**Trigger:** two confirmed Claude hallucination incidents on 2026-09-03 (recorded in
+the project's private Claude error log) prompted a broader question —
 did earlier sessions hallucinate anything into the actual codebase or docs,
 not just into chat narration? This review covers all work committed on or
 before 2026-09-02. The 2026-09-03 commits were already scrutinized in the
