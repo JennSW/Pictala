@@ -58,3 +58,6 @@ PUBLISH_REVIEW.md
 # Everything moved to the archive is private/unpublished. Keep the whole folder ignored so
 # files can be moved in without losing protection (their old per-path rules stop matching).
 docs/archive/
+
+# Draft of the new README (private until reviewed and renamed to README.md).
+README.draft.md
