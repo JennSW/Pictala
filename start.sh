@@ -136,10 +136,28 @@ if ! curl -s "http://localhost:$BACKEND_PORT/health" >/dev/null 2>&1; then
 fi
 
 # ---- Step 3: load sample data so there's something to see immediately -----
-echo "Loading sample eBird data so you have outings to look at right away..."
-curl -s -X POST "http://localhost:$BACKEND_PORT/sync/ebird" \
-  -F "file=@seed_data/sample_ebird_export.csv" > /dev/null || true
-curl -s -X POST "http://localhost:$BACKEND_PORT/sync/match" > /dev/null || true
+# BEGIN seed_sample_data (kept between markers so tests can run this exact code)
+#
+# Only ever into an EMPTY database. This script runs against whatever database
+# the backend is configured to use -- on a machine that already has real
+# outings (the default backend/birdtrip.db, or a DATABASE_URL in backend/.env)
+# that is real data, and loading invented sample outings into it would mix
+# them in with the real ones. If the check itself fails we also skip: not
+# loading is always the safe direction.
+seed_sample_data_if_empty() {
+  local outings
+  outings="$(curl -s "http://localhost:$BACKEND_PORT/outings" || true)"
+  if [ "$outings" = "[]" ]; then
+    echo "Loading sample eBird data so you have outings to look at right away..."
+    curl -s -X POST "http://localhost:$BACKEND_PORT/sync/ebird" \
+      -F "file=@seed_data/sample_ebird_export.csv" > /dev/null || true
+    curl -s -X POST "http://localhost:$BACKEND_PORT/sync/match" > /dev/null || true
+  else
+    echo "Your database already has data (or could not be checked), so no sample data was loaded."
+  fi
+}
+# END seed_sample_data
+seed_sample_data_if_empty
 
 cd ..
 

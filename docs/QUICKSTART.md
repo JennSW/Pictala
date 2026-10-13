@@ -17,7 +17,8 @@ From the repository root:
 
 It checks for Python 3.10+ and Node, sets up a private Python environment, installs the
 front end, loads the **synthetic sample data** (14 invented outings, no real person's data),
-starts both servers, and opens your browser.
+starts both servers, and opens your browser. The sample data is loaded only when the database
+is empty; it is never added to a database that already has outings.
 
 With only the sample data you will see outings and species but **no photos**. Photos arrive
 only through a Flickr sync, which needs your own credentials (see below).
