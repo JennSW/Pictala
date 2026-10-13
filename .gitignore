@@ -36,3 +36,25 @@ docs/birdtripscaffold.zip
 docs/mockups/Camera.svg
 docs/mockups/summertime-35.png
 preview-screenshot.png
+
+# Session transcripts contain real account identifiers and full tool output --
+# local reference only, never for a public repo (secret scan 2026-10-13).
+transcripts/
+
+# Personal eBird history exports (full checklist history with locations),
+# including accidental duplicates like "MyEBirdData 2.csv".
+backend/seed_data/MyEBirdData*.csv
+
+# Claude's error log -- kept private (it records errors in personal job-search
+# work, not just project work). Stays on disk; never tracked or published.
+docs/CLAUDE_ERROR_LOG.md
+
+# Superseded real eBird exports and leftovers (real personal data).
+backend/seed_data/archive/
+
+# Private working note: publish-review of docs/.
+PUBLISH_REVIEW.md
+
+# Everything moved to the archive is private/unpublished. Keep the whole folder ignored so
+# files can be moved in without losing protection (their old per-path rules stop matching).
+docs/archive/
