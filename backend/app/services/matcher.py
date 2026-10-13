@@ -18,6 +18,11 @@ why this comes before any model call. Three rules, in order:
    (issue #59; previously this only ran when rule 1 found *zero* matches
    for the whole checklist, so an outlier photo on an otherwise
    well-matched day silently got no match at all instead of falling back).
+   A photo's "day" is Flickr's `date_taken`, unless its title starts with
+   an earlier date -- Flickr falls back to the upload time for photos with
+   no EXIF date, so the title is the better source then (issue #34, see
+   photo_dates.py). Such photos only ever match by same-day, since a
+   title gives no time of day.
    Same-day matches use a looser GPS radius (when both sides have
    coordinates) and are recorded with a distinct method/lower confidence
    so the UI can show them as looser than a tight time-window match, not
@@ -36,6 +41,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models import Checklist, Photo, Match
+from app.services.photo_dates import effective_day
 
 WINDOW_PADDING = timedelta(minutes=30)
 MAX_MATCH_DISTANCE_KM = 5.0  # tight time-window match: GPS tiebreaker cutoff
@@ -139,13 +145,19 @@ def run_rule_based_matching(db: Session) -> dict:
     photos = db.query(Photo).all()
 
     # Parse each photo's timestamp once rather than once per checklist.
+    # `day` is the photo's effective calendar day: Flickr's date_taken, or
+    # the date in its title when Flickr's is just an upload-time fallback
+    # (issue #34, see photo_dates.py). `from_title` marks the latter -- a
+    # title gives a day but no time of day, so those photos can only match
+    # by same-day, never by the tight time window.
     parsed_photos = []
     for photo in photos:
         try:
             taken = datetime.fromisoformat(photo.date_taken)
         except ValueError:
             continue
-        parsed_photos.append((photo, taken))
+        day, from_title = effective_day(photo)
+        parsed_photos.append((photo, taken, day, from_title))
 
     checklist_matches = 0
     species_matches = 0
@@ -164,8 +176,8 @@ def run_rule_based_matching(db: Session) -> dict:
         tight_candidates = []
         if window:
             start, end = window
-            for photo, taken in parsed_photos:
-                if not (start <= taken <= end):
+            for photo, taken, _day, from_title in parsed_photos:
+                if from_title or not (start <= taken <= end):
                     continue
                 if not _within_distance(checklist, photo, MAX_MATCH_DISTANCE_KM):
                     continue
@@ -178,10 +190,10 @@ def run_rule_based_matching(db: Session) -> dict:
         # rule 1 missed, instead of that photo getting no match at all.
         tight_ids = {p.id for p in tight_candidates}
         same_day_candidates = []
-        for photo, taken in parsed_photos:
+        for photo, _taken, day, _from_title in parsed_photos:
             if photo.id in tight_ids:
                 continue
-            if taken.date() != checklist_date:
+            if day != checklist_date:
                 continue
             if not _within_distance(checklist, photo, SAME_DAY_MAX_DISTANCE_KM):
                 continue

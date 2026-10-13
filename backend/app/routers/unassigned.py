@@ -24,6 +24,7 @@ from app.schemas import ClusterSummary, ClusterDetail, MatchOut, FallbackSuggest
 from app.services.photo_clusters import compute_clusters, get_cluster
 from app.services.ebird_taxonomy import find_species, resolve_guess
 from app.services.duplicate_detection import get_duplicates_for_photo
+from app.services.photo_dates import effective_datetime
 from app.services.species_classifier import (
     guess_species_unconstrained,
     guess_species_unconstrained_batch,
@@ -262,7 +263,9 @@ def move_photo(cluster_id: str, photo_id: int, body: MoveRequest, db: Session = 
     if not target_photos:
         raise HTTPException(status_code=400, detail="Target cluster is empty")
 
-    earliest = min(datetime.fromisoformat(p.date_taken) for p in target_photos)
+    # Effective datetime, not raw date_taken: the target cluster's real day may
+    # come from its photos' titles (issue #34, see photo_dates.py).
+    earliest = min(effective_datetime(p) for p in target_photos)
     photo.date_taken = earliest.strftime("%Y-%m-%d %H:%M:%S")
     db.commit()
 

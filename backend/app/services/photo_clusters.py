@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.models import Match, Photo
+from app.services.photo_dates import effective_datetime
 
 CLUSTER_GAP = timedelta(minutes=60)
 
@@ -49,7 +50,7 @@ def compute_clusters(db: Session) -> list[dict]:
     is currently orphaned."""
     orphans = _orphan_photos(db)
     parsed = sorted(
-        ((p, datetime.fromisoformat(p.date_taken)) for p in orphans),
+        ((p, effective_datetime(p)) for p in orphans),
         key=lambda pair: pair[1],
     )
 
