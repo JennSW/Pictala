@@ -33,8 +33,9 @@ pulling up live in a demo.
   ```
   and paste the resulting token/secret/user id into `.env`.
 
-No real credentials yet? `backend/seed_data/sample_ebird_export.csv` has a
-few fake outings so you can try the CSV import and matcher immediately —
+No real credentials yet? `backend/seed_data/sample_ebird_export.csv` has 14
+invented outings (no real person's data; regenerate with `python seed_data/generate_sample_data.py`)
+so you can try the CSV import immediately —
 upload it via the `/docs` page's `/sync/ebird` endpoint.
 
 ### 3. Run the matcher
