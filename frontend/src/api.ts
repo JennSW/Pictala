@@ -286,6 +286,11 @@ export interface EbirdSyncResult {
   checklists_created: number;
   observations_created: number;
   rows_skipped: number;
+  // Re-uploading rebuilds each existing checklist's species rows (#95):
+  // links to a species still on the checklist are restored; links to a
+  // species since removed on eBird can't be, and are counted here.
+  matches_relinked: number;
+  matches_unlinked: number;
 }
 
 // File upload -- not JSON, so this bypasses request()/postJson() and sets

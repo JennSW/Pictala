@@ -147,6 +147,16 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
             {uploadResult.rows_skipped > 0 &&
               ` (${uploadResult.rows_skipped} row${uploadResult.rows_skipped === 1 ? "" : "s"} skipped — unrecognized format?)`}
             .
+            {uploadResult.matches_relinked > 0 &&
+              ` Kept ${uploadResult.matches_relinked} confirmed species match${uploadResult.matches_relinked === 1 ? "" : "es"}.`}
+          </div>
+        )}
+        {/* A species removed from a checklist on eBird has nothing to
+            relink to -- say so instead of silently reverting it (#95). */}
+        {uploadResult && uploadResult.matches_unlinked > 0 && (
+          <div role="status" style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", marginTop: "var(--space-1)" }}>
+            {uploadResult.matches_unlinked} confirmed match{uploadResult.matches_unlinked === 1 ? "" : "es"} could not
+            be kept because that species is no longer on its eBird checklist — those photos are back under Needs Match.
           </div>
         )}
       </div>

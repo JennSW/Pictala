@@ -54,9 +54,15 @@ def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None =
     created_checklists = 0
     created_observations = 0
     skipped = 0
-    # Checklists we've already reset in *this* import call, so a checklist
-    # spanning multiple CSV rows only gets cleared once, not once per row.
+    # Checklists we've already handled in *this* import call (reset if they
+    # pre-existed, or freshly created), so a checklist spanning multiple CSV
+    # rows is only touched once, not once per row.
     reimported_checklist_ids: set[int] = set()
+    # For checklists that already existed: which species each confirmed
+    # match pointed at before we rebuild the rows, as
+    # {checklist_id: [(match, common_name, scientific_name), ...]}, so the
+    # links can be restored afterward (issue #95).
+    relink_plan: dict[int, list[tuple[Match, str, str | None]]] = {}
 
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -105,13 +111,31 @@ def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None =
                 db.add(checklist)
                 db.flush()  # get checklist.id
                 created_checklists += 1
+                # Mark it handled now: without this, this checklist's *second*
+                # CSV row finds it already in the DB and takes the re-import
+                # branch below, deleting the first row's observation.
+                reimported_checklist_ids.add(checklist.id)
             elif checklist.id not in reimported_checklist_ids:
-                # Re-uploading a CSV that's already been imported (common
-                # during a demo/testing loop) used to append duplicate
-                # species rows on every run. Clear stale observations and
-                # any matches pointing at them before re-adding this
-                # checklist's rows fresh -- mirrors the idempotent rebuild
-                # matcher.py already does for matches.
+                # Re-uploading a CSV that's already been imported (and
+                # eBird's export is cumulative, so every upload does this)
+                # used to append duplicate species rows on every run. Clear
+                # stale observations before re-adding this checklist's rows
+                # fresh -- mirrors the idempotent rebuild matcher.py already
+                # does for matches.
+                #
+                # Observation ids change on rebuild, so remember which
+                # species each linked match pointed at and restore the link
+                # once the new rows exist (below). Just nulling the links
+                # silently reverted confirmed matches to "Unmatched" (#95).
+                linked = (
+                    db.query(Match, Observation)
+                    .join(Observation, Match.observation_id == Observation.id)
+                    .filter(Match.checklist_id == checklist.id)
+                    .all()
+                )
+                relink_plan[checklist.id] = [
+                    (m, o.common_name, o.scientific_name) for m, o in linked
+                ]
                 db.query(Match).filter(Match.checklist_id == checklist.id).update(
                     {Match.observation_id: None}
                 )
@@ -130,12 +154,44 @@ def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None =
             )
             created_observations += 1
 
+    relinked, unlinked = _relink_matches(db, relink_plan)
     db.commit()
     return {
         "checklists_created": created_checklists,
         "observations_created": created_observations,
         "rows_skipped": skipped,
+        "matches_relinked": relinked,
+        "matches_unlinked": unlinked,
     }
+
+
+def _relink_matches(
+    db: Session, relink_plan: dict[int, list[tuple[Match, str, str | None]]]
+) -> tuple[int, int]:
+    """Point each match back at the rebuilt Observation for the same species.
+
+    Matches by scientific name first (stable across eBird's occasional
+    common-name changes), then common name. A species that's no longer on
+    the checklist -- the person edited it on eBird -- has nothing valid to
+    link to, so it stays unlinked and is counted so the caller can say so
+    rather than losing it silently. Returns (relinked, unlinked).
+    """
+    db.flush()  # assign ids to the freshly added Observation rows
+    relinked = unlinked = 0
+    for checklist_id, entries in relink_plan.items():
+        rebuilt = db.query(Observation).filter(Observation.checklist_id == checklist_id).all()
+        by_scientific = {o.scientific_name.lower(): o for o in reversed(rebuilt) if o.scientific_name}
+        by_common = {o.common_name.lower(): o for o in reversed(rebuilt)}
+        for match, common_name, scientific_name in entries:
+            target = (scientific_name and by_scientific.get(scientific_name.lower())) or by_common.get(
+                common_name.lower()
+            )
+            if target is None:
+                unlinked += 1
+                continue
+            match.observation_id = target.id
+            relinked += 1
+    return relinked, unlinked
 
 
 def _normalize_date(date_raw: str) -> str:
