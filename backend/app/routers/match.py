@@ -87,7 +87,20 @@ def _log_ai_suggestion(
     )
 
 
+def _require_photo(db: Session, photo_id: int) -> Photo:
+    """404 for a photo id that does not exist. Every handler that writes
+    something keyed by photo_id must check this *before* writing: the
+    database alone cannot be the only guard, because by the time it
+    complains the response has already been half-built (code review
+    2026-10-13, H1)."""
+    photo = db.query(Photo).filter(Photo.id == photo_id).one_or_none()
+    if photo is None:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    return photo
+
+
 def _get_or_create_match(db: Session, checklist_id: int, photo_id: int) -> Match:
+    _require_photo(db, photo_id)
     match = (
         db.query(Match)
         .filter(Match.checklist_id == checklist_id, Match.photo_id == photo_id)
@@ -256,6 +269,7 @@ def reject_suggestion(
     checklist = db.query(Checklist).filter(Checklist.id == checklist_id).one_or_none()
     if checklist is None:
         raise HTTPException(status_code=404, detail="Checklist not found")
+    _require_photo(db, photo_id)
 
     _log_ai_suggestion(
         db,

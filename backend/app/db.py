@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from app.config import settings
@@ -7,6 +7,26 @@ engine = create_engine(
     settings.database_url,
     connect_args={"check_same_thread": False} if "sqlite" in settings.database_url else {},
 )
+
+
+def enable_sqlite_foreign_keys(eng) -> None:
+    """SQLite accepts FOREIGN KEY declarations but ignores them unless
+    `PRAGMA foreign_keys=ON` is set on every connection. Without it, a row
+    that points at a photo or observation that does not exist is saved
+    without complaint -- which is how one bad request could leave a Match
+    behind that made an outing page fail permanently (code review
+    2026-10-13, H1). With it, the database refuses the row instead."""
+    if eng.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(eng, "connect")
+    def _on_connect(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+
+enable_sqlite_foreign_keys(engine)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
