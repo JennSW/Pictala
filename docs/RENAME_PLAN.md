@@ -1,109 +1,118 @@
-# BirdTrip Rename — Project Plan
+# Pictala Rename — Project Plan (BirdTrip → Pictala)
 
 Tracks execution of the rename triggered by the naming conflict discovered
-2026-09-01 (see `NAMING_REVIEW.md` and issue #61, "Rename of app"). This
-plan covers *what has to change, what can stay the same, and what's still
-open* — it does not itself pick the final name. Front-runner as of
-2026-09-02 is **Perchoto** (not yet final).
+2026-09-01 (see [`NAMING_REVIEW.md`](NAMING_REVIEW.md) and issue #61, "Rename of
+app"). **The name, Pictala, was decided 2026-09-03.** This plan covers what had to
+change, what could stay the same, and what is still open.
+
+**Status as of 2026-10-13:** the rename itself is complete (in-app strings, Flickr app,
+GitHub repo and board, portfolio site, artifacts, LinkedIn) and issue #61 was closed on
+2026-09-14. A few small leftovers remain; they are listed next.
+
+## Still open (2026-10-13)
+
+Found by re-checking the live site and the code on 2026-10-13.
+
+| # | Item | Where | Who |
+|---|---|---|---|
+| 1 | **GoDaddy's auto-generated SEO description** on `/pictala-kickoff` still reads "Join the BirdTrip kickoff for an adventure travel experience!" It appears in the page's description, `og:` and `twitter:` meta tags, so it shows in search results and link previews. | GoDaddy page settings | Jen |
+| 2 | The **homepage and `/pictala-story` still link to the old slug** `/birdtrip-kickoff`. It works, because the old slug redirects (301) to `/pictala-kickoff`, but the links should point at the new slug. | Embed HTML | Claude drafts, Jen publishes |
+| 3 | **Old name in the repo's user-visible text**: `start.sh` (its header and 3 console messages) and `frontend/package.json` (package name). Section 3 below explains why this now matters. | Code | Claude, on request |
+| 4 | **Local directory** still named `birdtrip-app 2` (issue #93). Renaming it breaks the virtual environment's script wrappers, which hardcode its path; rebuild it afterward (`rm -rf .venv && python3.12 -m venv .venv && pip install -r requirements.txt`). | Local machine | Jen, when ready |
+| 5 | **Older documents still say "BirdTrip"** (a few mentions each in the PRD, design doc, user stories, and others). Proposed: leave them as historical and have the README explain the rename, with no rename pass. | Docs | Jen to confirm |
+
+**Decided 2026-10-13: keep the "Formerly BirdTrip" footnote on `/pictala`.** It is intentional.
+The old name is in use by another product, so the footnote records that we know about it and
+changed the name as a result, and it also covers any reference to the old name that was missed.
+It is the only visible old-name text left on the site.
 
 ## Status key
 
-- **Blocked on name decision** — can't execute until a final name is chosen.
-- **Independent** — should happen on its own timeline, regardless of when
-  the name is finalized.
-- **Deferred** — no action needed until a name is chosen; safe to ignore
-  until then.
-- **Open investigation** — unresolved question, needs an answer before
-  the task under it can be scoped or executed.
+- **Done** — completed and verified.
+- **Independent** — should happen on its own timeline, regardless of the app name.
+- **Open investigation** — an unresolved question that needs an answer before the task under it can be scoped.
+- *Blocked on name decision* and *Deferred* applied before 2026-09-03 and no longer apply.
 
 ---
 
 ## 1. Must change now, independent of the app rename
 
-The app itself isn't deployed anywhere public, but one surface already
-is: the public job-search portfolio site. This carries real exposure
-today and shouldn't wait on a final app name.
+The app itself isn't deployed anywhere public, but one surface already is: the public
+job-search portfolio site. It carried real exposure and could not wait on the app rename.
 
-| Item | What needs to happen | Status |
+| Item | What needed to happen | Status |
 |---|---|---|
-| theswiftbrain.com pages (`/birdtrip`, `/birdtrip-kickoff`, `/program-toolkit`) | Swap "BirdTrip" references to a neutral placeholder term, or pause linking new outreach to these slugs, until a final name lands | **Done 2026-09-14**: nav renamed to "Pictala" (`/pictala` slug), Kickoff page's on-page heading fixed by Jen (was showing "BIRDTRIP KICKOFF" despite the tab title already saying Pictala). `/program-toolkit` embeds the Program Toolkit artifact, which is retitled below — not independently re-verified live. |
-| Published Claude Artifacts ("BirdTrip Program Toolkit," "BirdTrip Kickoff") | Same as above — retitle or hold off sharing until renamed | **Done 2026-09-14**: all 5 portfolio artifacts checked. Program Toolkit and Kickoff retitled (title + h1). Two more found during the sweep — The Swift Brain (main portfolio page) and Kickoff Playbook — each had a link card still labeled "BirdTrip Kickoff" pointing at the renamed Kickoff artifact; both updated to "Pictala Kickoff." Narrative prose describing historical work (e.g. "BirdTrip's 5 database tables," "built BirdTrip") left as-is intentionally — accurate description of what happened before the rename, not a label. |
-| LinkedIn / outreach content referencing BirdTrip by name | Audit and update wording if/when found | **Partially done**: Jen updated the LinkedIn article (added "formerly BirdTrip" + new Pictala screenshots) and the profile post text (same), but the profile post's *image* can't be edited after publishing — known LinkedIn limitation, not fixable. **Still unverified**: the rest of the LinkedIn profile itself (About/Experience/Featured/Projects) — blocked twice, the sandboxed browser isn't logged in and Claude in Chrome wasn't connected when tried. Needs either a manual check or a retry with Claude in Chrome connected. |
+| theswiftbrain.com pages | Replace "BirdTrip" references with the new name and keep old links working | **Done 2026-09-14**: nav renamed to "Pictala"; the Kickoff page's on-page heading was fixed by Jen (it still showed "BIRDTRIP KICKOFF" although the tab title already said Pictala). **Re-verified 2026-10-13 by live fetch:** all six pages load; `/birdtrip` and `/birdtrip-kickoff` return 301 redirects to `/pictala` and `/pictala-kickoff`; the only visible old-name text is the intentional "Formerly BirdTrip" footnote (kept by decision, see above). The SEO-description and old-slug-link items above remain. |
+| Published Claude Artifacts ("BirdTrip Program Toolkit," "BirdTrip Kickoff") | Retitle, or hold off sharing until renamed | **Done 2026-09-14**: all 5 portfolio artifacts checked. Program Toolkit and Kickoff retitled (title and h1). Two more were found during the sweep, The Swift Brain (main portfolio page) and Kickoff Playbook, each with a link card still labeled "BirdTrip Kickoff"; both updated to "Pictala Kickoff". Narrative prose describing historical work (e.g. "BirdTrip's 5 database tables") was left as-is on purpose: it accurately describes what happened before the rename and is not a label. |
+| LinkedIn / outreach content referencing BirdTrip by name | Audit and update wording | **Done 2026-09-14**: Jen updated the LinkedIn article (added "formerly BirdTrip" and new screenshots) and the profile post text, and audited the profile page itself, confirming no remaining mentions (recorded on #61). One known limit: the profile post's *image* cannot be edited after publishing (a LinkedIn limitation). |
 
-**Why this is separate:** this is live, public, and tied to active job
-outreach — the only genuine trademark-adjacent exposure that exists
-right now, versus the app itself which is still private/local-only.
+**Why this was separate:** it was live, public, and tied to active job outreach, the
+only genuine trademark-adjacent exposure that existed at the time.
 
 ---
 
-## 2. Must change before any public app launch (not urgent while local-only)
+## 2. Must change before any public app launch
 
-These are the user-visible strings inside the app. None of them need to
-move until a name is final and a public deploy is imminent — they're a
-contained find-and-replace, not a structural change.
+The user-visible strings inside the app. A contained find-and-replace, not a structural
+change. (Line numbers are as of 2026-09-02.)
 
 | Location | What it is | Change needed |
 |---|---|---|
 | `frontend/index.html:6` | `<title>BirdTrip</title>` | Browser tab title |
 | `frontend/src/App.tsx:1163` | `<span className="wordmark">BirdTrip</span>` | In-app logo/wordmark |
 | `frontend/src/SyncPanel.tsx:147` | "BirdTrip works best with your eBird data…" | User-facing help copy |
-| `backend/app/main.py:11` | `title="BirdTrip API"` | Title shown on the auto-generated `/docs` Swagger page once the API is deployed/reachable |
+| `backend/app/main.py:11` | `title="BirdTrip API"` | Title shown on the auto-generated `/docs` Swagger page |
 
-Status: **Done** (commit `3bc5ac7`, 2026-09-03). Verified live in browser tab, in-app header, and Swagger UI title.
-
----
-
-## 3. Can stay as an internal code name indefinitely
-
-No public or trademark exposure — GitHub repo (`JennSW/BirdTrip`) is
-confirmed **private**, so none of this is visible outside the local dev
-environment.
-
-| Location | What it is |
-|---|---|
-| `frontend/package.json:2` | npm package name `birdtrip-frontend` — build metadata only |
-| `backend/app/config.py:27` | SQLite filename `birdtrip.db` — local file, never shown to users |
-| `frontend/src/App.tsx:120-121` | `localStorage` key `birdtrip_last_load` — invisible outside devtools |
-| `frontend/src/App.tsx:740`, `frontend/src/theme.css:1`, `backend/app/schemas.py:93` | Code comments/docstrings — not a FastAPI route docstring, so none surface in API docs |
-| `start.sh` | Local dev-run script echo text — seen only by whoever runs it locally |
-| `docs/` (PRD, design docs, backlog, README history, etc.) | Private-repo planning docs |
-
-Status: **Deferred**. Rename opportunistically during unrelated edits if
-convenient, but nothing here requires a dedicated pass.
+Status: **Done** (commit `3bc5ac7`, 2026-09-03). Verified live in the browser tab,
+the in-app header, and the Swagger UI title.
 
 ---
 
-## 4. External registrations — open investigation
+## 3. Internal code names
 
-Three things outside the codebase are also named BirdTrip. None of
-these block feature work; they're tracked here so they don't get
-forgotten when the rename actually happens.
+These were left as internal code names on 2026-09-03 because the repo was private and
+none of it was visible to anyone else. **That reasoning changes if the repo goes public,
+because everything in it then becomes visible.** State as of 2026-10-13, by search:
+
+| Location | What it is | Visible to a visitor? | Recommendation |
+|---|---|---|---|
+| `start.sh` (header and 3 console messages: "BirdTrip is starting up", "Stopping BirdTrip…", and the Ctrl+C reminder) | Local run script | **Yes**, to anyone who runs it or reads it | Rename the text; no functional impact |
+| `frontend/package.json` (`"name": "birdtrip-frontend"`) | npm package name | Yes, in the repo | Rename; no functional impact |
+| Code comments: `frontend/src/theme.css:1`, `frontend/src/App.tsx:995`, `backend/app/schemas.py:94`, one in `docs/mockups/outing-grouping-mockup.html` | Comments and docstrings | Yes, in the repo, but not in any UI or API docs | Rename opportunistically |
+| `backend/app/config.py:27` and `backend/.env.example:23` (`sqlite:///./birdtrip.db`) | Default database filename | Yes, in the repo | Rename **only with care**: changing the default points the app at a new, empty database unless the existing file is renamed too, or `DATABASE_URL` is set explicitly. |
+| `frontend/src/App.tsx:123-124` (`birdtrip_last_load`) | localStorage key for the "new since last visit" marker | Only in browser dev tools | Leave, or rename and accept that the marker resets once |
+| Older docs (PRD, design doc, user stories, etc.) | Planning documents | Yes, in the repo | Left as historical; see "Still open" item 5 |
+
+Status: **Open for decision** on whether to rename the visible items before the repo is
+published. The behavior-affecting items (database filename, localStorage key) need a
+deliberate pass rather than a find-and-replace.
+
+---
+
+## 4. External registrations
 
 | Item | Open question | Status |
 |---|---|---|
-| GitHub repo `JennSW/BirdTrip` (private) | None — renaming is a simple settings change; GitHub auto-redirects the old clone URL, so the local `git remote` won't break | **Done 2026-09-14**: renamed to `JennSW/Pictala`. Confirmed the old URL redirects (`git ls-remote`, `gh api` both resolved), then pointed the local `origin` remote at the new canonical URL. The GitHub Project board was also renamed, "Jen Swift BirdTrip" → "Jen Swift Pictala" (same project ID, no items affected). |
-| eBird API key | None — tied to the account rather than a public "app name" | Low risk, no action needed |
-| Flickr API app (registered in Flickr's App Garden) | ~~Unconfirmed: is renaming a simple dashboard edit, or does it require re-registering with new keys/secrets?~~ **Resolved 2026-09-14**: Jen renamed the app to "Pictala" in the App Garden dashboard; confirmed via a live `flickr.test.login` call afterward that `FLICKR_API_KEY`/`FLICKR_API_SECRET`/OAuth token in `.env` still authenticate unchanged. It was a simple dashboard edit — no re-registration, no new keys. | **Done** |
+| GitHub repo `JennSW/BirdTrip` | None; renaming is a simple settings change and GitHub redirects the old clone URL | **Done 2026-09-14**: renamed to `JennSW/Pictala`. Confirmed the old URL redirects (`git ls-remote` and `gh api` both resolved), then pointed the local `origin` remote at the new URL. The GitHub Project board was renamed too ("Jen Swift BirdTrip" → "Jen Swift Pictala"), with the same project ID and no items affected. The repo is still private as of 2026-10-13. |
+| eBird API key | None; tied to the account, not a public app name | No action needed |
+| Flickr API app (registered in Flickr's App Garden) | Was renaming a simple dashboard edit, or did it need new keys? | **Done 2026-09-14**: Jen renamed the app to "Pictala" in the App Garden dashboard; a live `flickr.test.login` call afterward confirmed the existing key, secret, and OAuth token still authenticate. A simple dashboard edit; no re-registration. |
+| Domains | Which to register? `pictala.com` is a premium resale listing | **`pictala.app` registered 2026-09-03** (via GoDaddy); on 2026-10-13 it forwards to `theswiftbrain.com/pictala`. `pictala.com` is still a paid BrandBucket listing (not purchased). `pictala.io`: no response on 2026-10-13; whether it is registered was not checked. |
+| Local project directory | Rename `birdtrip-app 2` to match | **Open** (issue #93); see "Still open" item 4 |
 
 Posted to issue #61 on 2026-09-02 for tracking:
 https://github.com/JennSW/BirdTrip/issues/61#issuecomment-5516888914
 
 ---
 
-## 5. Naming decision itself
+## 5. Naming decision
 
-Not part of this plan's execution scope, but the blocking dependency for
-Section 2. See `NAMING_REVIEW.md` for the full candidate history (note:
-that file predates the 2026-09-02 session and hasn't been reconciled
-with the Perch/coined-word round — front-runner from that later round is
-**Perchoto**, checked clean on domain, general web presence, and USPTO
-trademark search).
+**Pictala**, decided 2026-09-03. The full candidate history (151 entries) and the
+reasoning are in [`NAMING_REVIEW.md`](NAMING_REVIEW.md).
 
 ---
 
-## Summary: does the undecided name block anything?
+## Summary: did the name decision block anything?
 
-**No.** Sections 2 and 3 don't touch data models, business logic, or API
-design — feature work can continue freely. The only thing actually
-time-sensitive is Section 1 (the live public portfolio site), which is
-independent of when the app itself gets renamed.
+**No.** Sections 2 and 3 never touched data models, business logic, or API design, so
+feature work continued freely while the name was undecided. The only time-sensitive item
+was Section 1 (the live public portfolio site), and it was independent of the app name.

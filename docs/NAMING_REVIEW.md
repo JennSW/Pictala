@@ -1,4 +1,30 @@
-# BirdTrip — Naming Review
+# Pictala — Naming Review
+
+*The app was named **BirdTrip** until this review replaced it; older documents still use that name.*
+
+## Decision
+
+**The name is Pictala**, decided 2026-09-03 and recorded on issue #61. It is *pictura* ("picture") plus
+*ala* ("wing"): "picture-wing".
+
+- **Why the review happened.** On 2026-09-01 an existing bird-trip-planning app turned up with the same
+  name as the original, BirdTrip.
+- **How it was chosen.** By preference among three finalists that all passed the same checks (app stores,
+  trademark signals, and domain availability). The other two were **Nomavis** (*nomen* + *avis*, "bird-name",
+  the closest fit to the app's species-naming feature) and **Alanota** (*ala* + *nota*, "wing-mark", the most
+  accurate to real birding practice, since wing bars are a field mark).
+- **Scale.** 151 entries are logged in the table below, counting the original name, across the sessions of
+  2026-09-01 to 2026-09-03. The counts come from this table, by script.
+- **The domain.** `pictala.com` is a premium resale listing, too expensive to be worth buying, so `pictala.app`
+  was registered instead on 2026-09-03.
+- **What followed.** The in-app strings were renamed the same day; the Flickr app registration, GitHub repo and
+  project board, portfolio site, and published artifacts were renamed by 2026-09-14, and #61 was closed that
+  day. [`RENAME_PLAN.md`](RENAME_PLAN.md) has the execution record and what is still open.
+
+The rest of this document is the working log, kept as written. Where it says "leading candidate" or "favorite",
+read that as the state on the day, not the outcome.
+
+## About this log
 
 Full consolidated tracker, replacing the earlier partial version.
 Covers the 2026-09-01 session (initial conflict discovery + first six
@@ -6,8 +32,8 @@ brainstorm rounds), the much longer 2026-09-02 session (guidance words →
 coined words → Latin roots), and the 2026-09-03 session (Perch-
 saturation confirmed via 3 more conflicts, a slang round, and a fresh
 Latin-root round that surfaced the new leading candidate, Nomavis). See
-issue #61 ("Rename of app") and the naming-conflict memory for full
-narrative context — this doc is the scannable reference table.
+issue #61 ("Rename of app") for the narrative context — this doc is the
+scannable reference table.
 
 Checks are web-search-based (app stores, obvious trademark hits, known
 funded companies) plus, for 2026-09-02 candidates, a live USPTO
@@ -51,7 +77,7 @@ guarantee.
 | Fieldmark | Field + mark | Rejected: conflict | Live trademarked field-data-collection app, same category | No |
 | Kestrel | Real word | Rejected: conflict | "Project Kestrel" — open-source bird-photo organizer, nearly identical positioning (see also 09-02 competitive landscape finding re: Perch) | No |
 | Plumage | Real word | Rejected: conflict | Announced bird-photography app of the same name on BirdForum | No |
-| Muster, Charm, Rafter, Kettle, Bevy, Wisp, Shimmer, Gulp, Wedge, Wren, Chickadee, Bunting, Swallow, Robin, Finch, Kinglet, Junco, Waxwing, Vireo, Nuthatch, Goldfinch, Wrenlist | Various single real words / collective nouns | Rejected: conflict | Each collided with a real funded company, well-known tool, or live app — full detail in the naming-conflict memory | No |
+| Muster, Charm, Rafter, Kettle, Bevy, Wisp, Shimmer, Gulp, Wedge, Wren, Chickadee, Bunting, Swallow, Robin, Finch, Kinglet, Junco, Waxwing, Vireo, Nuthatch, Goldfinch, Wrenlist | Various single real words / collective nouns | Rejected: conflict | Each collided with a real funded company, well-known tool, or live app — per-name detail was kept in session notes, not in this repo | No |
 | FieldMatch, SightSync, FeatherFrame, Snapchecklist, Roostlog, WingFrame, ChirpFrame | Round-1 literal compounds | Available, unchecked | — | Yes, unchecked |
 | Walklist, Ramblelist, Outing Ledger, Fieldframe, Snaplist, Sightframe, Perchbook, Fieldnotes | Round-2 literal compounds | Available, unchecked | — | Yes, unchecked |
 | Perchpix, Perchsnap, Perchclick, Perchgallery, Perchalbum | Round-3 Perch+photo compounds | Available, unchecked | — | Yes, unchecked |
@@ -133,7 +159,7 @@ guarantee.
 | **Alanota** | *ala* + *nota* ("wing-mark") | Available, checked | — | **Yes** — genuinely accurate, not just decorative: wing bars/wing patches are a real field mark birders use to ID species |
 | Notala | *nota* + *ala*, reversed | Available, checked | Same roots/result as Alanota, softer ending | Yes |
 | Alagran | *ala* + *granum* ("wing-grain") | Available, checked | Wing+seed pairing is decorative, not meaningful the way Alanota is | Yes |
-| **Pictala** | *pictura* + *ala* ("picture-wing") | Available, checked | No active trademark or live app on .com/.app/.io. `pictala.com` is a premium domain listed for sale on BrandBucket ("attractive... for photo and image creation apps") — user confirmed the asking price is too high; `.app`/`.io` both look open at normal registration price. Plan: register `.app` or `.io` instead of `.com`. For a single-user portfolio tool (freeware if ever shared per the PRD's V2 vision), not owning the `.com` is a minor risk, not a blocker. | Yes |
+| **Pictala** | *pictura* + *ala* ("picture-wing") | Available, checked | No active trademark or live app on .com/.app/.io. `pictala.com` is a premium domain listed for sale on BrandBucket ("attractive... for photo and image creation apps") — user confirmed the asking price is too high; `.app`/`.io` both look open at normal registration price. Plan: register `.app` or `.io` instead of `.com`. For a single-user portfolio tool (freeware if ever shared per the PRD's V2 vision), not owning the `.com` is a minor risk, not a blocker. | **Chosen, 2026-09-03.** `pictala.app` registered. |
 
 ## Grouped by decision
 
@@ -165,7 +191,7 @@ history in context.
 | Alanota | ala + nota ("wing-mark") | Yes — genuinely accurate (wing bars are a real field mark) |
 | Notala | nota + ala, reversed | Yes |
 | Alagran | ala + granum ("wing-grain") | Yes, but decorative rather than meaningful |
-| Pictala | pictura + ala ("picture-wing") | Yes, but .com is a paid premium-domain listing, not free to register |
+| **Pictala** | pictura + ala ("picture-wing") | **Chosen, 2026-09-03.** The .com is a paid premium listing, so pictala.app was registered instead |
 
 ### Available, unchecked — proposed, never actually tested
 
@@ -248,7 +274,9 @@ history in context.
 | Melofera | One letter off from *Apis mellifera*, the honeybee's actual scientific name |
 | Pewee | Passed every formal availability check clean — withdrawn as a *bare word* specifically because "peewee" is an extremely common existing English word/pop-culture term (Pee-wee Herman, pee-wee sports leagues), not because of any conflict check |
 
-## Where things stand (updated 2026-09-03)
+## Where things stood on 2026-09-03 (the day it was decided)
+
+*Historical snapshot from the end of the review. The outcome is in the Decision section at the top.*
 
 **User's stated favorite so far: Pictala** (*pictura* + *ala*,
 "picture-wing"). Clean on every check (app stores, trademark signals,
@@ -297,8 +325,8 @@ clean winner** — six of its eleven names hit a real conflict, and none
 passed clean.
 
 **Pewee tried as a fresh top option, then self-disqualified — but not a
-dead end.** Following a genuine gut-feel pattern review (see the
-gut-feel list captured in the naming-conflict memory), the user pulled
+dead end.** Following a genuine gut-feel pattern review (the list of
+patterns was kept in session notes, not in this repo), the user pulled
 "small bird, cute sound" as a new direction and landed on **Pewee**
 (Eastern Wood-Pewee, *Contopus virens*) — the cleanest availability
 check of the whole session (no live trademark, no live competitor). It
