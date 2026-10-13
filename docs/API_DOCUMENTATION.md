@@ -101,7 +101,7 @@ single-user/local rather than a running service.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/sync/ebird` | Upload an eBird "Download My Data" CSV export (multipart file) |
-| POST | `/sync/flickr?min_taken_date=&max_taken_date=` | Pull + upsert Flickr photos in a date range; refreshes title/tags/coordinates on existing photos too, so edits made on Flickr after the fact still land |
+| POST | `/sync/flickr?min_taken_date=&max_taken_date=` | Pull + upsert Flickr photos in a date range; refreshes title/tags/coordinates on existing photos too, so edits made on Flickr after the fact still land. Follows every page of results (500 photos per page, up to 20 pages); a range larger than that returns a 502 asking you to narrow it, rather than returning a partial result |
 | POST | `/sync/match` | Re-run rule-based matching over everything currently in the DB |
 | GET | `/sync/status` | Remaining syncs today, last-synced-at timestamp |
 | POST | `/sync/run?min_taken_date=&max_taken_date=` | The "Sync now" button: Flickr pull + re-match in one call, capped at 4/day (calendar day, user's local time zone). Defaults to a 30-day lookback if no range given. |

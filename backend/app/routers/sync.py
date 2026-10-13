@@ -65,7 +65,13 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
     artifact, or to help species matching) needs to actually reach the
     app; a photo that already exists used to be skipped entirely, so no
     amount of re-syncing ever picked up such edits."""
-    raw_photos = get_photos_in_range(min_taken_date, max_taken_date)
+    try:
+        raw_photos = get_photos_in_range(min_taken_date, max_taken_date)
+    except RuntimeError as exc:
+        # Flickr rejected the request, or the range was too large to fetch in
+        # full (see flickr_client.MAX_PAGES). Surface the actual reason -- a
+        # bare 500 would hide the "narrow the date range" instruction.
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     created = 0
     updated = 0
     for p in raw_photos:
