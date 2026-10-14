@@ -138,7 +138,8 @@ you to bring your own Flickr and eBird accounts. Sharing with this group stays a
 **Resolved decision: matching strategy is hybrid.** Checklist-first stays
 the default (cheap, accurate, matches the `DESIGN.md` "rules first, AI for
 the residual" narrative) — Claude-first identification only runs as a
-fallback for photos with no matching checklist at all. Rationale beyond
+fallback: for photos with no matching checklist, and for photos that
+matched a checklist but whose checklist-constrained guess found nothing. Rationale beyond
 the accuracy/cost tradeoff: this keeps Claude's use in the app looking
 like a deliberate, narrow engineering decision rather than something
 forced in to check an "I used AI" box — it shows up exactly where a
