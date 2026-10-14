@@ -238,9 +238,8 @@ reporting.
 hybrid matching decision (see `PRD.md` Section 4). (1) A photo doesn't
 fall into any checklist's time/GPS window at all (no logged outing). (2) A
 photo matches a checklist, but the checklist-constrained guess comes back
-"none" — e.g. a real, discovered case: a Wood Duck photo matched to the
-Lake Merritt outing by time/place, but Wood Duck wasn't one of the species
-actually reported that day. Both cases fall back to a broader,
+"none" — e.g. a Wood Duck photo matched to an outing by time/place, but
+Wood Duck wasn't one of the species actually reported that day. Both cases fall back to a broader,
 less-constrained species guess from Claude, using the photo's title/tags
 as hints if present. eBird's taxonomy is then queried to resolve standard
 metadata (`speciesCode`, `comName`, `sciName`) for whatever Claude
