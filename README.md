@@ -86,6 +86,7 @@ The five session recaps below are where the real decisions were made, with the r
 |---|---|
 | [`docs/PRD.md`](docs/PRD.md) | What and why: goals, scope, audience |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Architecture and the rules-versus-AI tradeoff |
+| [`docs/ARCHITECTURE_DECISIONS.md`](docs/ARCHITECTURE_DECISIONS.md) | Why it is built this way: the decisions, their reasons and their costs |
 | [`docs/USER_STORIES.md`](docs/USER_STORIES.md) | Stories with acceptance criteria |
 | [`docs/PROGRAM_CHARTER.md`](docs/PROGRAM_CHARTER.md), [`docs/STATUS_REPORT_2026-08-30.md`](docs/STATUS_REPORT_2026-08-30.md), [`docs/MULTI_USER_AUTH_SCOPING.md`](docs/MULTI_USER_AUTH_SCOPING.md) | The program-management set for the multi-user phase |
 | [`docs/COMPETITIVE_LANDSCAPE.md`](docs/COMPETITIVE_LANDSCAPE.md), [`docs/BACKLOG_SCOPING.md`](docs/BACKLOG_SCOPING.md) | Existing tools; how the backlog was ordered |
