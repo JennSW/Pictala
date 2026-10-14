@@ -1,6 +1,6 @@
-# BirdTrip API Reference
+# Pictala API Reference
 
-Curated reference for the BirdTrip backend (FastAPI, `backend/app/main.py`).
+Curated reference for the Pictala backend (formerly BirdTrip; FastAPI, `backend/app/main.py`).
 Written for a mixed audience — engineers integrating against it, and
 non-engineering stakeholders (Product, Legal, Trust & Safety) who need to
 understand what data moves where without reading source. Auto-generated
@@ -100,7 +100,7 @@ single-user/local rather than a running service.
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/sync/ebird` | Upload an eBird "Download My Data" CSV export (multipart file) |
+| POST | `/sync/ebird` | Upload an eBird "Download My Data" export (multipart file): the CSV, or the .zip eBird emails you, which is unzipped automatically. Up to 50 MB |
 | POST | `/sync/flickr?min_taken_date=&max_taken_date=` | Pull + upsert Flickr photos in a date range; refreshes title/tags/coordinates on existing photos too, so edits made on Flickr after the fact still land. Follows every page of results (500 photos per page, up to 20 pages); a range larger than that returns a 502 asking you to narrow it, rather than returning a partial result |
 | POST | `/sync/match` | Re-run rule-based matching over everything currently in the DB |
 | GET | `/sync/status` | Remaining syncs today, last-synced-at timestamp |
@@ -123,6 +123,31 @@ a later manual correction doesn't erase what the AI originally suggested.
 
 ---
 
+## Errors
+
+Every error response, including an unexpected server error, has the same shape:
+
+```json
+{"detail": "What went wrong, in a sentence.", "hint": "What to try, or null.", "error_id": "8-character reference, or null"}
+```
+
+`error_id` is set only for unexpected crashes (HTTP 500). The same reference is logged
+with the full traceback, so a bug report can quote it. Responses carry CORS headers for the
+allowed origins even on errors, so the web app can always read them.
+
+| Status | Meaning |
+|---|---|
+| 400 | A key or account isn't set up yet (the hint says how), or the input can't be used (wrong file, date range too large) |
+| 404 | The outing, photo or cluster doesn't exist |
+| 409 | The request conflicts with data already stored |
+| 422 | The request was malformed; `detail` names the field |
+| 429 | The daily Flickr sync limit (4) has been used |
+| 502 | Flickr, Anthropic or eBird refused or failed; `detail` says which and why |
+| 503 | The network or the local database is unavailable |
+| 500 | Unexpected; `error_id` identifies it in the log |
+
+---
+
 ## `/health`
 
 `GET /health` → `{"status": "ok"}`. No auth, no DB access — pure liveness
@@ -132,13 +157,19 @@ check.
 
 ## Data-handling notes (for Legal / Trust & Safety review)
 
-- **External data sources:** eBird (user-uploaded CSV, no live API call
-  today) and Flickr (OAuth1, pulled via `/sync/flickr`). Both are the
-  user's own accounts/data — no third-party personal data ingestion.
+- **External data sources:** eBird, as a user-uploaded CSV plus one live
+  call to eBird's public species list (taxonomy) with the user's own free
+  API key, used only to resolve species names (no checklist data is sent);
+  and Flickr (OAuth1, pulled via `/sync/flickr`, plus a per-photo lookup of
+  its timezone offset). Both are the user's own accounts/data — no
+  third-party personal data ingestion.
 - **No auth today:** every endpoint above is currently unauthenticated —
   see [MULTI_USER_AUTH_SCOPING.md](MULTI_USER_AUTH_SCOPING.md) before this
   API is exposed beyond localhost.
-- **AI calls:** `suggest*`/`identify` endpoints send a photo URL (+
-  species candidate list) to the Anthropic API for a species guess
-  (`app/services/species_classifier.py`). No user PII is included in
-  those calls beyond what's already in the photo/checklist data itself.
+- **AI calls:** the `suggest*` endpoints (not `identify`, which only
+  resolves a name that was typed or accepted) download the photo from
+  Flickr and send **the image itself**, base64-encoded, to the Anthropic API for a species
+  guess (`app/services/species_classifier.py`), together with either the
+  outing's species names or the photo's own title and tags. No location, date or account
+  name is included. Title and tags are whatever the user typed on Flickr.
+  Only runs if an Anthropic API key is configured; otherwise AI suggestions are off.
