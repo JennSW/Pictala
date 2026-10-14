@@ -54,7 +54,9 @@ rules are the better tool.
   realistic once the app is functionally solid and presentable. Related
   technical enabler (multi-user support: letting others add their own
   Flickr/Merlin user IDs) is already noted in `BRAINSTORMING.md`.
-  Not revenue-focused — likely to remain freeware.
+  Not revenue-focused. The code is source-available under the PolyForm
+  Noncommercial license: free to use and modify for noncommercial purposes,
+  and commercial use needs the author's permission.
 
 **Non-goal as a success criterion:** this isn't measured by number of
 users, uptime, or growth — it's a single-user tool evaluated on demo
@@ -129,8 +131,8 @@ you to bring your own Flickr and eBird accounts. Sharing with this group stays a
 - Sharing/hosting for the select-group audience, and any deployment work
   that implies (e.g. moving off local-only, off SQLite) — tied to the V2
   "share with the birding community" goal, not v1.
-- Revenue generation of any kind — likely to remain freeware
-  (Section 2).
+- Revenue generation of any kind (the code is licensed under PolyForm
+  Noncommercial; see Section 2).
 - Production hardening generally (auth beyond a single user, a
   non-SQLite database) — `DESIGN.md` already calls this a deliberate
   scope boundary.

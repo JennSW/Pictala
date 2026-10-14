@@ -225,6 +225,9 @@ testing.
   right." The plain note field reuses the fallback accept endpoint with
   no AI guess behind it at all (an arbitrary label with no species
   metadata is exactly what an "Other" entry already is).
+  *Status (2026-10-14): the "Try Again" button was removed on 2026-08-04, since it
+  re-ran the identical constrained call with the identical candidates. "Try broader
+  ID" is now the "Ask Pictala" button.*
 
 ### Story: Species ID fallback for eBird gaps
 
