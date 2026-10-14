@@ -1,5 +1,7 @@
 # Program Charter — BirdTrip v2: Multi-User & Community Sharing
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 **Status:** Draft for review · **Date:** 2026-08-30 · **Program Lead:** Jen Swift
 
 ## 1. Purpose

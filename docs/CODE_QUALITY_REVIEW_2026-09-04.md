@@ -1,5 +1,7 @@
 # Code Quality Review: Complexity/Over-Engineering Pass — 2026-09-04
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 **Trigger:** run of the `code-quality-pragmatist` persona
 (`~/Claude/Code review/code-quality-pragmatist.md`), the
 day after the broader hallucination-focused review in

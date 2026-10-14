@@ -1,5 +1,7 @@
 # Code Review: Hallucination Audit — 2026-09-04
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 > **Correction (2026-09-04):** the issue numbers below were originally
 > wrong due to a bug in the bulk issue-creation script — each filed issue's
 > title/labels ended up paired with the wrong finding's body (one slot off).

@@ -1,5 +1,7 @@
 # BirdTrip — User Stories
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Backlog of user-facing stories, grouped by feature area. Each story follows:
 **As a / I want / so that** → Description → Acceptance Criteria → Priority → Notes.
 

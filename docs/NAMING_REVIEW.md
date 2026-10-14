@@ -1,5 +1,7 @@
 # Pictala — Naming Review
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 *The app was named **BirdTrip** until this review replaced it; older documents still use that name.*
 
 ## Decision

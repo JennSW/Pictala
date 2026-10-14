@@ -1,5 +1,7 @@
 # BirdTrip — Multi-User Login: Scope & Level-of-Effort (2026-08-30)
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 ## 1. Ask
 
 Let a second person log into BirdTrip with their own data — their own eBird

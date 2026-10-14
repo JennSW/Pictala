@@ -1,5 +1,7 @@
 # Competitive Landscape
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Web-search-based scan (2026-09-02) of apps/tools related to what this
 project does — matching an eBird checklist to Flickr photos from the
 same outing, with an AI-assisted species-ID review workflow. Same

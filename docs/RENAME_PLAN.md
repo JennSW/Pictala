@@ -1,5 +1,7 @@
 # Pictala Rename — Project Plan (BirdTrip → Pictala)
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Tracks execution of the rename triggered by the naming conflict discovered
 2026-09-01 (see [`NAMING_REVIEW.md`](NAMING_REVIEW.md) and issue #61, "Rename of
 app"). **The name, Pictala, was decided 2026-09-03.** This plan covers what had to

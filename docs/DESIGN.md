@@ -1,5 +1,7 @@
 # BirdTrip — Design Doc
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 A portfolio project that pairs your eBird checklists with your Flickr photos so
 each outing shows what you saw and what you shot, side by side. Built to be a
 talking piece in interviews: it has a real (small) data problem, a real

@@ -1,5 +1,7 @@
 # BirdTrip — Brainstorming
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Running notes and ideas for the project. Not a roadmap or a commitment —
 just a place to capture things as they come up, to revisit later.
 

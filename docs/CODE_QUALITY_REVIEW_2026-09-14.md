@@ -1,5 +1,7 @@
 # Code-Quality-Pragmatist Review — 2026-09-14
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Scope: everything changed this session (commits `f798deb`..`b8ac182`) —
 the Pictala rename cleanup, the #62/#67/#69 feature work, the 9-issue
 code-review batch, and the matcher.py bug fixes. Lens: over-engineering,

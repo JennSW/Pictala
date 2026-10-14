@@ -1,5 +1,7 @@
 # Pictala — Quickstart
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 Matches your eBird checklists to your Flickr photos, outing by outing. (Formerly
 BirdTrip; older documents still use that name.) Built as a portfolio project: see
 [`DESIGN.md`](DESIGN.md) for the architecture, the eBird/Flickr matching problem, and

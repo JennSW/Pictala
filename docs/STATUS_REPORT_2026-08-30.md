@@ -1,5 +1,7 @@
 # BirdTrip — Program Status Report
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 **Date:** 2026-08-30 · **Audience:** Cross-functional stakeholders (Product, Engineering, Legal, Trust & Safety) · **Program:** v2 — Multi-User & Community Sharing
 
 ## Done

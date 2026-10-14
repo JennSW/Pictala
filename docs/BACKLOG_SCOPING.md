@@ -1,5 +1,7 @@
 # BirdTrip — Backlog & V2 Scoping (2026-08-12)
 
+> Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
+
 A snapshot review of everything open on the board beyond v1 (now fully closed
 per `docs/PRD.md` §4) — organized by actual readiness to build, not just
 board bucket, since a few "V2"-labeled items are trivial and a few
