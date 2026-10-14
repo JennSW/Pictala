@@ -2053,7 +2053,7 @@ export default function App() {
                         anything else in the outing being resolved first,
                         unlike Confirmed/Not-a-bird which do -- gating it
                         just hid real data behind unrelated unresolved
-                        photos (School Pond, 2026-08-11 review: 4 no-photo
+                        photos (Pond, 2026-08-11 review: 4 no-photo
                         species invisible behind 14 unrelated Needs-Claude
                         photos). Note: the mockup's fourth post-review
                         bucket, "Not a bird," has no backend representation

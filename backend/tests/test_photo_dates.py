@@ -26,7 +26,7 @@ TAKEN = datetime(2026, 10, 8, 17, 28, 32)  # Flickr's upload-time fallback
         ("Oct 7-04008", date(2026, 10, 7)),  # no year -> taken's year
         ("October 8 - IH", date(2026, 10, 8)),
         ("Sept 17 2026 - Juanita Bay Park", date(2026, 9, 17)),
-        ("July 23 Issaquah Highlands", date(2026, 7, 23)),
+        ("July 23 Neighborhood", date(2026, 7, 23)),
         ("June 7-26", date(2026, 6, 7)),  # trailing number is a photo counter, not a year
     ],
 )
