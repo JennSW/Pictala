@@ -13,7 +13,7 @@ hand.
 Pictala bridges the photo host and the eBird checklist for the same day,
 so a single app shows your own photos next to what bird is actually in
 each one — common name and scientific name. Its AI-assisted matching
-search (Strategy B / "Ask Claude," see `DESIGN.md`) already does visual
+search (Strategy B / "Ask Pictala," see `DESIGN.md`) already does visual
 species identification directly from the photo, standing in for the
 photo-ID half of that separate trip to Merlin. Merlin's audio-recording
 ID is a distinct, still out-of-scope case, tracked separately (Section 4,
