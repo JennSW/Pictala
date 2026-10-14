@@ -8,6 +8,8 @@ import {
   EbirdSyncResult,
   OutingSummary,
   SyncStatus,
+  UserError,
+  toUserError,
 } from "./api";
 
 // Pulsing three-dot loading indicator (issue #56) -- stronger affordance
@@ -31,7 +33,7 @@ function LoadingDots() {
 interface SyncPanelProps {
   syncStatus: SyncStatus | null;
   onSynced: (status: SyncStatus, outings: OutingSummary[]) => void;
-  onError: (message: string) => void;
+  onError: (error: UserError) => void;
 }
 
 export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelProps) {
@@ -55,7 +57,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
       setShowEbirdHint(freshOutings.length === 0);
       onSynced(status, freshOutings);
     } catch (e) {
-      onError(String(e));
+      onError(toUserError(e));
     } finally {
       setSyncing(false);
     }
@@ -93,7 +95,7 @@ export default function SyncPanel({ syncStatus, onSynced, onError }: SyncPanelPr
       onSynced(status, freshOutings);
       setUploadResult(result);
     } catch (err) {
-      onError(String(err));
+      onError(toUserError(err));
     } finally {
       setUploading(false);
     }

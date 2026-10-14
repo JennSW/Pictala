@@ -31,6 +31,8 @@ import {
   ClusterDetail,
   MatchEntry,
   Observation,
+  UserError,
+  toUserError,
 } from "./api";
 import DatePicker from "./DatePicker";
 import PhotoLightbox, { LightboxEntry } from "./PhotoLightbox";
@@ -112,7 +114,7 @@ export default function App() {
   const [outings, setOutings] = useState<OutingSummary[]>([]);
   const [selected, setSelected] = useState<OutingDetail | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UserError | null>(null);
   // The moment this page load happened, captured once from the *previous*
   // value stored -- so "confirmed this session" means reviewed_at falls
   // after whenever the app was last opened, not after right now. Storage
@@ -274,17 +276,17 @@ export default function App() {
           openOuting(data[0].id);
         }
       })
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(toUserError(e)));
     fetchSyncStatus()
       .then(setSyncStatus)
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(toUserError(e)));
     // Fetched eagerly (not just when "Photos not on eBird" is opened) so
     // the calendar can mark checklist-less dates as available too --
     // otherwise a date like July 11 (real photos, no checklist) looks
     // identical to a date with nothing at all.
     fetchUnassignedClusters()
       .then(setClusters)
-      .catch((e) => setError(String(e)));
+      .catch((e) => setError(toUserError(e)));
   }, []);
 
   async function handleAdjustTimezone(checklistId: number, photoId: number) {
@@ -295,7 +297,7 @@ export default function App() {
       // entirely -- refetch this outing rather than assume it's still here.
       setSelected(await fetchOuting(checklistId));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setAdjustingTimezone((prev) => ({ ...prev, [photoId]: false }));
     }
@@ -308,7 +310,7 @@ export default function App() {
     try {
       setClusters(await fetchUnassignedClusters());
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -327,7 +329,7 @@ export default function App() {
     try {
       setSelectedCluster(await fetchUnassignedCluster(clusterId));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -339,7 +341,7 @@ export default function App() {
       setClusterIdentifyText((prev) => ({ ...prev, [photoId]: result.common_name ?? "" }));
       setClusterAiGuess((prev) => ({ ...prev, [photoId]: result.common_name ?? "" }));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setClusterSuggesting((prev) => ({ ...prev, [photoId]: false }));
     }
@@ -372,7 +374,7 @@ export default function App() {
         return next;
       });
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setBatchSuggesting(false);
     }
@@ -392,7 +394,7 @@ export default function App() {
         return next;
       });
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setClusterSaving((prev) => ({ ...prev, [photoId]: false }));
     }
@@ -405,7 +407,7 @@ export default function App() {
       setClusters(await fetchUnassignedClusters());
       setSelectedCluster(await fetchUnassignedCluster(selectedCluster.id));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -426,7 +428,7 @@ export default function App() {
         [photoId]: { ...(prev[photoId] ?? DEFAULT_ASSIGN_TO_CHECKLIST), speciesOptions: outing.observations },
       }));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -455,7 +457,7 @@ export default function App() {
         return next;
       });
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
       setAssignToChecklist((prev) => ({
         ...prev,
         [photoId]: { ...(prev[photoId] ?? DEFAULT_ASSIGN_TO_CHECKLIST), assigning: false },
@@ -477,7 +479,7 @@ export default function App() {
       setSuggestions({});
       setShowUnassigned(false);
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -487,7 +489,7 @@ export default function App() {
       else await unmarkOutingReviewed(outingId);
       setSelected(await fetchOuting(outingId));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -498,7 +500,7 @@ export default function App() {
     try {
       setSearchResults(await searchBySpecies(searchQuery.trim()));
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setSearching(false);
     }
@@ -562,7 +564,7 @@ export default function App() {
       // Logging failure shouldn't block the user from moving on to the
       // follow-up panel they were already sent to above -- surface it as
       // a global banner instead of reverting their rejection.
-      setError(String(e));
+      setError(toUserError(e));
     }
   }
 
@@ -640,7 +642,7 @@ export default function App() {
         );
       }, BATCH_UNDO_WINDOW_MS);
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setBatchConfirming(false);
     }
@@ -659,7 +661,7 @@ export default function App() {
       setSelected(await fetchOuting(checklistId));
       setLastBatchConfirm(null);
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setUndoingBatchConfirm(false);
     }
@@ -688,7 +690,7 @@ export default function App() {
       });
       setBatchAssignPick("");
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setBatchAssigning(false);
     }
@@ -713,7 +715,7 @@ export default function App() {
       // suggestion state to "error" here would replace the whole entry
       // panel (dropdown or rejected-panel) with just an error message,
       // losing the UI needed to retry. This way the panel stays put.
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setSavingNote((prev) => ({ ...prev, [photoId]: false }));
     }
@@ -795,7 +797,7 @@ export default function App() {
         return next;
       });
     } catch (e) {
-      setError(String(e));
+      setError(toUserError(e));
     } finally {
       setBatchSuggesting(false);
     }
@@ -1437,7 +1439,9 @@ export default function App() {
       <h1 className="page-title">Browse Trips</h1>
       {error && (
         <p className="badge badge-danger" style={{ display: "block", padding: "var(--space-2) var(--space-3)", marginBottom: "var(--space-4)" }}>
-          {error} — is the backend running at localhost:8000? (`uvicorn app.main:app --reload`)
+          {error.message}
+          {error.hint && <><br /><strong>What to try:</strong> {error.hint}</>}
+          {error.errorId && <><br /><small>Reference: {error.errorId} (see backend.log)</small></>}
         </p>
       )}
 
@@ -1632,7 +1636,7 @@ export default function App() {
               setSyncStatus(status);
               setOutings(freshOutings);
             }}
-            onError={(message) => setError(message)}
+            onError={setError}
           />
 
           <button className="btn" onClick={loadUnassigned} style={{ marginTop: "var(--space-3)" }}>

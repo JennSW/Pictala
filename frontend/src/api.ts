@@ -89,14 +89,51 @@ export interface OutingDetail {
   photo_groups: PhotoGroups;
 }
 
-async function readErrorDetail(res: Response): Promise<string> {
+/** An error shaped for a person: what went wrong, what to try, and a reference for bug reports. */
+export interface UserError {
+  message: string;
+  hint: string | null;
+  errorId: string | null;
+}
+
+export class ApiError extends Error {
+  hint: string | null;
+  errorId: string | null;
+  constructor(message: string, hint: string | null = null, errorId: string | null = null) {
+    super(message);
+    this.hint = hint;
+    this.errorId = errorId;
+  }
+}
+
+async function readError(res: Response): Promise<ApiError> {
   try {
     const body = await res.json();
-    if (body && typeof body.detail === "string") return body.detail;
+    if (body && typeof body.detail === "string") {
+      return new ApiError(
+        body.detail,
+        typeof body.hint === "string" ? body.hint : null,
+        typeof body.error_id === "string" ? body.error_id : null,
+      );
+    }
   } catch {
     // response wasn't JSON -- fall through to the generic message
   }
-  return `Request failed: ${res.status}`;
+  return new ApiError(`Request failed: ${res.status}`);
+}
+
+/** Turn anything thrown into something safe to show. A failed fetch means the page could
+ * not reach the backend at all (the backend now answers even its own crashes). */
+export function toUserError(e: unknown): UserError {
+  if (e instanceof ApiError) return { message: e.message, hint: e.hint, errorId: e.errorId };
+  if (e instanceof TypeError) {
+    return {
+      message: "Can't reach the Pictala backend.",
+      hint: "Start it with ./start.sh from the project folder (or run uvicorn app.main:app from backend/), then reload this page.",
+      errorId: null,
+    };
+  }
+  return { message: e instanceof Error ? e.message : String(e), hint: null, errorId: null };
 }
 
 // Shared by every function below -- every endpoint had its own copy of
@@ -106,7 +143,7 @@ async function readErrorDetail(res: Response): Promise<string> {
 // `path` is relative (e.g. "/outings"), not a full URL.
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, init);
-  if (!res.ok) throw new Error(await readErrorDetail(res));
+  if (!res.ok) throw await readError(res);
   return res.json();
 }
 
@@ -302,7 +339,7 @@ export async function syncEbirdCsv(file: File): Promise<EbirdSyncResult> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await fetch(`${API_BASE}/sync/ebird`, { method: "POST", body: formData });
-  if (!res.ok) throw new Error(await readErrorDetail(res));
+  if (!res.ok) throw await readError(res);
   return res.json();
 }
 
