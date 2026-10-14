@@ -994,7 +994,7 @@ export default function App() {
                   // An AI guess that didn't resolve to a real eBird
                   // species (e.g. "Dragonfly") -- eBird checklists only
                   // track birds, so there's nothing sensible to "add to
-                  // eBird" here. Just confirmed in BirdTrip's own data.
+                  // eBird" here. Just confirmed in Pictala's own data.
                   <>
                     <span className="badge badge-neutral">Other</span>
                     <div style={{ marginTop: "var(--space-1)" }}>{m.fallback_common_name}</div>

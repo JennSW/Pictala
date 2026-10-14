@@ -91,7 +91,7 @@ class MatchOut(BaseModel):
 def ebird_checklist_url(checklist) -> str:
     """Link to the real checklist on eBird.org -- shown alongside a
     fallback identification so the user can add the species there
-    themselves, since BirdTrip never writes back to eBird (see
+    themselves, since Pictala never writes back to eBird (see
     docs/USER_STORIES.md, "Species ID fallback for eBird gaps")."""
     return f"https://ebird.org/checklist/{checklist.submission_id}"
 

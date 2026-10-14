@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# start.sh — one-command way to run BirdTrip locally on your Mac.
+# start.sh — one-command way to run Pictala locally on your Mac.
 #
 # What this does, in order:
 #   1. Checks you have Python 3 and Node.js installed (tells you how to get
@@ -113,7 +113,7 @@ BACKEND_PID=$!
 
 cleanup() {
   echo ""
-  echo "Stopping BirdTrip..."
+  echo "Stopping Pictala..."
   kill "$BACKEND_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
@@ -170,13 +170,13 @@ fi
 
 echo ""
 echo "============================================================"
-echo " BirdTrip is starting up."
+echo " Pictala is starting up."
 echo " Your browser will open automatically in a few seconds."
 echo " If it doesn't, go to: http://localhost:$FRONTEND_PORT"
 echo ""
 echo " Backend API docs (optional, for the curious): http://localhost:$BACKEND_PORT/docs"
 echo ""
-echo " Press Ctrl+C in this window at any time to stop BirdTrip."
+echo " Press Ctrl+C in this window at any time to stop Pictala."
 echo "============================================================"
 echo ""
 
