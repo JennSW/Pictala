@@ -5,6 +5,9 @@
 Pictala matches your eBird checklists to your Flickr photos, outing by outing, so you can see which bird is in
 which picture, with its common and scientific name.
 
+Work is tracked on the [issues board](https://github.com/JennSW/Pictala/issues). Where this README refers to an
+issue, it gives the issue's title.
+
 *Formerly BirdTrip. A name conflict with an existing app forced the rename; the story is in
 [`docs/NAMING_REVIEW.md`](docs/NAMING_REVIEW.md). Older documents still use the old name.*
 
@@ -65,7 +68,9 @@ The five session recaps below are where the real decisions were made, with the r
 ## Engineering practice
 
 - **114 automated backend tests.** Recent fixes ship with regression tests, such as the data-loss defect found on
-  2026-09-19 (issue #95, fixed 2026-10-13). Coverage has known gaps, which are documented on issue #74.
+  2026-09-19 (the issue "Defect: eBird CSV re-import silently wipes previously-confirmed species matches", fixed
+  2026-10-13). Coverage has known gaps, documented in the issue "Chore: add unit tests for untested service-layer
+  modules".
 - **A GitHub project board with 95 issues**, 74 closed. Defects, scope decisions, and "decide, don't build" items
   are all tracked.
 - **Review passes on the code and docs:** a full-history audit,
@@ -127,15 +132,24 @@ documents above. Further work is on the product track, at the pace I have time f
 - **Single user, local only, by design.** There is no hosted version.
 - **You need your own accounts.** eBird has no personal-data API, so checklists come from a CSV you upload
   yourself; Flickr needs your own app key.
-- **No client-side routing** ([#45](https://github.com/JennSW/Pictala/issues/45)): reloading the page loses your place.
-- **Shared eBird checklists** show only the owner's version ([#94](https://github.com/JennSW/Pictala/issues/94)).
+- **No client-side routing**: reloading the page loses your place (issue: "No client-side routing -- browser back /
+  reload loses all navigation state").
+- **Shared eBird checklists** show only the owner's version (issue: "Shared/group checklists: default to owner's
+  own list, surface links to other participants' versions").
 - **Photos with no capture date** take their date from the title when it starts with one ("October 7 2026");
   titles without a leading date aren't recovered.
 
-**Product track (not v1):** a no-account demo mode with sample photos (deliberately left out of v1); multi-user support, blocked on three decisions: how accounts are created, SQLite
-versus Postgres, and hosting ([#16](https://github.com/JennSW/Pictala/issues/16)); sharing with other birders ([#17](https://github.com/JennSW/Pictala/issues/17)); other
-photo hosts ([#14](https://github.com/JennSW/Pictala/issues/14)); Merlin recordings ([#15](https://github.com/JennSW/Pictala/issues/15)); writing species back to Flickr
-([#63](https://github.com/JennSW/Pictala/issues/63), [#20](https://github.com/JennSW/Pictala/issues/20)); a location map ([#21](https://github.com/JennSW/Pictala/issues/21)).
+**Product track (not v1)**, each tracked as an issue on the board:
+
+- A no-account demo mode with sample photos, deliberately left out of v1.
+- Multi-user support, blocked on three decisions (how accounts are created, SQLite versus Postgres, and hosting):
+  "V2: Multi-user support (Flickr + Merlin user IDs)".
+- Sharing with other birders: "V2: Share BirdTrip with the birding community".
+- Other photo hosts: "V2: Additional photo hosting sites (e.g. SmugMug)".
+- Merlin recordings: "V2: Merlin recordings".
+- Writing species back to Flickr: "Investigate writing species ID back to Flickr (title/description)" and
+  "V3: Post to Flickr for missing matches".
+- A location map: "V3: Map of location".
 
 ## A note on this repository's history
 
