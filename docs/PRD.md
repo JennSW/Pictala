@@ -37,7 +37,8 @@ rules are the better tool.
 - Wireframes of the core user experience are available to walk through in
   a demo — showing how a customer would actually use the app, and the
   reasoning behind key UX decisions (e.g. why review/approve exists, why
-  saving locks a day).
+  saving locks a day). *Status (2026-10-14): as built, marking an outing
+  reviewed does not lock it (see Section 4).*
 
 **Secondary (personal use):**
 - The app is genuinely usable on your own outings without friction — sync,
@@ -96,13 +97,17 @@ you to bring your own Flickr and eBird accounts. Sharing with this group stays a
 ## 4. Scope & Non-Goals
 
 **In scope for v1:**
-- eBird checklist ingestion (currently manual CSV; being automated via the
-  sync stories in `USER_STORIES.md`) and Flickr photo ingestion.
+- eBird checklist ingestion **by file upload only**: the Download-My-Data CSV, or the
+  zip eBird emails. eBird has no API for your own history, so uploading is the one way
+  eBird data enters the app (`DESIGN.md` section 7). Flickr photos come in by API sync.
 - Rule-based matching (Strategy A) and AI-assisted species suggestion for
   uncaptioned photos (Strategy B), per `DESIGN.md`.
-- The review workflow from the brainstorm notes: results page, flag
-  non-birds/unidentifiable, edit, approve/remove/park, save (locks the
-  day), optional day notes.
+- The review workflow from the brainstorm notes, as built: a results page per outing;
+  confirm, reject or edit a photo's species, assign one by hand, or move a photo to
+  another group; flag a photo as not a bird; optional notes on a photo; and mark an
+  outing reviewed. Marking reviewed is a stored flag, available once every photo is
+  confirmed and reversible with Unmark. It does not lock the outing: edits and syncs
+  still apply.
 - Wireframes of the core experience, for the interview demo audience.
 - Single-user only (you) — your own API keys/credentials, local data.
 - Each photo links to its original Flickr display page (not just the
@@ -171,8 +176,7 @@ goals already exist for (wireframes, documented tradeoffs in `DESIGN.md`,
 a repo clean enough to hand someone a link to). It does mean the repo
 itself is part of the deliverable, not just the running app: README
 quality, commit history, and not having anything in there that undercuts
-the narrative (already a live concern — see the private-notes decision on
-`PROJECT_HISTORY.md`).
+the narrative (already a live concern).
 
 ## 6. Assumptions & Constraints
 

@@ -109,38 +109,43 @@ The matcher's time window itself still compares naive times.*
 
 ## Feature: Sync (eBird + Flickr)
 
-### Functional Spec: Sync behavior
+> **Status (2026-10-14):** this section describes what exists today. An earlier draft
+> (automatic syncing, eBird retrieval through its regional feed, skipping saved days) was
+> not built; see "Not built" at the end of this section.
 
-- Two trigger types: **automatic** (fires on outings-page load) and
-  **manual** (a "Sync now" button).
-- Independent daily budgets: automatic = 1x/day, manual = 4x/day. Budgets do
-  not share a pool.
-- "Day" means a **calendar day in the user's own time zone** (resets at
-  midnight local time, not UTC or the server's time zone) — not a rolling
-  24-hour window.
-- Every attempt counts toward its budget regardless of success or failure.
-- A sync (of either type) covers today plus any unsynced, *unsaved* days
-  since the last successful sync.
-- Any day whose results have already been saved/locked (see *Save results*
-  story) is always skipped by sync, regardless of trigger type — this is
-  how saved results are protected from being overwritten.
-- eBird retrieval: the regional checklist-feed endpoint
-  (`/product/lists/{regionCode}/{y}/{m}/{d}`), filtered to a configured
-  eBird display name (no direct "my checklists" API exists). Flickr
-  retrieval: existing date-range sync, unchanged.
-- Requires one-time setup: eBird display name, region code(s), and the
-  user's time zone (for calendar-day resets), following the same pattern
-  as the existing `.env`-based API keys.
-- Rate-limit and last-synced state must persist across app restarts (not
-  in-memory only).
-- Original bulk-history CSV import is unaffected — this spec only covers
-  ongoing, day-to-day updates.
+### Functional Spec: Sync behavior (as built)
+
+- **eBird: upload only.** eBird data enters the app by uploading a file with "Upload eBird
+  CSV": the Download-My-Data export, as the CSV or as the .zip eBird emails (it is unzipped
+  automatically, up to 50 MB). There is no other way to bring in eBird checklists. eBird has
+  no API for your own history (`DESIGN.md` section 7), and the app never pulls from or writes
+  to your eBird account. Uploads are not limited. Uploading the same export again is safe: a
+  match you confirmed is kept, and if you removed a species from a checklist on eBird, the
+  app tells you how many confirmed matches could not be kept.
+- **Flickr: "Sync now".** The button pulls your Flickr photos for the **last 30 days through
+  today**, updates photos already stored, then re-runs rule-based matching. (The API also
+  accepts an explicit date range.) It follows every page of results and refuses a range too
+  large to fetch completely (10,000 photos), with a message to narrow it.
+- **Daily limit.** "Sync now" is capped at **4 a day**. The count is stored in the database,
+  so it survives restarts, and it resets at midnight by the computer's local date. The panel
+  shows "N of 4 syncs left today" and the time of the last sync; at zero the button is
+  disabled and says "No syncs left today — resets at midnight".
+- **What counts toward the cap.** A sync counts once it has started, whether or not it then
+  succeeds. A sync that **cannot start does not count**: if Flickr is not set up (missing keys
+  or authorization), the request is refused with an explanation before anything is counted,
+  and a request refused because the day's four syncs are already used does not use another.
+  Uploading an eBird file never counts.
+- **Re-matching keeps your decisions.** Matching deletes and rebuilds only the automatic
+  rule-based matches each time. A match a person made (confirmed, assigned to a species, or
+  accepted from an AI suggestion or fallback) is never overwritten by a sync or a re-match.
+- **Reviewed outings are not frozen.** "Mark outing reviewed" is a stored flag that "Unmark"
+  clears. Neither sync nor matching checks it, and it does not block later edits.
 
 ### Story: Manual sync
 
 **As a** birder, **I want** a manual "Sync now" button I can use up to 4
 times a day, **so that** I can pull in fresh results right after I finish
-uploading photos to Flickr, without waiting for the next automatic sync.
+uploading photos to Flickr, without waiting.
 
 **Acceptance Criteria:**
 - Given fewer than 4 manual syncs have occurred today, when I click "Sync
@@ -150,42 +155,22 @@ uploading photos to Flickr, without waiting for the next automatic sync.
 
 **Priority:** High
 
----
-
-### Story: Automatic sync on page load
-
-**As a** birder, **I want** the app to automatically check for new eBird
-and Flickr data once a day when I open it, **so that** I don't have to
-remember to sync manually just to see current results.
-
-**Acceptance Criteria:**
-- Given the automatic sync hasn't run yet today, when the outings page
-  loads, then a sync runs automatically per the Sync behavior spec.
-- Given the automatic sync has already run today, when the page loads
-  again, then no sync runs, and the page shows the last-synced time.
-
-**Priority:** High
+**Status (2026-10-14):** built.
 
 ---
 
-### Story: Sync never overwrites saved days
+### Not built (earlier design)
 
-**As a** birder, **I want** a day's results to stay exactly as I saved
-them, **so that** a later sync can never quietly change or overwrite my
-finalized review.
+These were drafted but never built, and are not tracked as open issues:
 
-**Acceptance Criteria:**
-- Given a day's results have been saved/locked, when any sync runs (auto
-  or manual), then that day is excluded entirely — no checklist or photo
-  data is re-pulled for it.
-
-**Priority:** High
-
-**Notes:**
-- *Status (2026-10-14):* the *Save results* idea shipped as a stored
-  "Mark outing reviewed" flag (issue #43), and a reviewed outing can be
-  reopened with "Unmark". The earlier open question about reopening is
-  resolved.
+- **Automatic sync** once a day when the outings page loads. Syncing is manual.
+- **eBird retrieval through its regional checklist feed**, filtered by a configured eBird
+  display name, with a one-time setup of display name, region code and time zone. eBird data
+  comes only from the uploaded export.
+- **A sync that covers every day since the last successful sync.** Today's window is a
+  fixed 30 days.
+- **Skipping days whose results were saved.** A reviewed outing is not excluded from sync
+  (see "Reviewed outings are not frozen").
 
 ---
 
