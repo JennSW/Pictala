@@ -181,8 +181,93 @@ the narrative (already a live concern).
 
 ## 6. Assumptions & Constraints
 
-*(not yet drafted)*
+*Status as of 2026-10-14.*
+
+**Assumptions.** Taken as true when the plan was made. If one fails, the design has to change.
+
+- **One user, with their own accounts.** The user has a Flickr account holding the photos and an
+  eBird account holding the checklists for the same outings, and supplies their own keys and
+  authorizations (Section 4).
+- **eBird data arrives as an export.** eBird has no API for your own history, so the
+  Download-My-Data export is the source (`DESIGN.md` section 7). The export is cumulative, so
+  importing it again is normal and must not lose work already done.
+- **Camera clocks are mostly right.** Matching a photo to an outing relies on the photo's capture
+  time (`DESIGN.md` section 3). When a clock is wrong the rules fail quietly, which is why a
+  same-day fallback, a title-date fallback and a time zone flag were added.
+- **Location is a weak signal.** As of 2026-10-14, in the author's data all 121 checklists have
+  coordinates, but only 30 of 635 photos (about 5%) do, so matching depends on time, not place.
+- **Captions are sparse.** Matching a species from a photo's title or tags works only for photos
+  the user captioned (`DESIGN.md` section 4). That is why an AI suggestion exists for the rest.
+- **The AI is optional and approximate.** The app works without an Anthropic key, and nothing the
+  model suggests is accepted without a person confirming it.
+- **A Mac with Python 3.10 or newer and Node.** Built and tested only on a MacBook
+  (`QUICKSTART.md`).
+
+**Constraints.** Limits the plan has to live within.
+
+- **One part-time maintainer.** Further work happens at the pace the author has time for.
+- **Local only.** No hosting, one SQLite file, no accounts or multi-user features (Section 4;
+  `DESIGN.md` sections 5 and 6).
+- **The app never writes back to eBird.** It labels photos only, and offers a link to the
+  checklist on eBird.
+- **Cost discipline for the AI.** Each suggestion is a paid API call, so it is triggered per photo
+  (or for a selected batch of up to 10) and never runs automatically.
+- **Self-imposed limits.** Four "Sync now" runs a day, at most 10,000 photos per Flickr sync, and
+  eBird uploads up to 50 MB.
+- **Accessibility standards.** The whole interface must meet accessibility standards and be usable
+  with screen readers, not just the photos (Section 4).
+- **A mobile layout.** A web page for now: usable on desktop, with a layout that works on a phone.
+  Not a native app (Section 4).
+- **Licensing.** Code under PolyForm Noncommercial; photographs all rights reserved; no outside
+  contributions (README).
 
 ## 7. Open Questions / Risks
 
-*(not yet drafted)*
+*Status as of 2026-10-14. Open work is also tracked on the project's issues board.*
+
+**Open questions.** Unresolved.
+
+- **Multi-user (V2).** Blocked on three decisions: how accounts are created, SQLite versus
+  Postgres, and where to host (`MULTI_USER_AUTH_SCOPING.md`; hosting was added by the
+  2026-09-19 session recap).
+- **Caption-based matches are trusted without a visual check.** A photo with the wrong species in
+  its caption is recorded as a confident match, and no AI check runs
+  (`USER_STORIES.md`, "Caption-based matches are trusted blindly"). No solution proposed.
+- **Shared (group) eBird checklists.** An outing shows only the owner's version of a checklist
+  that several birders submitted. Linking to the other participants' versions is open.
+- **Large-area outings.** The distance cutoffs (5 km for a time-window match, 15 km for same-day)
+  may wrongly exclude photos from a trip spread over a wide area, such as a boat trip
+  (`USER_STORIES.md`, Outing grouping notes).
+- **Overriding automatic grouping.** Whether a person should be able to split or merge outings
+  the rule got wrong. Raised, not decided.
+- **Time zone drift.** Mismatches are flagged and can be corrected by hand, but the matcher's time
+  window itself still compares times without a time zone.
+- **Reloading loses your place.** There is no client-side routing; the issue is open.
+
+**Risks.**
+
+- **A wrong AI suggestion is accepted.** Reduced by suggest-then-confirm, a guess limited to the
+  outing's own species where possible, a shown confidence, and a log of every suggestion and its
+  outcome so accuracy can be measured (`GET /stats/ai-accuracy`).
+- **A wrong camera clock misplaces photos.** Reduced by the same-day and title-date fallbacks and
+  by the time zone flag with a manual correction. What remains is the time zone drift question
+  above.
+- **Re-importing eBird data loses confirmed work.** Found on 2026-09-19 (a re-import wiped
+  confirmed species matches) and fixed on 2026-10-13: confirmed links are restored. What remains:
+  if a species was removed from a checklist on eBird, its confirmed matches cannot be kept, and
+  the app reports how many.
+- **A bad request corrupts the database.** Found in a code review on 2026-10-13: a request with
+  an unknown photo id saved a match pointing at nothing. Reduced by validating the id and
+  enforcing foreign keys in the database.
+- **Dependence on outside services.** Flickr, eBird's export format and the Anthropic API can
+  change or become unavailable. Reduced by readable error messages with a fix to try, by the AI
+  being optional, and by eBird data being a file the user holds. Not reduced: a change to the
+  eBird export's columns would need a code change.
+- **Personal data.** An uploaded eBird export is a full birding history. It stays on the user's
+  machine, the temporary copy made during an upload is deleted, keys live in a git-ignored `.env`,
+  and the Anthropic key is never included in an error response (covered by a test).
+- **Tested on one platform.** macOS only. Other systems may need manual setup (`QUICKSTART.md`).
+- **Little frontend test coverage.** As of 2026-10-14 there are 114 automated backend tests. The
+  frontend is type-checked but has no automated tests.
+- **Scope creep.** Acknowledged in the 2026-08-11 recap. Reduced by splitting the board into MVP
+  and V2 and by a fixed definition of done (Section 2).
