@@ -50,8 +50,6 @@ from app.services.species_classifier import (
     guess_species,
     guess_species_unconstrained,
     guess_species_unconstrained_batch,
-    SpeciesClassifierNotConfigured,
-    SpeciesClassifierError,
 )
 from app.services.timezone_check import check_mismatch
 from app.services.matcher import run_rule_based_matching
@@ -181,12 +179,7 @@ def suggest_species(checklist_id: int, photo_id: int, db: Session = Depends(get_
             status_code=400, detail="This outing has no species to suggest from"
         )
 
-    try:
-        result = guess_species(photo.url_medium, candidate_names)
-    except SpeciesClassifierNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except SpeciesClassifierError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    result = guess_species(photo.url_medium, candidate_names)
 
     common_name = result["common_name"]
     suggested_observation_id = seen.get(common_name) if common_name else None
@@ -370,12 +363,7 @@ def suggest_fallback(checklist_id: int, photo_id: int, db: Session = Depends(get
     if not photo.url_medium:
         raise HTTPException(status_code=400, detail="This photo has no image URL to look at")
 
-    try:
-        result = guess_species_unconstrained(photo.url_medium, photo.title, photo.tags)
-    except SpeciesClassifierNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except SpeciesClassifierError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    result = guess_species_unconstrained(photo.url_medium, photo.title, photo.tags)
 
     common_name, scientific_name, species_code, is_other = resolve_guess(result["common_name"])
 
@@ -412,17 +400,12 @@ def suggest_fallback_batch(checklist_id: int, body: SuggestFallbackBatchRequest,
     if not photos_by_id:
         return []
 
-    try:
-        results = guess_species_unconstrained_batch(
-            [
-                {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
-                for p in photos_by_id.values()
-            ]
-        )
-    except SpeciesClassifierNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except (SpeciesClassifierError, ValueError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    results = guess_species_unconstrained_batch(
+        [
+            {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
+            for p in photos_by_id.values()
+        ]
+    )
 
     suggestions = []
     for r in results:

@@ -28,8 +28,6 @@ from app.services.photo_dates import effective_datetime
 from app.services.species_classifier import (
     guess_species_unconstrained,
     guess_species_unconstrained_batch,
-    SpeciesClassifierNotConfigured,
-    SpeciesClassifierError,
 )
 
 router = APIRouter(prefix="/unassigned", tags=["unassigned"])
@@ -99,12 +97,7 @@ def suggest_for_photo(cluster_id: str, photo_id: int, db: Session = Depends(get_
     if not photo.url_medium:
         raise HTTPException(status_code=400, detail="This photo has no image URL to look at")
 
-    try:
-        result = guess_species_unconstrained(photo.url_medium, photo.title, photo.tags)
-    except SpeciesClassifierNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except SpeciesClassifierError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    result = guess_species_unconstrained(photo.url_medium, photo.title, photo.tags)
 
     common_name, scientific_name, species_code, is_other = resolve_guess(result["common_name"])
 
@@ -139,17 +132,12 @@ def suggest_batch(cluster_id: str, body: SuggestBatchRequest, db: Session = Depe
     if not photos_by_id:
         return []
 
-    try:
-        results = guess_species_unconstrained_batch(
-            [
-                {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
-                for p in photos_by_id.values()
-            ]
-        )
-    except SpeciesClassifierNotConfigured as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except (SpeciesClassifierError, ValueError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    results = guess_species_unconstrained_batch(
+        [
+            {"photo_id": p.id, "url": p.url_medium, "title": p.title, "tags": p.tags}
+            for p in photos_by_id.values()
+        ]
+    )
 
     suggestions = []
     for r in results:

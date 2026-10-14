@@ -10,6 +10,7 @@ in-process rather than re-fetched on every lookup.
 import requests
 
 from app.config import settings
+from app.errors import ExternalServiceError, NotConfiguredError
 
 _TAXONOMY_CACHE: list[dict] | None = None
 
@@ -17,12 +18,24 @@ _TAXONOMY_CACHE: list[dict] | None = None
 def _load_taxonomy() -> list[dict]:
     global _TAXONOMY_CACHE
     if _TAXONOMY_CACHE is None:
+        if not settings.ebird_api_key:
+            raise NotConfiguredError(
+                "Looking up bird names needs an eBird API key, and none is set.",
+                "Get a free key at https://ebird.org/api/keygen (it's instant), add it to backend/.env "
+                "as EBIRD_API_KEY, then restart the backend. Everything else works without it.",
+            )
         resp = requests.get(
             "https://api.ebird.org/v2/ref/taxonomy/ebird",
             params={"fmt": "json"},
             headers={"x-ebirdapitoken": settings.ebird_api_key},
             timeout=30,
         )
+        if resp.status_code in (401, 403):
+            raise ExternalServiceError(
+                "eBird didn't accept your API key.",
+                "Check EBIRD_API_KEY in backend/.env (copy it again from "
+                "https://ebird.org/api/keygen), then restart the backend.",
+            )
         resp.raise_for_status()
         _TAXONOMY_CACHE = resp.json()
     return _TAXONOMY_CACHE

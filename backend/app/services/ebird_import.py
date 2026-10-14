@@ -28,11 +28,14 @@ of minutes -- handled below rather than asking the user to re-export in
 the other format.
 """
 import csv
+import io
 import re
+import zipfile
 from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from app.errors import BadInputError
 from app.models import Checklist, Match, Observation
 
 _CHECKLIST_ID_RE = re.compile(r"(S\d+)")
@@ -50,6 +53,64 @@ def _get(row: dict, *candidates: str) -> str | None:
     return None
 
 
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # far larger than any real eBird export
+
+_WHERE_TO_GET_IT = (
+    "In eBird choose My eBird > Download My Data (https://ebird.org/downloadMyData); eBird emails "
+    "it to you. Or open a single checklist and use its Download button. Then upload that file."
+)
+
+
+def extract_csv_from_upload(raw: bytes, filename: str | None) -> tuple[bytes, str | None]:
+    """The bytes of the CSV inside an upload, plus its name.
+
+    eBird emails "Download My Data" as a .zip holding the CSV, so people reasonably
+    upload the zip. Unpack it for them instead of failing."""
+    if not raw:
+        raise BadInputError("That file is empty.", _WHERE_TO_GET_IT)
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise BadInputError(
+            "That file is larger than 50 MB, far bigger than any eBird export.",
+            "Check you chose the right file. " + _WHERE_TO_GET_IT,
+        )
+    if not raw.startswith(b"PK"):  # not a zip: assume it is the CSV itself
+        return raw, filename
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            members = [
+                i for i in zf.infolist()
+                if i.filename.lower().endswith(".csv")
+                and not i.is_dir()
+                and "__MACOSX" not in i.filename
+            ]
+            if not members:
+                raise BadInputError(
+                    "That zip file doesn't contain a CSV.",
+                    "eBird's download is a zip holding a file called MyEBirdData.csv. " + _WHERE_TO_GET_IT,
+                )
+            member = members[0]
+            if member.file_size > MAX_UPLOAD_BYTES:
+                raise BadInputError("The CSV inside that zip is larger than 50 MB.", _WHERE_TO_GET_IT)
+            return zf.read(member), member.filename.rsplit("/", 1)[-1]
+    except zipfile.BadZipFile as exc:
+        raise BadInputError(
+            "That file looks like a zip but couldn't be opened.",
+            "It may have been cut short while downloading. Download it again, or unzip it yourself "
+            "and upload the CSV inside.",
+        ) from exc
+
+
+def _to_float(raw: str | None) -> float | None:
+    """A number, or None when the cell is blank or not a number (one odd row must not
+    sink a whole import)."""
+    if raw in (None, ""):
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
 def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None = None) -> dict:
     created_checklists = 0
     created_observations = 0
@@ -64,8 +125,29 @@ def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None =
     # links can be restored afterward (issue #95).
     relink_plan: dict[int, list[tuple[Match, str, str | None]]] = {}
 
-    with open(csv_path, newline="", encoding="utf-8") as f:
+    try:
+        # utf-8-sig: spreadsheet programs add an invisible byte-order mark that would
+        # otherwise glue itself onto the first column name and hide every checklist.
+        with open(csv_path, "rb") as fh:
+            text = fh.read().decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise BadInputError(
+            "That file couldn't be read as a text CSV.",
+            "It may be a different kind of file, or a spreadsheet saved in another format. "
+            + _WHERE_TO_GET_IT,
+        ) from exc
+
+    with io.StringIO(text, newline="") as f:
         reader = csv.DictReader(f)
+        columns = {c.strip().lower() for c in (reader.fieldnames or [])}
+        if not columns:
+            raise BadInputError("That file is empty.", _WHERE_TO_GET_IT)
+        if not columns & {"common name", "species"}:
+            raise BadInputError(
+                "That doesn't look like an eBird export: it has no species column.",
+                "An eBird export has columns such as 'Submission ID' and 'Common Name'. "
+                + _WHERE_TO_GET_IT,
+            )
 
         # Single-checklist exports have no Submission ID column -- derive
         # one from the filename (eBird names these S<digits>_observations.csv)
@@ -94,16 +176,16 @@ def import_ebird_csv(db: Session, csv_path: str, original_filename: str | None =
             if checklist is None:
                 date_raw = _get(row, "Date", "Observation Date")
                 date_iso = _normalize_date(date_raw) if date_raw else ""
-                lat = _get(row, "Latitude")
-                lon = _get(row, "Longitude")
+                lat = _to_float(_get(row, "Latitude"))
+                lon = _to_float(_get(row, "Longitude"))
                 duration_raw = _get(row, "Duration (Min)", "Duration(Min)", "Duration")
 
                 checklist = Checklist(
                     submission_id=submission_id,
                     location_name=_get(row, "Location") or "Unknown location",
                     location_id=_get(row, "Location ID"),
-                    latitude=float(lat) if lat else None,
-                    longitude=float(lon) if lon else None,
+                    latitude=lat,
+                    longitude=lon,
                     date=date_iso,
                     start_time=_get(row, "Time", "Start Time"),
                     duration_minutes=_parse_duration_minutes(duration_raw),

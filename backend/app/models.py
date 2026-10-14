@@ -6,7 +6,7 @@ records the link the matcher (rule-based or AI-assisted) decided on.
 """
 from datetime import datetime
 
-from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Text
+from sqlalchemy import String, Float, DateTime, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base

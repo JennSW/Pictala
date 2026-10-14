@@ -12,9 +12,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base, enable_sqlite_foreign_keys, get_db
+from app.errors import BadInputError, ExternalServiceError, NotConfiguredError
 from app.main import app
-from app.models import Photo
+from app.models import Photo, SyncLog
 from app.services import flickr_client
+
+
+def _configure_flickr(monkeypatch):
+    """Pretend Flickr is set up (the real settings come from the developer's own .env)."""
+    for attr in ("flickr_api_key", "flickr_api_secret", "flickr_oauth_token",
+                 "flickr_oauth_token_secret", "flickr_user_id"):
+        monkeypatch.setattr(flickr_client.settings, attr, "test-value")
 
 
 class _FakeResponse:
@@ -50,6 +58,7 @@ def fake_flickr(monkeypatch):
 
     monkeypatch.setattr(flickr_client.requests, "get", fake_get)
     monkeypatch.setattr(flickr_client, "_oauth", lambda: None)
+    _configure_flickr(monkeypatch)
     return calls, script
 
 
@@ -97,8 +106,9 @@ def test_a_photo_seen_on_two_pages_is_returned_once(fake_flickr):
 def test_a_range_over_the_page_limit_raises_instead_of_truncating(fake_flickr):
     calls, script = fake_flickr
     script["default"] = _page(flickr_client.MAX_PAGES + 5, 1, ["x"])
-    with pytest.raises(RuntimeError, match="Narrow the date range"):
+    with pytest.raises(BadInputError) as caught:
         flickr_client.get_photos_in_range("2020-01-01", "2026-12-31")
+    assert "Narrow the date range" in caught.value.hint
     assert len(calls) == flickr_client.MAX_PAGES, "must stop at the cap, not keep fetching"
 
 
@@ -112,11 +122,37 @@ def test_the_same_date_filters_are_sent_on_every_page(fake_flickr):
     }
 
 
-def test_a_flickr_error_still_raises(fake_flickr):
+@pytest.mark.parametrize(
+    "code, says, hint_has",
+    [
+        (100, "rejected your API key", "FLICKR_API_KEY"),
+        (98, "didn't accept your authorization", "flickr_oauth_setup"),
+        (96, "didn't accept your authorization", "flickr_oauth_setup"),
+        (1, "couldn't find that user", "FLICKR_USER_ID"),
+        (105, "temporarily unavailable", "few minutes"),
+        (4242, "Something odd", "backend/.env"),  # a code we don't know: still includes Flickr's words
+    ],
+)
+def test_flickr_error_codes_say_what_to_fix(fake_flickr, code, says, hint_has):
     calls, script = fake_flickr
-    script[1] = {"stat": "fail", "code": 98, "message": "Invalid auth token"}
-    with pytest.raises(RuntimeError, match="Flickr API error"):
+    script[1] = {"stat": "fail", "code": code, "message": "Something odd"}
+    with pytest.raises(ExternalServiceError) as caught:
         flickr_client.get_photos_in_range("2026-06-14", "2026-06-14")
+    assert says in caught.value.message
+    assert hint_has in caught.value.hint
+
+
+def test_an_unconfigured_flickr_is_explained_before_any_request_is_made(monkeypatch):
+    calls = []
+    monkeypatch.setattr(flickr_client.requests, "get", lambda *a, **k: calls.append(1))
+    for attr in ("flickr_api_key", "flickr_api_secret", "flickr_oauth_token",
+                 "flickr_oauth_token_secret", "flickr_user_id"):
+        monkeypatch.setattr(flickr_client.settings, attr, "")
+    with pytest.raises(NotConfiguredError) as caught:
+        flickr_client.get_photos_in_range("2026-06-14", "2026-06-14")
+    assert "FLICKR_API_KEY" in caught.value.hint and "flickr_oauth_setup" in caught.value.hint
+    assert "eBird CSV" in caught.value.hint, "newcomers should be told what still works without Flickr"
+    assert calls == [], "no request should reach Flickr with an empty key"
 
 
 # ---- through the real HTTP endpoint -------------------------------------------------
@@ -137,6 +173,7 @@ def client(monkeypatch):
 
     app.dependency_overrides[get_db] = override
     monkeypatch.setattr(flickr_client, "_oauth", lambda: None)
+    _configure_flickr(monkeypatch)
     monkeypatch.setattr("app.routers.sync._try_get_utc_offset", lambda flickr_id: None)  # would call Flickr
     with TestClient(app) as c:
         yield c, Session
@@ -164,7 +201,23 @@ def test_an_oversized_range_comes_back_as_a_readable_error_not_a_bare_500(client
         lambda url, params=None, auth=None, timeout=None: _FakeResponse(_page(flickr_client.MAX_PAGES + 5, 1, ["x"])),
     )
     response = c.post("/sync/flickr", params={"min_taken_date": "2020-01-01", "max_taken_date": "2026-12-31"})
-    assert response.status_code == 502
-    assert "Narrow the date range" in response.json()["detail"]
+    assert response.status_code == 400
+    assert "Narrow the date range" in response.json()["hint"]
     with Session() as db:
         assert db.query(Photo).count() == 0, "a refused sync must not store a partial result"
+
+
+def test_sync_now_without_flickr_explains_itself_and_does_not_use_up_a_sync(client, monkeypatch):
+    """The fresh-install finding: this used to be a bare 500 that still used one of the
+    day's four syncs, and the page blamed the backend being down."""
+    c, Session = client
+    for attr in ("flickr_api_key", "flickr_api_secret", "flickr_oauth_token",
+                 "flickr_oauth_token_secret", "flickr_user_id"):
+        monkeypatch.setattr(flickr_client.settings, attr, "")
+    response = c.post("/sync/run", headers={"Origin": "http://localhost:5173"})
+    assert response.status_code == 400
+    body = response.json()
+    assert "isn't connected" in body["detail"] and "flickr_oauth_setup" in body["hint"]
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    with Session() as db:
+        assert db.query(SyncLog).count() == 0, "a sync that could not start must not be counted"

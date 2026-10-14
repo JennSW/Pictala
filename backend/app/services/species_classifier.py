@@ -27,7 +27,12 @@ import base64
 
 import requests
 
+import logging
+
 from app.config import settings
+from app.errors import BadInputError, ExternalServiceError, NotConfiguredError
+
+log = logging.getLogger("pictala")
 
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_API_VERSION = "2023-06-01"
@@ -37,12 +42,12 @@ ANTHROPIC_API_VERSION = "2023-06-01"
 REQUEST_TIMEOUT_SECONDS = 30
 
 
-class SpeciesClassifierNotConfigured(Exception):
+class SpeciesClassifierNotConfigured(NotConfiguredError):
     """Raised when ANTHROPIC_API_KEY isn't set. Callers should treat this
     as "the feature is unavailable," not a real error to log loudly."""
 
 
-class SpeciesClassifierError(Exception):
+class SpeciesClassifierError(ExternalServiceError):
     """Raised when the underlying HTTP call to the vision model fails or
     returns something the code doesn't know how to parse."""
 
@@ -50,8 +55,9 @@ class SpeciesClassifierError(Exception):
 def _require_configured() -> None:
     if not settings.anthropic_api_key:
         raise SpeciesClassifierNotConfigured(
-            "ANTHROPIC_API_KEY is not set in .env -- Strategy B is optional; "
-            "see .env.example for how to add it."
+            "AI suggestions need an Anthropic API key, and none is set.",
+            "Add ANTHROPIC_API_KEY to backend/.env (see .env.example), then restart the backend. "
+            "The rest of Pictala works without it, and you can always pick the species by hand.",
         )
 
 
@@ -78,6 +84,54 @@ def _fetch_image_as_base64(url: str) -> tuple[str, str]:
     return base64.b64encode(resp.content).decode("ascii"), media_type
 
 
+def _anthropic_error(resp) -> SpeciesClassifierError:
+    """Explain a non-2xx reply from Anthropic. Their own message is passed through
+    (it says things like "key not scoped to a workspace" that no generic text could),
+    and logged with the request id. Neither the key nor any header is ever included.
+    (Issue #96: this used to be a bare 502 with no reason.)"""
+    anthropic_says = None
+    kind = None
+    try:
+        err = resp.json().get("error", {})
+        anthropic_says, kind = err.get("message"), err.get("type")
+    except ValueError:
+        pass
+    log.warning(
+        "Anthropic returned HTTP %s (%s): %s [request-id %s]",
+        resp.status_code, kind, anthropic_says, resp.headers.get("request-id"),
+    )
+    suffix = f" Anthropic says: {anthropic_says}" if anthropic_says else ""
+    if resp.status_code in (401, 403):
+        return SpeciesClassifierError(
+            "Anthropic didn't accept your API key." + suffix,
+            "Check ANTHROPIC_API_KEY in backend/.env (no spaces or stray characters, and the key "
+            "must belong to a workspace), then restart the backend.",
+        )
+    if resp.status_code == 429:
+        return SpeciesClassifierError(
+            "Anthropic is limiting how fast requests can be made." + suffix,
+            "Wait a minute and try again. If it keeps happening, check your plan's limits at "
+            "https://console.anthropic.com.",
+        )
+    if resp.status_code >= 500:
+        return SpeciesClassifierError(
+            "Anthropic is having trouble right now.", "Try again in a few minutes."
+        )
+    return SpeciesClassifierError(
+        f"Anthropic couldn't process that request (HTTP {resp.status_code})." + suffix,
+        "If this keeps happening, check ANTHROPIC_MODEL and ANTHROPIC_API_KEY in backend/.env.",
+    )
+
+
+def _as_confidence(value) -> float:
+    """The model's confidence as a number between 0 and 1. A model that returns text or
+    something out of range must not crash the request (code review 2026-10-13, L2)."""
+    try:
+        return min(1.0, max(0.0, float(value)))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def _call_anthropic_tool(tool: dict, content: list[dict], max_tokens: int = 512) -> dict:
     """Shared by every guess_* function: build the request, call
     Anthropic, and return the tool_use block's raw `input` dict.
@@ -101,15 +155,30 @@ def _call_anthropic_tool(tool: dict, content: list[dict], max_tokens: int = 512)
         resp = requests.post(
             ANTHROPIC_API_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT_SECONDS
         )
-        resp.raise_for_status()
+    except requests.exceptions.Timeout as exc:
+        raise SpeciesClassifierError(
+            "Anthropic took too long to answer.", "Try again in a moment."
+        ) from exc
+    except requests.exceptions.ConnectionError as exc:
+        raise SpeciesClassifierError(
+            "Couldn't reach Anthropic.", "Check your internet connection and try again."
+        ) from exc
+    if not resp.ok:
+        raise _anthropic_error(resp)
+    try:
         data = resp.json()
-    except requests.RequestException as exc:
-        raise SpeciesClassifierError(f"Anthropic API call failed: {exc}") from exc
+    except ValueError as exc:
+        raise SpeciesClassifierError(
+            "Anthropic sent back something that wasn't readable.", "Try again in a moment."
+        ) from exc
 
     tool_use_blocks = [b for b in data.get("content", []) if b.get("type") == "tool_use"]
     if not tool_use_blocks:
+        log.warning("Anthropic reply had no tool_use block: %s", str(data)[:500])
         raise SpeciesClassifierError(
-            f"Expected a tool_use block in the response, got: {data}"
+            "Anthropic's answer wasn't in the expected form.",
+            "Try again. If it keeps happening, it may be a newer model that behaves differently; "
+            "check ANTHROPIC_MODEL in backend/.env.",
         )
     return tool_use_blocks[0].get("input", {})
 
@@ -203,7 +272,7 @@ def guess_species(photo_url: str, candidate_common_names: list[str]) -> dict:
 
     return {
         "common_name": common_name,
-        "confidence": float(result.get("confidence", 0.0)),
+        "confidence": _as_confidence(result.get("confidence")),
         "reasoning": result.get("reasoning", ""),
     }
 
@@ -283,7 +352,7 @@ def guess_species_unconstrained(photo_url: str, title: str | None, tags: str | N
     return {
         "is_bird": bool(result.get("is_bird", False)),
         "common_name": result.get("common_name") or None,
-        "confidence": float(result.get("confidence", 0.0)),
+        "confidence": _as_confidence(result.get("confidence")),
         "reasoning": result.get("reasoning", ""),
     }
 
@@ -355,7 +424,10 @@ def guess_species_unconstrained_batch(photos: list[dict]) -> list[dict]:
     if not photos:
         return []
     if len(photos) > MAX_BATCH_SIZE:
-        raise ValueError(f"Batch too large ({len(photos)} photos) -- max is {MAX_BATCH_SIZE}")
+        raise BadInputError(
+            f"That's {len(photos)} photos at once; the most that can be sent together is {MAX_BATCH_SIZE}.",
+            f"Select {MAX_BATCH_SIZE} or fewer photos and try again.",
+        )
 
     content: list[dict] = []
     for i, photo in enumerate(photos, start=1):
@@ -392,7 +464,7 @@ def guess_species_unconstrained_batch(photos: list[dict]) -> list[dict]:
                 "photo_id": photos[idx - 1]["photo_id"],
                 "is_bird": bool(g.get("is_bird", False)),
                 "common_name": g.get("common_name") or None,
-                "confidence": float(g.get("confidence", 0.0)),
+                "confidence": _as_confidence(g.get("confidence")),
                 "reasoning": g.get("reasoning", ""),
             }
         )

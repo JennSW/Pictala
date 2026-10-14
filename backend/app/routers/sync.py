@@ -4,15 +4,18 @@ These are POST endpoints you'd click from a "sync" button in the UI (or hit
 via curl / the auto-generated /docs page during a demo) -- not things that
 run on a schedule, since this is a single-user local tool, not a service.
 """
+import contextlib
+import os
 import tempfile
 from datetime import date, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.services.ebird_import import import_ebird_csv
-from app.services.flickr_client import get_photos_in_range
+from app.errors import PictalaError
+from app.services.ebird_import import extract_csv_from_upload, import_ebird_csv
+from app.services.flickr_client import get_photos_in_range, require_flickr_configured
 from app.services.flickr_exif import get_utc_offset
 from app.services.matcher import run_rule_based_matching
 from app.services.duplicate_detection import recompute_and_store
@@ -36,11 +39,19 @@ def _syncs_used_today(db: Session) -> int:
 
 @router.post("/ebird")
 async def sync_ebird(db: Session = Depends(get_db), file: UploadFile = File(...)):
-    """Upload your eBird 'Download My Data' CSV export."""
+    """Upload your eBird 'Download My Data' export: the CSV, or the .zip eBird emails you."""
+    raw = await file.read()
+    csv_bytes, csv_name = extract_csv_from_upload(raw, file.filename)
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
-        tmp.write(await file.read())
+        tmp.write(csv_bytes)
         tmp_path = tmp.name
-    return import_ebird_csv(db, tmp_path, original_filename=file.filename)
+    try:
+        return import_ebird_csv(db, tmp_path, original_filename=csv_name)
+    finally:
+        # The upload is a full copy of someone's birding history; don't leave copies in
+        # the temp folder (code review 2026-10-13, M4).
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
 
 
 def _parse_flickr_coord(raw) -> float | None:
@@ -65,13 +76,7 @@ def sync_flickr(min_taken_date: str, max_taken_date: str, db: Session = Depends(
     artifact, or to help species matching) needs to actually reach the
     app; a photo that already exists used to be skipped entirely, so no
     amount of re-syncing ever picked up such edits."""
-    try:
-        raw_photos = get_photos_in_range(min_taken_date, max_taken_date)
-    except RuntimeError as exc:
-        # Flickr rejected the request, or the range was too large to fetch in
-        # full (see flickr_client.MAX_PAGES). Surface the actual reason -- a
-        # bare 500 would hide the "narrow the date range" instruction.
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    raw_photos = get_photos_in_range(min_taken_date, max_taken_date)
     created = 0
     updated = 0
     for p in raw_photos:
@@ -167,11 +172,16 @@ def sync_run(
     through today when no explicit range is given -- the underlying
     Flickr sync already upserts safely, so re-covering recently-synced
     days is harmless, just not free."""
+    # Before the daily-limit bookkeeping: a sync that cannot even start because Flickr
+    # isn't set up must not use up one of the day's syncs.
+    require_flickr_configured()
+
     used = _syncs_used_today(db)
     if used >= DAILY_SYNC_LIMIT:
-        raise HTTPException(
+        raise PictalaError(
+            f"You've used all {DAILY_SYNC_LIMIT} syncs for today.",
+            "The count resets at midnight. Your photos from earlier syncs are all still here.",
             status_code=429,
-            detail=f"Daily sync limit ({DAILY_SYNC_LIMIT}) already reached today.",
         )
 
     db.add(SyncLog())
