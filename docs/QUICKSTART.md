@@ -169,8 +169,9 @@ backend/
     schemas.py                  Pydantic response models
     routers/
       outings.py                list outings, outing detail, mark / unmark reviewed
-      match.py                  per-photo actions: suggest, accept, reject, assign, unconfirm, timezone adjust
-      unassigned.py             photos with no eBird checklist: clusters, identify, move
+      match.py                  per-photo actions: suggest, accept, reject, assign, unconfirm, adjust time zone,
+                                broader AI guess (single and batch) and accepting it
+      unassigned.py             photos with no eBird checklist: clusters, suggest (single and batch), identify, move
       search.py                 search by species
       stats.py                  AI suggestion accuracy
       sync.py                   eBird import, Flickr sync, matching, the "Sync now" button
