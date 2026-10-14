@@ -104,7 +104,7 @@ def test_a_strange_confidence_from_the_model_cannot_crash_the_request(value, exp
     assert species_classifier._as_confidence(value) == expected
 
 
-def test_too_many_photos_for_one_batch_says_how_many_are_allowed():
+def test_too_many_photos_for_one_batch_says_how_many_are_allowed(anthropic):
     with pytest.raises(species_classifier.BadInputError) as caught:
         species_classifier.guess_species_unconstrained_batch(
             [{"photo_id": i, "url": "u", "title": None, "tags": None}
