@@ -164,8 +164,10 @@ def sync_run(
     sync") -- pulls fresh Flickr photos and re-runs matching, capped at
     DAILY_SYNC_LIMIT/day (resets at local midnight, per the spec's
     "calendar day in the user's own time zone" rule -- see SyncLog's
-    `triggered_at`). Every attempt counts toward the cap regardless of
-    outcome, so the SyncLog row is written before the actual work runs.
+    `triggered_at`). Every attempt that starts counts toward the cap regardless of
+    outcome, so the SyncLog row is written before the actual work runs. An attempt
+    that cannot start (Flickr isn't set up, or the day's cap is already used) is
+    refused before anything is counted.
 
     No last-successful-sync tracking exists yet to compute a tight
     "just the new stuff" window, so this defaults to a 30-day lookback
