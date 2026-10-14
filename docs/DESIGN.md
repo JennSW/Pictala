@@ -1,4 +1,4 @@
-# BirdTrip — Design Doc
+# Pictala (formerly BirdTrip) — Design Doc
 
 > Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
 
@@ -9,13 +9,14 @@ architectural choice about where "AI" belongs, and real tradeoffs to defend.
 
 ## 1. What it does
 
-1. Pulls your eBird checklists (species, date, time, location, count) for a
-   date range.
+1. Imports your eBird checklists (species, date, time, location, count) from
+   the Download-My-Data export you upload (§7).
 2. Pulls your Flickr photos for the same date range (title, date taken, GPS
    if present, tags).
 3. Matches each checklist to the photos most likely taken on that outing, and
    within a checklist, tries to match individual photos to individual species.
-4. Renders a per-outing page: map pin, species list, matched photos.
+4. Renders a per-outing page: species list, matched photos. (A location map was
+   planned and is not built; it is an open issue on the board.)
 
 ## 2. Why this is a good interview artifact
 
@@ -52,8 +53,9 @@ vision.
 
 For each checklist, define a window: `[start_time - 30min, start_time +
 duration + 30min]`. Assign a photo to a checklist if its `date_taken` falls in
-that window, breaking ties by GPS distance to the checklist location when
-both have coordinates. Within a checklist, match a photo to a species only if
+that window, and, when both have coordinates, only if the photo is within a GPS
+distance cutoff of the checklist location (5 km for a time-window match, 15 km
+for the same-day fallback described below). Within a checklist, match a photo to a species only if
 the species name (or a common alias) appears in the photo's title/tags.
 
 Pros: no ML infra, fully deterministic, explainable in one sentence, zero
@@ -61,6 +63,10 @@ marginal cost per photo, works offline. Cons: fails silently when EXIF time
 is wrong (very common — cameras drift), and species-level matching only
 works for photos the user bothered to caption, which in practice is a small
 minority.
+
+**As built:** the matcher also has a same-day fallback, applied per photo, for photos
+whose camera time is wrong, and a photo's day is taken from its title when Flickr only
+has an upload date. See [`matcher.py`](../backend/app/services/matcher.py).
 
 ### Strategy B — AI-assisted species matching (the stretch goal)
 
@@ -154,8 +160,8 @@ other people's credentials.
 |---|---|---|
 | Backend | Python + FastAPI | Typed, async, auto-generates OpenAPI docs (nice for a demo — show `/docs` live), and Python is the natural home if Strategy B (vision model) gets added later. |
 | DB | SQLite via SQLAlchemy | Zero setup, single file, fine for one user's data. Explicitly call out in the demo that this wouldn't scale past one user — Postgres would be the production answer. |
-| Frontend | React + TypeScript + Vite | Fast dev loop, typed contracts with the backend via a shared OpenAPI-generated client, standard enough that any interviewer recognizes it instantly. |
-| Matching | Plain Python (Strategy A) + optional model call (Strategy B) | Keeps the "AI" part isolated behind one function (`suggest_species(photo, candidate_species)`) so it's easy to point at in a code review. |
+| Frontend | React + TypeScript + Vite | Fast dev loop, typed API calls through one small hand-written client (`frontend/src/api.ts`), standard enough that any interviewer recognizes it instantly. |
+| Matching | Plain Python (Strategy A) + optional model call (Strategy B) | Keeps the "AI" part isolated in one module (`species_classifier.py`, for example `guess_species(photo_url, candidate_common_names)`) so it's easy to point at in a code review. |
 
 ## 7. Data acquisition specifics
 
@@ -183,6 +189,10 @@ request `extras=date_taken,geo,tags,url_m` to get what you need in one call
 instead of one call per photo.
 
 ## 8. Roadmap
+
+This is the original plan. Status as of 2026-10-14: steps 1–4 and 6 are done. Step 5 is done except
+the map, which was never built. Step 7 is done with synthetic seed data instead of real outings,
+and the README links to the architecture diagram in §5 rather than embedding it.
 
 1. **Foundation** — FastAPI skeleton, SQLite schema, `.env` config, health
    check endpoint.
