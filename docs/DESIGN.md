@@ -87,33 +87,41 @@ ML for the residual, never the reverse.
 ## 5. Architecture
 
 ```
-                    ┌─────────────────────────┐
-                    │        Frontend         │
-                    │   React + TypeScript    │
-                    │  (Vite, runs locally)   │
-                    └────────────┬────────────┘
-                                 │ REST (JSON)
-                    ┌────────────▼────────────┐
-                    │      FastAPI backend     │
-                    │  - /outings              │
-                    │  - /outings/{id}/photos  │
-                    │  - /sync/ebird           │
-                    │  - /sync/flickr          │
-                    │  - /match/{id}/suggest   │  (Strategy B, optional)
-                    └───┬───────────────┬──────┘
-                        │               │
-              ┌─────────▼───┐   ┌───────▼──────┐
-              │ eBird client │   │ Flickr client │
-              │ (API key)    │   │ (OAuth 1.0a)  │
-              └─────────┬────┘   └───────┬───────┘
-                        │                │
-              ┌─────────▼────────────────▼───────┐
-              │   SQLite (local file, checked in  │
-              │   schema, gitignored data)         │
-              │  checklists, observations, photos,  │
-              │  matches, sync_log, ai_suggestion_log│
-              └───────────────────────────────────┘
+   Your eBird export ("Download My Data": the .csv, or the .zip eBird emails you)
+                │  you upload it in the app
+                ▼
+              ┌─────────────────────────┐
+              │        Frontend         │
+              │   React + TypeScript    │
+              │  (Vite, runs locally)   │
+              └─────────────────────────┘
+                           │ REST (JSON). Errors come back as {detail, hint, error_id}
+                           ▼
+   ┌───────────────────────────────────────────────────────────────────────────────┐
+   │                                 FastAPI backend                               │
+   │ routers   /outings  /match  /unassigned  /search  /stats  /sync  /health      │
+   │           (27 endpoints; /docs lists every one)                               │
+   │ error layer   every failure becomes a readable message + a fix to try         │
+   │ services  ebird_import · matcher (rules) · species_classifier (AI) ·          │
+   │           flickr_client · ebird_taxonomy · photo_dates · outing_grouping      │
+   └───────────────────────────────────────────────────────────────────────────────┘
+            │                   │                   │                   │
+            ▼                   ▼                   ▼                   ▼
+   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
+   │ SQLite           │  │ Flickr API       │  │ Anthropic API    │  │ eBird API        │
+   │ local file       │  │ OAuth 1.0a,      │  │ vision model     │  │ species list     │
+   │ 6 tables         │  │ your own photos  │  │ optional, needs  │  │ only, for name   │
+   │ (matches, photos,│  │ (read-only)      │  │ your own key     │  │ lookups (free    │
+   │ checklists, ...) │  │                  │  │                  │  │ key)             │
+   └──────────────────┘  └──────────────────┘  └──────────────────┘  └──────────────────┘
 ```
+
+eBird checklists enter by **file upload**, not through the eBird API: eBird has no "my own history"
+endpoint, so the app imports the Download-My-Data export (§7). The eBird API is used only to look
+up species names. Flickr photos are pulled by the backend with a one-time OAuth authorization for
+your own account, and the Anthropic API is called only for optional AI suggestions: the backend
+downloads the photo and sends the image itself, with the outing's species names or the photo's
+title and tags. Why each piece is the way it is: [`ARCHITECTURE_DECISIONS.md`](ARCHITECTURE_DECISIONS.md).
 
 ### 5a. Data model
 

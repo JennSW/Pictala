@@ -35,15 +35,17 @@
 
 <!-- ===================== Checklist ===================== -->
 <g class="box">
-<rect class="card" x="30" y="60" width="230" height="126" rx="8"/>
+<rect class="card" x="30" y="60" width="230" height="162" rx="8"/>
 <rect class="head" x="30" y="60" width="230" height="28" rx="8"/>
 <rect x="30" y="76" width="230" height="12" fill="#f3f4f6"/>
 <text class="th" x="42" y="74" dominant-baseline="central">Checklist</text>
-<text class="t"  x="42" y="106">id — PK</text>
+<text class="t"  x="42" y="106">id — PK, submission_id</text>
 <text class="t"  x="42" y="124">location_name, location_id</text>
-<text class="t"  x="42" y="142">date</text>
-<text class="t"  x="42" y="160">outing_reviewed_at</text>
-<text class="tm" x="42" y="178">(nullable)</text>
+<text class="t"  x="42" y="142">date, start_time</text>
+<text class="t"  x="42" y="160">duration_minutes</text>
+<text class="t"  x="42" y="178">latitude, longitude</text>
+<text class="tm" x="42" y="196">outing_reviewed_at (nullable)</text>
+<text class="tm" x="42" y="214">(time, duration, coordinates nullable)</text>
 </g>
 
 <!-- ===================== Observation ===================== -->
@@ -71,15 +73,15 @@
 
 <!-- ===================== Photo ===================== -->
 <g class="box">
-<rect class="card" x="780" y="60" width="240" height="126" rx="8"/>
-<rect class="head" x="780" y="60" width="240" height="28" rx="8"/>
-<rect x="780" y="76" width="240" height="12" fill="#f3f4f6"/>
+<rect class="card" x="780" y="60" width="262" height="126" rx="8"/>
+<rect class="head" x="780" y="60" width="262" height="28" rx="8"/>
+<rect x="780" y="76" width="262" height="12" fill="#f3f4f6"/>
 <text class="th" x="792" y="74" dominant-baseline="central">Photo</text>
 <text class="t"  x="792" y="106">id — PK</text>
 <text class="t"  x="792" y="124">flickr_id, title, tags</text>
 <text class="t"  x="792" y="142">date_taken, utc_offset</text>
 <text class="tm" x="792" y="160">duplicate_group_key (nullable)</text>
-<text class="tm" x="792" y="178">most other fields nullable too</text>
+<text class="tm" x="792" y="178">latitude, longitude, url_medium (nullable)</text>
 </g>
 
 <!-- ===================== AiSuggestionLog ===================== -->
@@ -102,9 +104,9 @@
 
 <!-- ===================== Match ===================== -->
 <g class="box">
-<rect class="card" x="330" y="440" width="340" height="180" rx="8"/>
-<rect class="head" x="330" y="440" width="340" height="28" rx="8"/>
-<rect x="330" y="456" width="340" height="12" fill="#f3f4f6"/>
+<rect class="card" x="330" y="440" width="380" height="180" rx="8"/>
+<rect class="head" x="330" y="440" width="380" height="28" rx="8"/>
+<rect x="330" y="456" width="380" height="12" fill="#f3f4f6"/>
 <text class="th" x="342" y="454" dominant-baseline="central">Match</text>
 <text class="t"  x="342" y="486">id — PK</text>
 <text class="t"  x="342" y="504">checklist_id — FK (nullable)</text>
@@ -112,16 +114,16 @@
 <text class="t"  x="342" y="540">observation_id — FK (nullable)</text>
 <text class="t"  x="342" y="558">method, confidence</text>
 <text class="t"  x="342" y="576">fallback_common_name / _scientific_name / _species_code</text>
-<text class="t"  x="342" y="594">reviewed_at (nullable)</text>
+<text class="t"  x="342" y="594">note, reviewed_at (nullable), created_at</text>
 <text class="tm" x="342" y="612">the current-state link — one row per photo</text>
 </g>
 
 <!-- ===================== connectors ===================== -->
 
 <!-- Checklist -> Observation -->
-<line x1="145" y1="186" x2="145" y2="260" class="arr" marker-end="url(#arrow)"/>
-<rect class="lbl-bg" x="150" y="212" width="52" height="16"/>
-<text class="ts" x="153" y="224">1 → *</text>
+<line x1="145" y1="222" x2="145" y2="260" class="arr" marker-end="url(#arrow)"/>
+<rect class="lbl-bg" x="150" y="233" width="52" height="16"/>
+<text class="ts" x="153" y="245">1 → *</text>
 
 <!-- Checklist -> Match (lands top-left of Match) -->
 <path d="M258,152 L400,440" class="arr" marker-end="url(#arrow)"/>
@@ -151,4 +153,5 @@
 <rect class="lbl-bg" x="330" y="128" width="330" height="16"/>
 <text class="ts" x="334" y="140" fill="#9ca3af">checklist_id (nullable) — logged directly, bypasses Match</text>
 
+<text class="note" x="30" y="680">Key columns only. Every column, including created_at on AiSuggestionLog, is in backend/app/models.py.</text>
 </svg>
