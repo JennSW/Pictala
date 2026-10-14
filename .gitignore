@@ -19,6 +19,7 @@ frontend.log
 
 # Local machine config, not shared across contributors.
 .claude/settings.local.json
+.claude/launch.json
 
 # Private session notes, not meant for the public repo.
 PROJECT_HISTORY.md
