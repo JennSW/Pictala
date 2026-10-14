@@ -163,7 +163,8 @@ gaps are listed on issue #74.
 ```
 backend/
   app/
-    main.py, config.py, db.py   FastAPI app and CORS; settings from .env; database setup
+    main.py, config.py, db.py   FastAPI app, CORS and error handling; settings from .env; database setup
+    errors.py                   one error format for every failure: {detail, hint, error_id}
     models.py                   Checklist, Observation, Photo, Match, SyncLog, AiSuggestionLog
     schemas.py                  Pydantic response models
     routers/
@@ -189,12 +190,17 @@ backend/
       ebird_taxonomy.py         common-name to species resolution
   tests/                        see Tests above
   seed_data/                    synthetic sample CSVs and the script that generates them
+  requirements.txt              Python dependencies
+  run_dev.sh                    runs the backend with auto-reload on port 8000
+  .env.example                  example settings (copy to .env)
 frontend/
   src/App.tsx                   main UI: outing list, outing review
   src/SyncPanel.tsx             upload and sync controls
-  src/DatePicker.tsx, PhotoLightbox.tsx, api.ts, theme.css
-docs/                           PRD, design doc, user stories, diagrams, wireframes
+  src/DatePicker.tsx, PhotoLightbox.tsx, api.ts, theme.css, main.tsx
+docs/                           PRD, design doc, architecture decisions, user stories, API reference,
+                                diagrams, wireframes, screenshots, reviews and session recaps
 start.sh                        one-command local setup (macOS)
+README.md, LICENSE              overview; PolyForm Noncommercial license
 ```
 
 ## Status

@@ -1,4 +1,4 @@
-# BirdTrip — User Stories
+# Pictala (formerly BirdTrip) — User Stories
 
 > Where this document cites an issue by number, it refers to the project's [issues board](https://github.com/JennSW/Pictala/issues).
 
@@ -50,9 +50,8 @@ tuning entirely.
   its species is checked, then it's checked against the union of species
   across the group — matched if any grouped checklist reported it,
   unmatched otherwise.
-- Given the CSV importer currently discards eBird's "Location ID" column
-  (only location *name* is stored today), then this requires capturing it
-  on `Checklist` as a prerequisite.
+- Prerequisite, done: the CSV importer captures eBird's "Location ID" on
+  `Checklist.location_id` (it used to store only the location *name*).
 
 **Priority:** High — directly fixes a confirmed real bug (the duplicate
 Tufted Puffin candidate across 4 checklists).
@@ -79,11 +78,15 @@ Tufted Puffin candidate across 4 checklists).
   inert this whole time, not just imperfectly tuned. Whether that's
   Flickr stripping geotags on upload, photos never being geotagged, or a
   sync gap wasn't investigated — explicitly on hold per the user's call.
+  *Status (2026-10-14): superseded by the current data. All 121 checklists
+  have coordinates and 30 of 635 photos do (about 5%), so the distance check
+  does run for those photos. The code now tests each coordinate with
+  `is not None` and applies the cutoff only when both sides have coordinates.*
 - Future consideration, not decided: should the automatic grouping be
   manually overridable (split/merge) in the review UI for cases the rule
   gets wrong? Raised in discussion, not yet turned into a story.
 
-### Problem: Time zone handling in time-window matching (not yet decided)
+### Problem: Time zone handling in time-window matching (partly addressed)
 
 `matcher.py` compares `checklist.date`/`start_time` against
 `photo.date_taken` as naive datetimes — no time zone attached on either
@@ -95,6 +98,12 @@ never updated for the time change (common when traveling), the tight
 time-window match goes silently off by the offset — and if the offset
 pushes a photo's date across midnight, even the same-day fallback fails,
 since that's still keyed on calendar date. No solution proposed yet.
+
+*Status (2026-10-14): partly addressed (the issue is closed).
+`timezone_check.py` flags a photo whose time zone offset disagrees with the
+checklist's location, and `POST /match/{checklist_id}/adjust-timezone/{photo_id}`
+applies the camera-clock correction to that photo's time and re-runs matching.
+The matcher's time window itself still compares naive times.*
 
 ---
 
@@ -173,11 +182,10 @@ finalized review.
 **Priority:** High
 
 **Notes:**
-- Depends on the *Save results* story (not yet drafted) for what "saved"
-  means.
-- Open question, not yet resolved: if new photos surface for an
-  already-saved day, there's currently no way to reopen/unlock it. Revisit
-  when drafting *Save results*.
+- *Status (2026-10-14):* the *Save results* idea shipped as a stored
+  "Mark outing reviewed" flag (issue #43), and a reviewed outing can be
+  reopened with "Unmark". The earlier open question about reopening is
+  resolved.
 
 ---
 
@@ -190,8 +198,9 @@ species-level matching (a photo matches a specific observation if the
 species name appears in its title/tags). Strategy B adds an opt-in
 "Suggest species" action for *uncaptioned* photos that already matched a
 checklist — Claude picks from that checklist's own ~5–15 reported species
-only. Backend + frontend for this are complete; only blocked on the
-Anthropic API key. Nothing here changes that path.
+only. Backend + frontend for this are complete and in use. It needs an
+Anthropic API key, and the app works without one. Nothing here changes
+that path.
 
 ### Story: Manual species assignment
 
@@ -234,7 +243,7 @@ testing.
 
 ### Story: Species ID fallback for eBird gaps
 
-**As a** birder, **I want** BirdTrip to attempt species identification on
+**As a** birder, **I want** Pictala to attempt species identification on
 photos that don't have a confirmed species match, **so that** I still get
 a species suggestion whether that's because the outing wasn't logged in
 eBird at all, or because I photographed something I didn't get around to
@@ -279,7 +288,7 @@ record.
   the existing checklist-constrained flow.
 - Given I approve a fallback suggestion, then the photo is labeled with
   the species, and a link to the relevant checklist on eBird.org is shown
-  so I can manually add it there — BirdTrip never writes to eBird itself.
+  so I can manually add it there — Pictala never writes to eBird itself.
 - Given this calls a paid API, then it's triggered manually per photo (a
   "Suggest species" action), not run automatically — same cost discipline
   as the existing flow.
@@ -290,16 +299,16 @@ is secondary to the already-built checklist-constrained path.
 **Built 2026-07-31**, covering trigger case (2) — checklist matched,
 constrained guess returned none — verified live with a real Heron photo
 on a Starling-only Marymoor checklist. Trigger case (1), no matching
-checklist at all, is still unbuilt: there's nowhere in the UI for an
-orphaned photo to appear yet (see *Feature: Outing grouping*'s
-checklist-less photo clusters, also still unbuilt).
+checklist at all, was built later: checklist-less photos now appear as
+clusters (`/unassigned`), where they can be suggested, batch-suggested,
+identified, or moved to a checklist.
 
 **Notes:**
 - Additive to, not a replacement for, the existing checklist-constrained
   flow.
 - Suggestions here feed into the same review UI as everything else
-  (approve/remove/park, edit) — see *Results review* (not yet drafted),
-  not a separate screen.
+  (approve/remove/park, edit) — see *Results review* (built; `DESIGN.md`
+  section 10.3), not a separate screen.
 - ~~Open: how far should "less-constrained" reach?~~ Resolved by
   implementation: fully open-vocabulary (no region/season narrowing),
   with the guess resolved against eBird's real taxonomy afterward
@@ -324,7 +333,7 @@ checklist-less photo clusters, also still unbuilt).
   *Group checklists by date + Location ID* story above (Feature: Outing
   grouping), not by review-workflow or matcher tie-breaking.
 
-### Problem: Batches of same-species photos (not yet decided)
+### Problem: Batches of same-species photos (built)
 
 Real example: a Smith Island trip with many Tufted Puffin photos, only
 some of which are captioned. Two related issues, not yet resolved:
@@ -364,6 +373,11 @@ Applies to both the constrained flow (Strategy B) and the eBird-gap
 fallback above — same mechanism, different candidate list. Left open for
 further exploration before turning into a formal story.
 
+*Status (2026-10-14): built (issue #5 is closed, and #22 was merged into it).
+Each unmatched photo has a "Select for batch" checkbox; the selected photos go
+to the AI in one call, up to 10 at a time, from the "Ask Pictala" action, and a
+batch confirm can be undone. The button is not labeled "Match All".*
+
 ### Problem: Caption-based matches are trusted blindly (not yet decided)
 
 Strategy A's species text/tag match (`_species_text_match` in
@@ -378,7 +392,7 @@ No solution proposed yet.
 
 ## Feature: Results review (edit, approve, flag, save)
 
-### Conceptual structure (confirmed; UX not yet designed)
+### Conceptual structure (confirmed; since designed and built)
 
 For a single trip that has at least one checklist (e.g. Smith Island),
 results break into three buckets:
@@ -403,9 +417,11 @@ etc.) is intentionally not decided yet — captured here as structure only,
 per the brainstorm notes' review-workflow ideas (edit, approve/remove/park,
 save) still needing to be mapped onto this.
 
+*Status (2026-10-14): designed (`DESIGN.md` section 10.3) and built.*
+
 **UI requirements to design against (see `PRD.md` Section 4):**
-- Accessibility compliant, usable by screen readers. How links and alt
-  text on photos should be handled is still to be worked out.
+- Accessibility compliant, usable by screen readers (done; see
+  `DESIGN.md` section 10.5).
 - A webpage for now — usable on desktop, with a mobile layout.
 
 ## Feature: Search & browse

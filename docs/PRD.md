@@ -1,4 +1,4 @@
-# BirdTrip — PRD
+# Pictala (formerly BirdTrip) — PRD
 
 ## 1. Problem Statement
 
@@ -10,7 +10,7 @@ recording). None of the three links to another — reconstructing "what did
 I photograph on this walk" means manually cross-referencing all three by
 hand.
 
-BirdTrip bridges the photo host and the eBird checklist for the same day,
+Pictala bridges the photo host and the eBird checklist for the same day,
 so a single app shows your own photos next to what bird is actually in
 each one — common name and scientific name. Its AI-assisted matching
 search (Strategy B / "Ask Claude," see `DESIGN.md`) already does visual
@@ -48,7 +48,7 @@ rules are the better tool.
   conflicts should be rare.
 
 **Future (V2) — not a v1 goal:**
-- Share BirdTrip with others in the birding community. This is a vision
+- Share Pictala with others in the birding community. This is a vision
   item, not something v1 is scoped or evaluated against — it only becomes
   realistic once the app is functionally solid and presentable. Related
   technical enabler (multi-user support: letting others add their own
@@ -90,6 +90,9 @@ support idea (`BRAINSTORMING.md`) are ultimately for — though for v1,
 Scope & Non-Goals and Assumptions (e.g. it argues against a local
 git-clone-and-run setup as the sharing mechanism).
 
+*Status (2026-10-14): v1 as published is a local clone-and-run (`start.sh`), and it expects
+you to bring your own Flickr and eBird accounts. Sharing with this group stays a V2 goal.*
+
 ## 4. Scope & Non-Goals
 
 **In scope for v1:**
@@ -105,9 +108,10 @@ git-clone-and-run setup as the sharing mechanism).
 - Each photo links to its original Flickr display page (not just the
   raw `.jpg`), so a viewer can click through to see it on Flickr itself.
 - **Accessibility compliant, usable by screen readers.** Applies to the
-  whole UI, not just photos. Specifics not decided yet — how links and
-  alt text on photos should be handled is still to be worked out (see
-  `USER_STORIES.md`, Feature: Results review).
+  whole UI, not just photos. *Status (2026-10-14): done. The standing
+  rule is in `DESIGN.md` section 10.5; photos carry alt text (their title)
+  in the viewer, and the accessibility and mobile work is closed on the
+  board.*
 - **Webpage for now** — usable on desktop, with a mobile layout. Not a
   native app.
 
@@ -137,9 +141,10 @@ constrained/deterministic approach genuinely can't reach, which is a
 stronger interview story than AI-everywhere. This extends (not replaces)
 the Strategy B "AI suggest" behavior already described in `DESIGN.md`.
 
-**Still open, not yet resolved (tracked, not decided here):**
-- Whether a saved/locked day can ever be reopened — flagged in the sync
-  spec in `USER_STORIES.md`.
+**Still open (tracked, not decided here):** nothing at the moment.
+
+*Resolved 2026-10-14: an outing marked reviewed can be reopened with
+Unmark.*
 
 ## 5. Key Use Cases
 
@@ -148,16 +153,16 @@ Narrative scenarios — detailed acceptance criteria live in
 
 **Sharing a photo in the field.** I'm out birding with friends, comparing
 life lists on eBird. I want to share a photo I took of a specific bird on
-the day I saw it. I open BirdTrip, search for the bird by name from the
+the day I saw it. I open Pictala, search for the bird by name from the
 home screen, and the search result shows the date and the matching photo.
 
-This implies two new stories, added to `USER_STORIES.md` as backlog stubs:
+These became two stories in `USER_STORIES.md`, both now built:
 - **Search by species** — find a photo by bird name rather than browsing
   outings one at a time.
 - **Date selection** — a way to narrow results by date. Details TBD.
 
 **Interview screening call.** I'm on a screening call with a hiring
-manager. She asks what I've been working on, and I demo BirdTrip —
+manager. She asks what I've been working on, and I demo Pictala —
 screen-sharing the running app and also sharing the GitHub repo directly.
 She asks technical and UX tradeoff questions.
 
