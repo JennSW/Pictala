@@ -84,12 +84,10 @@ motivating case behind the "Sharing a photo in the field" scenario and
 Search by species story in Section 5, not a separate unscoped ask.
 
 Some technical savvy, but low tolerance for effort — they want it to
-work, not to debug it. This group is shared with deliberately narrowly
-(not general public) and shouldn't need
-ongoing support from me to use it. This is the audience the V2 "share
-with the birding community" goal (Section 2) and the V2 multi-user
-support idea (`BRAINSTORMING.md`) are ultimately for — though for v1,
-"shouldn't need support" is itself a real constraint worth carrying into
+work, not to debug it. This is the audience the V2 "share with the
+birding community" goal (Section 2) and the V2 multi-user support idea
+(`BRAINSTORMING.md`) are ultimately for — though for v1, their low
+tolerance for effort is itself a real constraint worth carrying into
 Scope & Non-Goals and Assumptions (e.g. it argues against a local
 git-clone-and-run setup as the sharing mechanism).
 
