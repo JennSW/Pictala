@@ -103,6 +103,33 @@ npm run dev
 
 Open http://localhost:5173.
 
+## Troubleshooting
+
+Errors appear in a red banner at the top of the page: what went wrong, then a **What to try**
+line. The table below covers the common ones. If you started the app with `./start.sh`, the
+backend's log is `backend.log` in the project folder; otherwise it is the terminal running
+`uvicorn`.
+
+| You see | Why | What to do |
+|---|---|---|
+| **Can't reach the Pictala backend** | The page can't talk to the backend: it isn't running, or it stopped. | Start it with `./start.sh` (or `uvicorn app.main:app` from `backend/`), then reload. |
+| **Flickr isn't connected yet** | One or more Flickr values are missing from `backend/.env`. The message lists which. | Add them, run `python -m app.services.flickr_oauth_setup` once, restart the backend. Without Flickr you can still upload an eBird CSV and browse outings and species. This failure is not counted against your daily syncs. |
+| **Flickr rejected your API key** | The key or secret in `.env` is wrong or was revoked. | Re-copy both from https://www.flickr.com/services/apps/ . |
+| **Flickr didn't accept your authorization** | The token is missing, expired, or was revoked. | Run `python -m app.services.flickr_oauth_setup` again and paste the new token and secret into `.env`. |
+| **Flickr couldn't find that user** | `FLICKR_USER_ID` is wrong. | Use the user id printed by the setup step (it looks like `12345678@N00`). |
+| **Flickr is temporarily unavailable** | A problem on Flickr's side. | Wait a few minutes and try again. |
+| **Too many photos in that date range** | A sync fetches at most 10,000 photos at once, and refuses to return a partial list. | Sync a narrower range, for example one year at a time. |
+| **You've used all 4 syncs for today** | The daily Flickr sync limit. | It resets at midnight. Photos from earlier syncs are still there. Uploading an eBird CSV is not limited. |
+| **That doesn't look like an eBird export** | The uploaded file has no species column. | Upload the CSV from eBird's **Download My Data** (https://ebird.org/downloadMyData), or the .zip it emails you; the app unzips it. |
+| **That zip file doesn't contain a CSV**, or **couldn't be opened** | The zip is the wrong one or was cut short. | Download it again, or unzip it yourself and upload the CSV inside. |
+| **That file is empty**, or **larger than 50 MB**, or **couldn't be read as a text CSV** | Wrong or damaged file. | Check you picked the right file. A real eBird export is far below 50 MB. |
+| **Looking up bird names needs an eBird API key** | Species-name lookups need a free key. | Get one at https://ebird.org/api/keygen , set `EBIRD_API_KEY` in `.env`, restart the backend. |
+| **eBird didn't accept your API key** | The key is wrong. | Re-copy it from https://ebird.org/api/keygen . |
+| **AI suggestions need an Anthropic API key, and none is set** | Suggestions are optional and off until you add one. | Set `ANTHROPIC_API_KEY` in `.env` and restart, or just pick species by hand. |
+| **Anthropic didn't accept your API key**, or **is limiting how fast** | A wrong key, a key without access, or too many requests. | Check the key at https://console.anthropic.com . If you keep a workspace, the key must belong to it. For rate limits, wait a minute. |
+| **Something went wrong on the server**, with a reference | A bug. The message is generic on purpose; the detail is in the log. | Try again. If it keeps happening, find the reference in the log and include it when you report the problem. |
+| **The database is busy or unavailable** | The SQLite file is locked, read-only, or damaged. | Make sure only one copy of the backend is running and that the folder is writable. If the database is damaged, move `backend/birdtrip.db` aside; it is recreated on the next start. (That file holds your imported data, so keep the copy until you've checked.) |
+
 ## Tests
 
 ```bash
@@ -110,15 +137,21 @@ cd backend
 pytest
 ```
 
-46 tests across five files:
+114 tests across eleven files:
 
 | File | Covers |
 |---|---|
 | `test_matcher.py` | The rule-based matcher: the deterministic core, and the part worth being able to defend line by line |
 | `test_ebird_import.py` | Re-importing a CSV keeps confirmed species matches (#95), and a first import keeps every species |
+| `test_ebird_upload.py` | Uploading eBird files: zip, byte-order mark, wrong files, size limit, no temp copies left behind |
 | `test_photo_dates.py` | Using the date in a photo's title when Flickr's date is an upload fallback (#34) |
 | `test_duplicate_detection.py` | The duplicate-photo heuristic |
 | `test_ebird_taxonomy.py` | Species-name resolution |
+| `test_flickr_sync.py` | Fetching every page of Flickr results, and what each Flickr error says to do |
+| `test_api_photo_validation.py` | Unknown photo ids are rejected and the database enforces foreign keys |
+| `test_error_handling.py` | Every failure comes back readable, with a hint, and with CORS headers |
+| `test_service_errors.py` | Anthropic and eBird key and rate-limit failures |
+| `test_start_sh.py` | `start.sh` only loads sample data into an empty database |
 
 There are no front-end tests; `npm run build` type-checks the front end. Known coverage
 gaps are listed on issue #74.
