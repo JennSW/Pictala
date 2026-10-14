@@ -10,55 +10,13 @@ These tests drive the real FastAPI app through its HTTP interface (the routers h
 no HTTP-level tests at all). They use an in-memory database, set up in conftest.py.
 """
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
-from app.db import Base, enable_sqlite_foreign_keys, engine as app_engine, get_db
-from app.main import app
-from app.models import AiSuggestionLog, Checklist, Match, Observation, Photo
+from app.db import engine as app_engine
+from app.models import AiSuggestionLog, Match
 
 MISSING_PHOTO_ID = 999_999
-
-
-@pytest.fixture()
-def world():
-    """A fresh in-memory database with one outing (one checklist, one species, one
-    real photo), wired into the app. Foreign keys are enforced, as in production."""
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
-    enable_sqlite_foreign_keys(engine)
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine, autoflush=False)
-
-    with Session() as db:
-        checklist = Checklist(
-            submission_id="S1", location_name="Lake Merritt", date="2026-06-14",
-            start_time="07:30 AM", duration_minutes=60,
-        )
-        db.add(checklist)
-        db.flush()
-        observation = Observation(checklist_id=checklist.id, common_name="Mallard")
-        photo = Photo(flickr_id="f1", title="Mallard", date_taken="2026-06-14T07:45:00")
-        db.add_all([observation, photo])
-        db.flush()
-        ids = {"checklist": checklist.id, "observation": observation.id, "photo": photo.id}
-        db.commit()
-
-    def override_get_db():
-        db = Session()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as client:
-        yield client, Session, ids
-    app.dependency_overrides.clear()
 
 
 def _counts(Session):

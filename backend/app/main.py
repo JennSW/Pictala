@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db import Base, engine, add_missing_columns
+from app.errors import install_error_handling
 from app.routers import outings, sync, match, search, unassigned, stats
 
 Base.metadata.create_all(bind=engine)
@@ -12,6 +13,11 @@ app = FastAPI(
     description="Matches your eBird checklists to your Flickr photos, per outing.",
     version="0.1.0",
 )
+
+# Must come before CORSMiddleware is added: the most recently added middleware is the
+# outermost, and CORS has to wrap the error handling so error responses are readable
+# by the browser too (see app/errors.py).
+install_error_handling(app)
 
 app.add_middleware(
     CORSMiddleware,
